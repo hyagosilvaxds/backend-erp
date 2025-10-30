@@ -1,0 +1,15 @@
+-- AlterTable
+ALTER TABLE "companies" ADD COLUMN     "ambienteFiscal" TEXT NOT NULL DEFAULT 'Homologacao',
+ADD COLUMN     "certificadoDigitalPath" TEXT,
+ADD COLUMN     "certificadoDigitalSenha" TEXT,
+ADD COLUMN     "cfopPadrao" TEXT,
+ADD COLUMN     "codigoEstadoIBGE" TEXT,
+ADD COLUMN     "codigoMunicipioIBGE" TEXT,
+ADD COLUMN     "regimeApuracao" TEXT,
+ADD COLUMN     "serieNFCe" TEXT,
+ADD COLUMN     "serieNFSe" TEXT,
+ADD COLUMN     "serieNFe" TEXT,
+ADD COLUMN     "tipoContribuinte" TEXT,
+ADD COLUMN     "ultimoNumeroNFCe" INTEGER DEFAULT 0,
+ADD COLUMN     "ultimoNumeroNFSe" INTEGER DEFAULT 0,
+ADD COLUMN     "ultimoNumeroNFe" INTEGER DEFAULT 0;

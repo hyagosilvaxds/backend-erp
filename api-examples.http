@@ -1,0 +1,109 @@
+### 1. Login - Admin (acesso a 3 empresas)
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "senha123"
+}
+
+###
+
+### 2. Login - Gerente (acesso a 2 empresas)
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "email": "gerente@example.com",
+  "password": "senha123"
+}
+
+###
+
+### 3. Login - Vendedor (acesso a 1 empresa)
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "email": "vendedor@example.com",
+  "password": "senha123"
+}
+
+###
+
+### 4. Login - Visualizador (acesso a 1 empresa)
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "email": "viewer@example.com",
+  "password": "senha123"
+}
+
+###
+
+### 5. Obter Perfil do Usuário
+# Substitua {TOKEN} pelo access_token recebido no login
+GET http://localhost:3000/auth/profile
+Authorization: Bearer {TOKEN}
+
+###
+
+### 6. Listar Usuários (com permissão users.read)
+# Substitua {TOKEN} pelo access_token
+# Substitua {COMPANY_ID} pelo ID de uma empresa que o usuário tem acesso
+GET http://localhost:3000/users
+Authorization: Bearer {TOKEN}
+x-company-id: {COMPANY_ID}
+
+###
+
+### Exemplo Completo - Fluxo de Teste
+# 1. Faça login com admin@example.com
+# 2. Copie o access_token da resposta
+# 3. Copie um companyId da lista de companies na resposta
+# 4. Use esses valores nas requisições seguintes
+
+### Exemplo de Login Inválido
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "senhaerrada"
+}
+
+###
+
+### Exemplo de Validação - Email Inválido
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "email": "emailinvalido",
+  "password": "senha123"
+}
+
+###
+
+### Exemplo de Validação - Senha Curta
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "123"
+}
+
+###
+
+### Teste de Acesso sem Token
+GET http://localhost:3000/auth/profile
+
+###
+
+### Teste de Acesso sem Company ID
+GET http://localhost:3000/users
+Authorization: Bearer {TOKEN}
+
+###

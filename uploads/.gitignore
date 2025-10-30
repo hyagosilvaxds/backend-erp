@@ -1,0 +1,7 @@
+# Ignore uploaded files
+*
+!.gitignore
+
+# But keep the directory structure
+!logos/.gitkeep
+!certificates/.gitkeep

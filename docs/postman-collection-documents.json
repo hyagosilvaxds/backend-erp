@@ -1,0 +1,582 @@
+{
+  "info": {
+    "name": "ERP - Documents API",
+    "description": "Collection completa para testar o módulo de documentos do ERP",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "folder_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "document_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Folders",
+      "item": [
+        {
+          "name": "List All Folders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/documents/folders",
+              "host": ["{{base_url}}"],
+              "path": ["documents", "folders"]
+            }
+          }
+        },
+        {
+          "name": "List Subfolders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/documents/folders?parentId={{folder_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["documents", "folders"],
+              "query": [
+                {
+                  "key": "parentId",
+                  "value": "{{folder_id}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Folder",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set('folder_id', pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Notas Fiscais\",\n  \"description\": \"Notas fiscais e comprovantes\",\n  \"color\": \"#4CAF50\",\n  \"icon\": \"receipt\",\n  \"isPublic\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/documents/folders",
+              "host": ["{{base_url}}"],
+              "path": ["documents", "folders"]
+            }
+          }
+        },
+        {
+          "name": "Update Folder",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Notas Fiscais 2024\",\n  \"description\": \"Notas fiscais do ano de 2024\",\n  \"color\": \"#2196F3\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/documents/folders/{{folder_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["documents", "folders", "{{folder_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Folder (Empty)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/documents/folders/{{folder_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["documents", "folders", "{{folder_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Folder (Force)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/documents/folders/{{folder_id}}?force=true",
+              "host": ["{{base_url}}"],
+              "path": ["documents", "folders", "{{folder_id}}"],
+              "query": [
+                {
+                  "key": "force",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Documents",
+      "item": [
+        {
+          "name": "Upload Document",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set('document_id', pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                },
+                {
+                  "key": "name",
+                  "value": "Nota Fiscal Janeiro 2024",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Nota fiscal referente ao mês de janeiro/2024",
+                  "type": "text"
+                },
+                {
+                  "key": "folderId",
+                  "value": "{{folder_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "reference",
+                  "value": "NF-2024-001",
+                  "type": "text"
+                },
+                {
+                  "key": "documentType",
+                  "value": "invoice",
+                  "type": "text"
+                },
+                {
+                  "key": "tags",
+                  "value": "nota-fiscal,janeiro,2024",
+                  "type": "text"
+                },
+                {
+                  "key": "expiresAt",
+                  "value": "2025-12-31",
+                  "type": "text"
+                },
+                {
+                  "key": "isPublic",
+                  "value": "false",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/documents/upload",
+              "host": ["{{base_url}}"],
+              "path": ["documents", "upload"]
+            }
+          }
+        },
+        {
+          "name": "List Documents (All)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/documents",
+              "host": ["{{base_url}}"],
+              "path": ["documents"]
+            }
+          }
+        },
+        {
+          "name": "List Documents (By Folder)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/documents?folderId={{folder_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["documents"],
+              "query": [
+                {
+                  "key": "folderId",
+                  "value": "{{folder_id}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Documents (Search)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/documents?search=nota&documentType=invoice&page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["documents"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "nota"
+                },
+                {
+                  "key": "documentType",
+                  "value": "invoice"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Documents (By Tags)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/documents?tags=nota-fiscal,2024",
+              "host": ["{{base_url}}"],
+              "path": ["documents"],
+              "query": [
+                {
+                  "key": "tags",
+                  "value": "nota-fiscal,2024"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Document Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/documents/{{document_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["documents", "{{document_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Download Document",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/documents/{{document_id}}/download",
+              "host": ["{{base_url}}"],
+              "path": ["documents", "{{document_id}}", "download"]
+            }
+          }
+        },
+        {
+          "name": "Update Document Metadata",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nota Fiscal Janeiro 2024 - Atualizada\",\n  \"description\": \"Nota fiscal atualizada\",\n  \"tags\": [\"nota-fiscal\", \"janeiro\", \"2024\", \"atualizada\"],\n  \"expiresAt\": \"2026-01-31\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/documents/{{document_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["documents", "{{document_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Upload New Version",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                },
+                {
+                  "key": "description",
+                  "value": "Versão 2 - Corrigida",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/documents/{{document_id}}/version",
+              "host": ["{{base_url}}"],
+              "path": ["documents", "{{document_id}}", "version"]
+            }
+          }
+        },
+        {
+          "name": "Delete Document",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/documents/{{document_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["documents", "{{document_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Reports & Stats",
+      "item": [
+        {
+          "name": "Get Expired Documents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/documents/expired?daysAhead=30",
+              "host": ["{{base_url}}"],
+              "path": ["documents", "expired"],
+              "query": [
+                {
+                  "key": "daysAhead",
+                  "value": "30"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Documents Expiring Soon",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/documents/expired?daysAhead=7",
+              "host": ["{{base_url}}"],
+              "path": ["documents", "expired"],
+              "query": [
+                {
+                  "key": "daysAhead",
+                  "value": "7"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/documents/stats",
+              "host": ["{{base_url}}"],
+              "path": ["documents", "stats"]
+            }
+          }
+        },
+        {
+          "name": "List Expired Documents Only",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/documents?expired=true",
+              "host": ["{{base_url}}"],
+              "path": ["documents"],
+              "query": [
+                {
+                  "key": "expired",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Documents Expiring In 30 Days",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/documents?expiresIn=30",
+              "host": ["{{base_url}}"],
+              "path": ["documents"],
+              "query": [
+                {
+                  "key": "expiresIn",
+                  "value": "30"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

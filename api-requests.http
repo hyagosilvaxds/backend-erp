@@ -1,0 +1,525 @@
+### ============================================
+### 🚀 API ERP Multi-Empresa - Exemplos de Requisições
+### ============================================
+
+### Variáveis de Ambiente
+@baseUrl = http://localhost:3000
+@token = 
+@companyId = 
+
+### ============================================
+### 🔐 AUTENTICAÇÃO
+### ============================================
+
+### Login - SuperAdmin
+POST {{baseUrl}}/auth/login
+Co### Listar minhas empresas com permissões
+GET {{baseUrl}}/users/me/companies
+Authorization: Bearer {{token}}
+
+### ============================================
+### 🏢 ADMIN - EMPRESAS
+### ============================================
+
+### [ADMIN] Listar TODAS as empresas (primeira página)
+GET {{baseUrl}}/companies/admin/all?page=1&limit=10
+Authorization: Bearer {{adminToken}}
+x-company-id: {{companyId}}
+
+### [ADMIN] Listar TODAS as empresas (página 2, 25 por página)
+GET {{baseUrl}}/companies/admin/all?page=2&limit=25
+Authorization: Bearer {{adminToken}}
+x-company-id: {{companyId}}
+
+### [ADMIN] Buscar empresas por texto (razão social, nome fantasia, etc)
+GET {{baseUrl}}/companies/admin/all?search=Alpha&page=1&limit=10
+Authorization: Bearer {{adminToken}}
+x-company-id: {{companyId}}
+
+### [ADMIN] Buscar empresas por CNPJ
+GET {{baseUrl}}/companies/admin/all?search=11222333
+Authorization: Bearer {{adminToken}}
+x-company-id: {{companyId}}
+
+### [ADMIN] Buscar empresas por cidade
+GET {{baseUrl}}/companies/admin/all?search=São Paulo
+Authorization: Bearer {{adminToken}}
+x-company-id: {{companyId}}
+
+### [ADMIN] Buscar empresas por estado
+GET {{baseUrl}}/companies/admin/all?search=SP
+Authorization: Bearer {{adminToken}}
+x-company-id: {{companyId}}
+
+### [ADMIN] Buscar detalhes completos de uma empresa
+GET {{baseUrl}}/companies/admin/{{companyId}}
+Authorization: Bearer {{adminToken}}
+x-company-id: {{companyId}}
+
+### [ADMIN] Atualizar informações completas da empresa
+PATCH {{baseUrl}}/companies/admin/{{companyId}}
+Authorization: Bearer {{adminToken}}
+x-company-id: {{companyId}}
+Content-Type: application/json
+
+{
+  "nomeFantasia": "Alpha Tecnologia Atualizada",
+  "email": "novoemail@alpha.com.br",
+  "telefone": "(11) 3000-9999",
+  "regimeTributario": "Lucro Presumido",
+  "tipoContribuinte": "Contribuinte ICMS e ISS"
+}
+
+### [ADMIN] Upload de logo da empresa
+# Nota: Este é um exemplo. Use uma ferramenta como Postman ou Insomnia para upload de arquivos
+# POST {{baseUrl}}/companies/admin/{{companyId}}/logo
+# Authorization: Bearer {{adminToken}}
+# x-company-id: {{companyId}}
+# Content-Type: multipart/form-data
+# 
+# logo: [selecionar arquivo .jpg, .png, .gif ou .webp - máx 5MB]
+
+### [ADMIN] Remover logo da empresa
+DELETE {{baseUrl}}/companies/admin/{{companyId}}/logo
+Authorization: Bearer {{adminToken}}
+x-company-id: {{companyId}}
+
+### [ADMIN] Upload de certificado digital A1
+# Nota: Este é um exemplo. Use uma ferramenta como Postman ou Insomnia para upload de arquivos
+# POST {{baseUrl}}/companies/admin/{{companyId}}/certificate
+# Authorization: Bearer {{adminToken}}
+# x-company-id: {{companyId}}
+# Content-Type: multipart/form-data
+# 
+# certificate: [selecionar arquivo .pfx ou .p12 - máx 10MB]
+# senha: "senha_do_certificado"
+
+### [ADMIN] Remover certificado digital
+DELETE {{baseUrl}}/companies/admin/{{companyId}}/certificate
+Authorization: Bearer {{adminToken}}
+x-company-id: {{companyId}}
+
+### ============================================
+### 📝 NOTAS
+### ============================================ype: application/json
+
+{
+  "email": "superadmin@example.com",
+  "password": "senha123"
+}
+
+### Login - Admin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "senha123"
+}
+
+### Login - Gerente
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "gerente@example.com",
+  "password": "senha123"
+}
+
+### Login - Vendedor
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "vendedor@example.com",
+  "password": "senha123"
+}
+
+### Login - Viewer
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "viewer@example.com",
+  "password": "senha123"
+}
+
+### Obter Perfil do Usuário Autenticado
+GET {{baseUrl}}/auth/profile
+Authorization: Bearer {{token}}
+
+### ============================================
+### 👤 USUÁRIOS (USERS)
+### ============================================
+
+### 📋 Listar Empresas do Usuário Logado
+# Retorna todas as empresas que o usuário tem acesso
+# Inclui informações básicas da empresa e a role do usuário
+GET {{baseUrl}}/users/me/companies
+Authorization: Bearer {{token}}
+
+### ============================================
+### 🏢 EMPRESAS (COMPANIES)
+### ============================================
+
+### 📋 Listar Todas as Empresas
+# SuperAdmin: Retorna TODAS as empresas
+# Outros usuários: Retorna apenas empresas que tem acesso
+GET {{baseUrl}}/companies
+Authorization: Bearer {{token}}
+
+### 🔍 Buscar Empresa por ID
+GET {{baseUrl}}/companies/{{companyId}}
+Authorization: Bearer {{token}}
+
+### ✅ Criar Nova Empresa - MÍNIMO OBRIGATÓRIO
+# Campos obrigatórios: razaoSocial e cnpj
+# Permissão necessária: companies.create (SuperAdmin ou Admin)
+# ⚠️ IMPORTANTE: NÃO enviar header x-company-id para criar empresa
+# O sistema verifica se você tem a permissão em QUALQUER empresa
+POST {{baseUrl}}/companies
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "razaoSocial": "MINHA EMPRESA SIMPLES LTDA",
+  "cnpj": "11223344556677"
+}
+
+### ✅ Criar Nova Empresa - DADOS BÁSICOS
+# Admin ou SuperAdmin podem criar empresas
+# NÃO enviar x-company-id
+POST {{baseUrl}}/companies
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "razaoSocial": "TECH SOLUTIONS INFORMÁTICA LTDA",
+  "nomeFantasia": "Tech Solutions",
+  "cnpj": "12345678000190",
+  "inscricaoEstadual": "123456789",
+  "email": "contato@techsolutions.com.br",
+  "telefone": "11-3456-7890",
+  "celular": "11-98765-4321"
+}
+
+### ✅ Criar Nova Empresa - COMPLETO COM ENDEREÇO
+POST {{baseUrl}}/companies
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "razaoSocial": "COMERCIO DE PRODUTOS LTDA",
+  "nomeFantasia": "Loja de Produtos",
+  "cnpj": "98765432000199",
+  "inscricaoEstadual": "987654321",
+  "inscricaoMunicipal": "123456",
+  "email": "contato@lojaprodutos.com.br",
+  "telefone": "11-3333-4444",
+  "celular": "11-99999-8888",
+  "site": "https://www.lojaprodutos.com.br",
+  "logradouro": "Avenida Paulista",
+  "numero": "1000",
+  "complemento": "Conjunto 45",
+  "bairro": "Bela Vista",
+  "cidade": "São Paulo",
+  "estado": "SP",
+  "cep": "01310100",
+  "pais": "Brasil"
+}
+
+### ✅ Criar Nova Empresa - COMPLETO COM DADOS FISCAIS
+POST {{baseUrl}}/companies
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "razaoSocial": "INDUSTRIA E COMERCIO EXEMPLO LTDA",
+  "nomeFantasia": "Indústria Exemplo",
+  "cnpj": "11222333000144",
+  "inscricaoEstadual": "123456789",
+  "inscricaoMunicipal": "987654",
+  "regimeTributario": "Simples Nacional",
+  "cnaePrincipal": "4751-2/01",
+  "cnaeSecundarios": ["4752-1/00", "4753-9/00"],
+  "dataAbertura": "2020-01-15T00:00:00.000Z",
+  "situacaoCadastral": "Ativa",
+  "logradouro": "Rua das Indústrias",
+  "numero": "500",
+  "complemento": "Galpão 3",
+  "bairro": "Distrito Industrial",
+  "cidade": "São Paulo",
+  "estado": "SP",
+  "cep": "08000000",
+  "pais": "Brasil",
+  "telefone": "11-4444-5555",
+  "celular": "11-97777-6666",
+  "email": "fiscal@industriaexemplo.com.br",
+  "site": "https://www.industriaexemplo.com.br",
+  "tipoContribuinte": "ICMS",
+  "regimeApuracao": "Mensal",
+  "codigoMunicipioIBGE": "3550308",
+  "codigoEstadoIBGE": "35",
+  "cfopPadrao": "5102",
+  "serieNFe": "1",
+  "serieNFCe": "1",
+  "serieNFSe": "A",
+  "ambienteFiscal": "Homologacao",
+  "active": true
+}
+
+### ✅ Criar Nova Empresa - COMPLETO COM CERTIFICADO DIGITAL
+POST {{baseUrl}}/companies
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "razaoSocial": "EMPRESA COM CERTIFICADO LTDA",
+  "nomeFantasia": "Empresa Certificada",
+  "cnpj": "55666777000188",
+  "inscricaoEstadual": "555666777",
+  "email": "nfe@empresacertificada.com.br",
+  "telefone": "11-5555-6666",
+  "logradouro": "Rua dos Certificados",
+  "numero": "100",
+  "bairro": "Centro",
+  "cidade": "São Paulo",
+  "estado": "SP",
+  "cep": "01000000",
+  "tipoContribuinte": "ICMS",
+  "regimeApuracao": "Mensal",
+  "codigoMunicipioIBGE": "3550308",
+  "codigoEstadoIBGE": "35",
+  "cfopPadrao": "5102",
+  "certificadoDigitalPath": "/certificates/empresa55666777000188.pfx",
+  "certificadoDigitalSenha": "senha_super_secreta_123",
+  "serieNFe": "1",
+  "serieNFCe": "1",
+  "serieNFSe": "A",
+  "ambienteFiscal": "Producao"
+}
+
+### ✏️ Atualizar Empresa - Dados Simples
+PATCH {{baseUrl}}/companies/{{companyId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nomeFantasia": "Novo Nome Fantasia Atualizado",
+  "email": "novoemail@empresa.com.br",
+  "telefone": "11-9999-8888"
+}
+
+### ✏️ Atualizar Empresa - Endereço Completo
+PATCH {{baseUrl}}/companies/{{companyId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "logradouro": "Nova Avenida Brasil",
+  "numero": "2000",
+  "complemento": "Sala 1001",
+  "bairro": "Jardim Novo",
+  "cidade": "Rio de Janeiro",
+  "estado": "RJ",
+  "cep": "20000000"
+}
+  "codigoEstadoIBGE": "33",
+  "ambienteFiscal": "Producao",
+  "serieNFe": "2",
+  "serieNFCe": "2",
+  "active": true
+}
+
+### Atualizar Empresa - Parcial (SuperAdmin)
+PATCH {{baseUrl}}/companies/{{companyId}}
+Authorization: Bearer {{superadminToken}}
+Content-Type: application/json
+
+{
+  "nomeFantasia": "Nome Atualizado",
+  "telefone": "11999999999"
+}
+
+### Atualizar Empresa (Admin com permissão)
+PATCH {{baseUrl}}/companies/{{companyId}}
+Authorization: Bearer {{adminToken}}
+x-company-id: {{companyId}}
+Content-Type: application/json
+
+{
+  "nomeFantasia": "Empresa Alpha Atualizada",
+  "email": "novo@empresaalpha.com.br",
+  "site": "https://www.empresaalpha.com.br"
+}
+
+### Ativar/Desativar Empresa (SuperAdmin ou Admin com permissão companies.update)
+PATCH {{baseUrl}}/companies/{{companyId}}/toggle-active
+Authorization: Bearer {{superadminToken}}
+
+### Deletar Empresa (Apenas SuperAdmin)
+DELETE {{baseUrl}}/companies/{{companyId}}
+Authorization: Bearer {{superadminToken}}
+
+### ============================================
+### 👥 USUÁRIOS
+### ============================================
+
+### Listar Usuários da Empresa
+GET {{baseUrl}}/users
+Authorization: Bearer {{adminToken}}
+x-company-id: {{companyId}}
+
+### Listar Usuários (SuperAdmin sem contexto de empresa)
+GET {{baseUrl}}/users
+Authorization: Bearer {{superadminToken}}
+
+### ============================================
+### 🧪 TESTES DE PERMISSÕES
+### ============================================
+
+### ❌ Tentar criar empresa sem permissão (deve falhar)
+POST {{baseUrl}}/companies
+Authorization: Bearer {{vendedorToken}}
+x-company-id: {{companyId}}
+Content-Type: application/json
+
+{
+  "name": "Empresa Não Autorizada",
+  "cnpj": "11111111111111"
+}
+
+### ❌ Tentar deletar empresa como Admin (deve falhar)
+DELETE {{baseUrl}}/companies/{{companyId}}
+Authorization: Bearer {{adminToken}}
+x-company-id: {{companyId}}
+
+### ❌ Tentar acessar empresa sem vínculo (deve falhar)
+GET {{baseUrl}}/companies/invalid-company-id
+Authorization: Bearer {{vendedorToken}}
+
+### ✅ Listar usuários com permissão
+GET {{baseUrl}}/users
+Authorization: Bearer {{gerenteToken}}
+x-company-id: {{companyId}}
+
+### ============================================
+### 📊 CENÁRIOS DE USO
+### ============================================
+
+### CENÁRIO 1: SuperAdmin cria nova empresa e a ativa
+### 1. Login como SuperAdmin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "superadmin@example.com",
+  "password": "senha123"
+}
+
+### 2. Criar empresa
+POST {{baseUrl}}/companies
+Authorization: Bearer {{superadminToken}}
+Content-Type: application/json
+
+{
+  "name": "Empresa Teste SuperAdmin",
+  "cnpj": "55555555555555"
+}
+
+### 3. Listar todas as empresas
+GET {{baseUrl}}/companies
+Authorization: Bearer {{superadminToken}}
+
+### ---
+
+### CENÁRIO 2: Admin gerencia sua empresa
+### 1. Login como Admin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "senha123"
+}
+
+### 2. Ver perfil e empresas disponíveis
+GET {{baseUrl}}/auth/profile
+Authorization: Bearer {{adminToken}}
+
+### 3. Selecionar empresa e listar usuários
+GET {{baseUrl}}/users
+Authorization: Bearer {{adminToken}}
+x-company-id: {{companyId}}
+
+### ---
+
+### CENÁRIO 3: Gerente com acesso a múltiplas empresas
+### 1. Login como Gerente
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "gerente@example.com",
+  "password": "senha123"
+}
+
+### 2. Ver empresas disponíveis
+GET {{baseUrl}}/companies
+Authorization: Bearer {{gerenteToken}}
+
+### 3. Trabalhar na Empresa 1
+GET {{baseUrl}}/users
+Authorization: Bearer {{gerenteToken}}
+x-company-id: empresa-alpha-id
+
+### 4. Trocar para Empresa 2
+GET {{baseUrl}}/users
+Authorization: Bearer {{gerenteToken}}
+x-company-id: empresa-beta-id
+
+### ============================================
+### � ADMIN - LISTAR TODAS AS EMPRESAS
+### ============================================
+
+### Listar todas as empresas do sistema (Admin)
+GET {{baseUrl}}/companies/admin/all
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### Buscar detalhes completos de uma empresa (Admin)
+GET {{baseUrl}}/companies/admin/cm2r8g9h40000vy9x1a2b3c4d
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ============================================
+### 👤 USUÁRIO - MINHAS EMPRESAS
+### ============================================
+
+### Listar minhas empresas com permissões
+GET {{baseUrl}}/users/me/companies
+Authorization: Bearer {{token}}
+
+### ============================================
+### �📝 NOTAS
+### ============================================
+
+###
+### 1. Após fazer login, copie o access_token e atualize as variáveis:
+###    @adminToken, @gerenteToken, @vendedorToken
+###
+### 2. O header x-company-id é obrigatório para todas as rotas protegidas
+###    por PermissionsGuard
+###
+### 3. Roles disponíveis:
+###    - admin: Administrador com todas as permissões explícitas
+###    - manager: Gerente (permissões editáveis)
+###    - sales: Vendedor (permissões editáveis)
+###    - viewer: Visualizador (permissões editáveis)
+###
+### 5. Permissões de empresas:
+###    - companies.create
+###    - companies.read
+###    - companies.update
+###    - companies.delete
+###

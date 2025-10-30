@@ -1,0 +1,711 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo de Usuário
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  photoUrl  String?  // URL da foto do usuário
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamento com empresas
+  companies UserCompany[]
+  
+  // Auditoria
+  companyAudits CompanyAudit[]
+  
+  // Documentos
+  foldersCreated DocumentFolder[] @relation("FolderCreatedBy")
+  documentsUploaded Document[] @relation("DocumentUploadedBy")
+
+  @@map("users")
+}
+
+// Modelo de Empresa
+model Company {
+  id String @id @default(uuid())
+
+  // Informações cadastrais básicas
+  razaoSocial       String // Nome jurídico da empresa
+  nomeFantasia      String? // Nome comercial usado no dia a dia
+  cnpj              String  @unique // Cadastro Nacional de Pessoa Jurídica
+  inscricaoEstadual String? // Cadastro na SEFAZ
+  inscricaoMunicipal String? // Para emissão de NFS-e
+  
+  // Regime tributário e atividades
+  regimeTributario  String? // Simples Nacional, Lucro Presumido, Lucro Real
+  cnaePrincipal     String? // Código CNAE da atividade principal
+  cnaeSecundarios   String[] // Lista de códigos CNAE secundários
+  
+  // Datas e situação
+  dataAbertura      DateTime? // Data de fundação da empresa
+  situacaoCadastral String    @default("Ativa") // Ativa / Inativa / Suspensa
+  
+  // Endereço
+  logradouro   String? // Rua, Avenida, etc.
+  numero       String? // Número do endereço
+  complemento  String? // Apto, sala, bloco, etc.
+  bairro       String? // Bairro
+  cidade       String? // Município
+  estado       String? // UF (sigla do estado)
+  cep          String? // CEP
+  pais         String  @default("Brasil") // País
+  
+  // Contatos
+  telefone     String? // Telefone fixo
+  celular      String? // Celular / WhatsApp
+  email        String? // E-mail principal
+  site         String? // Site (opcional)
+  
+  // Configurações fiscais e tributárias
+  tipoContribuinte       String? // ICMS, ISS, Isento, etc.
+  regimeApuracao         String? // Simples Nacional, Lucro Presumido, Lucro Real
+  codigoMunicipioIBGE    String? // Código IBGE do município
+  codigoEstadoIBGE       String? // Código IBGE do estado
+  cfopPadrao             String? // CFOP padrão para operações
+  
+  // Certificado digital para emissão de notas fiscais
+  certificadoDigitalPath String? // Caminho do arquivo do certificado A1
+  certificadoDigitalSenha String? // Senha do certificado (criptografada)
+  
+  // Numeração de notas fiscais
+  serieNFe               String? // Série da NF-e
+  ultimoNumeroNFe        Int?    @default(0) // Último número de NF-e emitido
+  serieNFCe              String? // Série da NFC-e
+  ultimoNumeroNFCe       Int?    @default(0) // Último número de NFC-e emitido
+  serieNFSe              String? // Série da NFS-e
+  ultimoNumeroNFSe       Int?    @default(0) // Último número de NFS-e emitido
+  
+  // Ambiente fiscal
+  ambienteFiscal         String  @default("Homologacao") // Homologacao ou Producao
+  
+  // Logo e identidade visual
+  logoUrl                String? // URL ou caminho do arquivo de logo
+  logoFileName           String? // Nome do arquivo original
+  logoMimeType           String? // Tipo MIME (image/png, image/jpeg, etc.)
+  
+  // Plano de contas
+  planoContasId          String? // ID do plano de contas padrão utilizado
+  
+  // Controle interno
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamento com usuários
+  users UserCompany[]
+  
+  // Auditoria
+  audits CompanyAudit[]
+  
+  // Centros de custo
+  centrosCusto CentroCusto[]
+  
+  // Planos de contas
+  planosContas PlanoContas[]
+  
+  // Documentos
+  documentFolders DocumentFolder[]
+  documents Document[]
+  
+  // Produtos
+  productCategories ProductCategory[]
+  productUnits ProductUnit[]
+  productBrands ProductBrand[]
+  products Product[]
+  productStockMovements ProductStockMovement[]
+
+  @@map("companies")
+}
+
+// Modelo de Plano de Contas
+model PlanoContas {
+  id          String   @id @default(uuid())
+  
+  // Empresa dona do plano de contas
+  companyId   String?  // Null para planos padrão do sistema
+  company     Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  nome        String // Ex: "Plano de Contas Padrão", "Plano Comercial", "Plano Industrial"
+  descricao   String?
+  tipo        String   @default("Gerencial") // Gerencial, Fiscal, Contabil
+  ativo       Boolean  @default(true)
+  padrao      Boolean  @default(false) // Se é o plano de contas padrão do sistema
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamento com contas
+  contas ContaContabil[]
+
+  @@index([companyId])
+  @@map("plano_contas")
+}
+
+// Modelo de Conta Contábil
+model ContaContabil {
+  id              String   @id @default(uuid())
+  planoContasId   String
+  codigo          String // Ex: "1.1.01.001"
+  nome            String // Ex: "Caixa Geral"
+  tipo            String // Ativo, Passivo, Receita, Despesa, Patrimônio Líquido
+  natureza        String // Devedora, Credora
+  nivel           Int // Nível hierárquico da conta (1, 2, 3, 4...)
+  contaPaiId      String? // Conta pai na hierarquia
+  aceitaLancamento Boolean @default(true) // Se aceita lançamentos diretos
+  ativo           Boolean @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relacionamentos
+  planoContas PlanoContas @relation(fields: [planoContasId], references: [id], onDelete: Cascade)
+  contaPai    ContaContabil? @relation("ContaHierarquia", fields: [contaPaiId], references: [id])
+  subContas   ContaContabil[] @relation("ContaHierarquia")
+
+  @@unique([planoContasId, codigo])
+  @@map("contas_contabeis")
+}
+
+// Tabela pivô entre Usuário e Empresa com Role
+model UserCompany {
+  id        String   @id @default(uuid())
+  userId    String
+  companyId String
+  roleId    String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  role    Role    @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, companyId])
+  @@map("user_companies")
+}
+
+// Modelo de Role (Papel/Função)
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  userCompanies  UserCompany[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+// Modelo de Permissão
+model Permission {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  resource    String // Ex: "users", "products", "sales"
+  action      String // Ex: "create", "read", "update", "delete"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relacionamentos
+  rolePermissions RolePermission[]
+
+  @@unique([resource, action])
+  @@map("permissions")
+}
+
+// Tabela pivô entre Role e Permission
+model RolePermission {
+  id           String   @id @default(uuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime @default(now())
+
+  // Relacionamentos
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// Modelo de Auditoria de Empresas
+model CompanyAudit {
+  id        String   @id @default(uuid())
+  
+  // Empresa auditada
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  // Usuário que fez a alteração
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  
+  // Tipo de ação
+  action    String   // CREATE, UPDATE, DELETE, UPLOAD_LOGO, REMOVE_LOGO, UPLOAD_CERTIFICATE, REMOVE_CERTIFICATE, TOGGLE_ACTIVE
+  
+  // Dados da alteração
+  entityType String  @default("Company") // Tipo da entidade
+  fieldName  String? // Campo específico alterado (opcional)
+  oldValue   String? // Valor anterior (JSON string)
+  newValue   String? // Novo valor (JSON string)
+  
+  // Metadados
+  ipAddress  String? // IP do usuário
+  userAgent  String? // Browser/app do usuário
+  description String? // Descrição legível da ação
+  
+  // Timestamp
+  createdAt DateTime @default(now())
+  
+  @@index([companyId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("company_audits")
+}
+
+// Modelo de Centro de Custos
+model CentroCusto {
+  id          String   @id @default(uuid())
+  
+  // Empresa dona do centro de custo
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  // Hierarquia
+  codigo      String   // Ex: 01, 01.01, 01.01.001
+  nome        String   // Ex: Administrativo, Vendas, Marketing
+  descricao   String?  // Descrição detalhada
+  
+  // Estrutura hierárquica
+  centroCustoPaiId String? // Centro de custo pai
+  centroCustoPai   CentroCusto?  @relation("CentroCustoHierarchy", fields: [centroCustoPaiId], references: [id], onDelete: Restrict)
+  subCentros       CentroCusto[] @relation("CentroCustoHierarchy")
+  
+  nivel       Int      // Nível na hierarquia (1, 2, 3, ...)
+  
+  // Responsável
+  responsavel String?  // Nome do responsável pelo centro de custo
+  email       String?  // Email do responsável
+  
+  // Status
+  ativo       Boolean  @default(true)
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([companyId, codigo])
+  @@index([companyId])
+  @@index([centroCustoPaiId])
+  @@index([codigo])
+  @@map("centros_custo")
+}
+
+// ==================== SISTEMA DE DOCUMENTOS ====================
+
+// Pastas de documentos
+model DocumentFolder {
+  id          String   @id @default(uuid())
+  
+  // Empresa e organização
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  // Dados da pasta
+  name        String   // Nome da pasta
+  description String?  // Descrição opcional
+  color       String?  // Cor para identificação visual (hex code)
+  icon        String?  // Ícone opcional
+  
+  // Hierarquia de pastas
+  parentId    String?
+  parent      DocumentFolder?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  subfolders  DocumentFolder[] @relation("FolderHierarchy")
+  
+  // Documentos
+  documents   Document[]
+  
+  // Controle de acesso
+  isPublic    Boolean  @default(false) // Se true, todos da empresa podem ver
+  allowedRoleIds String[] @default([]) // IDs das roles que podem visualizar (vazio = todas)
+  
+  // Auditoria
+  createdById String
+  createdBy   User     @relation("FolderCreatedBy", fields: [createdById], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([companyId])
+  @@index([parentId])
+  @@index([createdById])
+  @@map("document_folders")
+}
+
+// Documentos
+model Document {
+  id            String   @id @default(uuid())
+  
+  // Empresa e organização
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  folderId      String?
+  folder        DocumentFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  
+  // Dados do documento
+  name          String   // Nome do arquivo
+  description   String?  // Descrição do documento
+  
+  // Arquivo
+  fileName      String   // Nome original do arquivo
+  filePath      String   // Caminho no servidor
+  fileSize      Int      // Tamanho em bytes
+  mimeType      String   // Tipo MIME (application/pdf, image/jpeg, etc.)
+  fileExtension String   // Extensão (.pdf, .jpg, .docx, etc.)
+  
+  // Metadados
+  reference     String?  // Referência/código do documento
+  documentType  String?  // Tipo: "contrato", "nota_fiscal", "comprovante", "certificado", etc.
+  tags          String[] // Tags para busca e organização
+  
+  // Validade
+  expiresAt     DateTime? // Data de validade/vencimento
+  isExpired     Boolean   @default(false) // Se o documento está vencido
+  
+  // Controle de versão
+  version       Int      @default(1) // Versão do documento
+  previousVersionId String? // ID da versão anterior
+  previousVersion   Document? @relation("DocumentVersions", fields: [previousVersionId], references: [id], onDelete: SetNull)
+  nextVersions      Document[] @relation("DocumentVersions")
+  isLatest      Boolean  @default(true) // Se é a versão mais recente
+  
+  // Controle de acesso
+  isPublic      Boolean  @default(false) // Se true, todos da empresa podem ver
+  allowedRoleIds String[] @default([]) // IDs das roles que podem visualizar (vazio = todas)
+  
+  // Auditoria
+  uploadedById  String
+  uploadedBy    User     @relation("DocumentUploadedBy", fields: [uploadedById], references: [id])
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([companyId])
+  @@index([folderId])
+  @@index([uploadedById])
+  @@index([reference])
+  @@index([documentType])
+  @@index([expiresAt])
+  @@index([isExpired])
+  @@index([previousVersionId])
+  @@map("documents")
+}
+
+// Modelo de Categoria de Produtos
+model ProductCategory {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  name        String   // Nome da categoria
+  description String?  // Descrição
+  parentId    String?  // Para subcategorias
+  parent      ProductCategory?  @relation("CategorySubcategories", fields: [parentId], references: [id], onDelete: Restrict)
+  subcategories ProductCategory[] @relation("CategorySubcategories")
+  
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Produtos
+  products    Product[]
+  
+  @@unique([companyId, name, parentId])
+  @@index([companyId])
+  @@index([parentId])
+  @@map("product_categories")
+}
+
+// Modelo de Unidade de Medida
+model ProductUnit {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  name        String   // Nome da unidade (ex: Unidade, Caixa, Kg, Litro)
+  abbreviation String  // Abreviação (ex: UN, CX, KG, L)
+  
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Produtos
+  products    Product[]
+  
+  @@unique([companyId, abbreviation])
+  @@index([companyId])
+  @@map("product_units")
+}
+
+// Modelo de Marca
+model ProductBrand {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  name        String   // Nome da marca
+  description String?  // Descrição
+  
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Produtos
+  products    Product[]
+  
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@map("product_brands")
+}
+
+// Modelo de Produto
+model Product {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  // Informações básicas
+  name        String   // Nome do produto
+  description String?  // Descrição detalhada
+  sku         String?  // Código SKU interno
+  barcode     String?  // Código de barras (EAN/GTIN)
+  reference   String?  // Referência (código do fornecedor)
+  
+  // Categoria e classificação
+  categoryId  String?
+  category    ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brandId     String?
+  brand       ProductBrand?    @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  
+  // Preços e valores
+  costPrice        Decimal  @default(0) @db.Decimal(10, 2)  // Preço de custo
+  profitMargin     Decimal  @default(0) @db.Decimal(5, 2)   // % de lucro
+  salePrice        Decimal  @default(0) @db.Decimal(10, 2)  // Preço de venda à vista
+  salePriceInstallment Decimal @default(0) @db.Decimal(10, 2) // Preço de venda a prazo
+  minSalePrice     Decimal  @default(0) @db.Decimal(10, 2)  // Valor mínimo de venda
+  wholesalePrice   Decimal? @db.Decimal(10, 2)              // Valor de atacado
+  minWholesaleQty  Int?                                     // Quantidade mínima para atacado
+  
+  // Estoque
+  manageStock      Boolean  @default(true)  // Gerenciar estoque
+  currentStock     Decimal  @default(0) @db.Decimal(10, 3)  // Estoque atual
+  initialStock     Decimal  @default(0) @db.Decimal(10, 3)  // Estoque inicial
+  minStock         Decimal  @default(0) @db.Decimal(10, 3)  // Estoque mínimo
+  maxStock         Decimal? @db.Decimal(10, 3)              // Estoque máximo
+  
+  // Unidade
+  unitId       String?
+  unit         ProductUnit? @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  
+  // Dimensões e peso
+  dimensionType String?  // UNITS, CM, M, IN, FT
+  width        Decimal? @db.Decimal(10, 2)  // Largura
+  height       Decimal? @db.Decimal(10, 2)  // Altura
+  length       Decimal? @db.Decimal(10, 2)  // Comprimento
+  weight       Decimal? @db.Decimal(10, 3)  // Peso líquido
+  grossWeight  Decimal? @db.Decimal(10, 3)  // Peso bruto
+  
+  // Validade e garantia
+  expiryAlertDays Int?     // Alerta de validade (dias antes)
+  warrantyPeriod  Int?     // Prazo de garantia (dias)
+  
+  // Tipo de produto
+  productType  String   @default("SIMPLE") // SIMPLE, COMPOSITE, VARIABLE, COMBO
+  isComposite  Boolean  @default(false)    // Se é composto por outros produtos
+  hasVariations Boolean @default(false)    // Se tem variações (tamanho, cor, etc)
+  isCombo      Boolean  @default(false)    // Se é um combo/kit
+  
+  // Status e disponibilidade
+  active       Boolean  @default(true)
+  availability String   @default("AVAILABLE") // AVAILABLE, OUT_OF_STOCK, PRE_ORDER, DISCONTINUED
+  
+  // Observações
+  notes        String?  @db.Text
+  
+  // Informações fiscais (NCM, CEST, CFOP, etc serão adicionados)
+  ncm          String?  // Nomenclatura Comum do Mercosul
+  cest         String?  // Código Especificador da Substituição Tributária
+  origin       String?  // Origem da mercadoria (0-8)
+  
+  // ICMS
+  icmsCst      String?  // Código de Situação Tributária do ICMS
+  icmsRate     Decimal? @db.Decimal(5, 2)  // Alíquota do ICMS
+  icmsModBc    String?  // Modalidade de determinação da BC do ICMS
+  
+  // IPI
+  ipiCst       String?  // CST do IPI
+  ipiRate      Decimal? @db.Decimal(5, 2)  // Alíquota do IPI
+  
+  // PIS
+  pisCst       String?  // CST do PIS
+  pisRate      Decimal? @db.Decimal(5, 2)  // Alíquota do PIS
+  
+  // COFINS
+  cofinsCst    String?  // CST do COFINS
+  cofinsRate   Decimal? @db.Decimal(5, 2)  // Alíquota do COFINS
+  
+  // Auditoria
+  createdById  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // Relações
+  photos       ProductPhoto[]
+  variations   ProductVariation[]
+  compositeItems ProductComposite[] @relation("CompositeProduct")
+  composedIn   ProductComposite[] @relation("ComponentProduct")
+  comboItems   ProductCombo[]     @relation("ComboProduct")
+  itemsInCombo ProductCombo[]     @relation("ComboItem")
+  stockMovements ProductStockMovement[]
+  
+  @@unique([companyId, barcode])
+  @@unique([companyId, sku])
+  @@index([companyId])
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([unitId])
+  @@index([barcode])
+  @@index([sku])
+  @@index([active])
+  @@index([productType])
+  @@map("products")
+}
+
+// Modelo de Fotos de Produto
+model ProductPhoto {
+  id         String   @id @default(uuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  documentId String   // Referência ao documento no hub
+  isPrimary  Boolean  @default(false)  // Se é a foto principal
+  order      Int      @default(0)      // Ordem de exibição
+  
+  createdAt  DateTime @default(now())
+  
+  @@index([productId])
+  @@index([documentId])
+  @@map("product_photos")
+}
+
+// Modelo de Variações de Produto (ex: tamanho, cor)
+model ProductVariation {
+  id          String   @id @default(uuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  name        String   // Nome da variação (ex: Tamanho P - Azul)
+  sku         String?  // SKU específico da variação
+  barcode     String?  // Código de barras específico
+  
+  // Preços específicos (opcional, se diferente do produto pai)
+  costPrice        Decimal? @db.Decimal(10, 2)
+  salePrice        Decimal? @db.Decimal(10, 2)
+  salePriceInstallment Decimal? @db.Decimal(10, 2)
+  
+  // Estoque específico
+  currentStock Decimal  @default(0) @db.Decimal(10, 3)
+  
+  // Atributos da variação
+  attributes   Json     // { "size": "P", "color": "Azul" }
+  
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@unique([productId, sku])
+  @@index([productId])
+  @@index([barcode])
+  @@map("product_variations")
+}
+
+// Modelo de Produto Composto (receita)
+model ProductComposite {
+  id            String   @id @default(uuid())
+  compositeId   String   // Produto composto (final)
+  composite     Product  @relation("CompositeProduct", fields: [compositeId], references: [id], onDelete: Cascade)
+  componentId   String   // Produto componente (ingrediente)
+  component     Product  @relation("ComponentProduct", fields: [componentId], references: [id], onDelete: Cascade)
+  
+  quantity      Decimal  @db.Decimal(10, 3)  // Quantidade necessária
+  
+  createdAt     DateTime @default(now())
+  
+  @@unique([compositeId, componentId])
+  @@index([compositeId])
+  @@index([componentId])
+  @@map("product_composites")
+}
+
+// Modelo de Combo (kit de produtos)
+model ProductCombo {
+  id        String   @id @default(uuid())
+  comboId   String   // Produto combo
+  combo     Product  @relation("ComboProduct", fields: [comboId], references: [id], onDelete: Cascade)
+  itemId    String   // Produto do combo
+  item      Product  @relation("ComboItem", fields: [itemId], references: [id], onDelete: Cascade)
+  
+  quantity  Decimal  @db.Decimal(10, 3)  // Quantidade no combo
+  
+  createdAt DateTime @default(now())
+  
+  @@unique([comboId, itemId])
+  @@index([comboId])
+  @@index([itemId])
+  @@map("product_combos")
+}
+
+// Modelo de Movimentação de Estoque
+model ProductStockMovement {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  type        String   // ENTRY, EXIT, ADJUSTMENT, RETURN, LOSS, TRANSFER
+  quantity    Decimal  @db.Decimal(10, 3)  // Quantidade (positivo ou negativo)
+  previousStock Decimal @db.Decimal(10, 3) // Estoque anterior
+  newStock    Decimal  @db.Decimal(10, 3)  // Novo estoque
+  
+  reason      String?  // Motivo da movimentação
+  notes       String?  // Observações
+  reference   String?  // Referência (ex: número da NF)
+  
+  userId      String?  // Usuário que fez a movimentação
+  createdAt   DateTime @default(now())
+  
+  @@index([companyId])
+  @@index([productId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("product_stock_movements")
+}
