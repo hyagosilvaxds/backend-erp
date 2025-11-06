@@ -24,6 +24,172 @@ export class DocumentsService {
 
   // ==================== HELPERS ====================
 
+  /**
+   * Busca ou cria uma pasta automaticamente (para pastas de sistema)
+   * @param name Nome da pasta
+   * @param companyId ID da empresa
+   * @param parentId ID da pasta pai (opcional)
+   * @param systemUserId ID do usuário sistema para criação
+   * @returns Pasta existente ou recém-criada
+   */
+  async findOrCreateFolder(
+    name: string,
+    companyId: string,
+    parentId?: string,
+    systemUserId?: string,
+  ) {
+    // Buscar pasta existente
+    const existingFolder = await this.prisma.documentFolder.findFirst({
+      where: {
+        name,
+        companyId,
+        parentId: parentId || null,
+      },
+    });
+
+    if (existingFolder) {
+      return existingFolder;
+    }
+
+    // Se não foi fornecido userId, buscar primeiro admin da empresa
+    let creatorUserId = systemUserId;
+    if (!creatorUserId) {
+      const adminUser = await this.prisma.userCompany.findFirst({
+        where: { companyId },
+        select: { userId: true },
+        orderBy: { createdAt: 'asc' }, // Primeiro usuário cadastrado
+      });
+      
+      if (!adminUser) {
+        throw new BadRequestException('Nenhum usuário encontrado para criar pasta automática');
+      }
+      
+      creatorUserId = adminUser.userId;
+    }
+
+    // Criar nova pasta (pública por padrão para pastas de sistema)
+    const folder = await this.prisma.documentFolder.create({
+      data: {
+        name,
+        companyId,
+        parentId: parentId || null,
+        isPublic: true, // Pastas de estoque são públicas
+        allowedRoleIds: [],
+        createdById: creatorUserId,
+      },
+    });
+
+    return folder;
+  }
+
+  /**
+   * Cria estrutura de pastas para movimentações de estoque
+   * Estrutura: Estoque / Movimentações / YYYY / MM
+   * @param companyId ID da empresa
+   * @param date Data da movimentação (para organizar por ano/mês)
+   * @param systemUserId ID do usuário sistema
+   * @returns ID da pasta do mês
+   */
+  async ensureStockMovementFolder(
+    companyId: string,
+    date: Date = new Date(),
+    systemUserId?: string,
+  ): Promise<string> {
+    // 1. Pasta raiz: Estoque
+    const estoqueFolder = await this.findOrCreateFolder(
+      'Estoque',
+      companyId,
+      undefined,
+      systemUserId,
+    );
+
+    // 2. Subpasta: Movimentações
+    const movimentacoesFolder = await this.findOrCreateFolder(
+      'Movimentações',
+      companyId,
+      estoqueFolder.id,
+      systemUserId,
+    );
+
+    // 3. Subpasta: Ano (YYYY)
+    const year = date.getFullYear().toString();
+    const yearFolder = await this.findOrCreateFolder(
+      year,
+      companyId,
+      movimentacoesFolder.id,
+      systemUserId,
+    );
+
+    // 4. Subpasta: Mês (MM - Janeiro, Fevereiro, etc)
+    const monthNames = [
+      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+    const monthName = monthNames[date.getMonth()];
+    const monthFolder = await this.findOrCreateFolder(
+      monthName,
+      companyId,
+      yearFolder.id,
+      systemUserId,
+    );
+
+    return monthFolder.id;
+  }
+
+  /**
+   * Cria estrutura de pastas para transferências de estoque
+   * Estrutura: Estoque / Transferências / YYYY / MM
+   * @param companyId ID da empresa
+   * @param date Data da transferência (para organizar por ano/mês)
+   * @param systemUserId ID do usuário sistema
+   * @returns ID da pasta do mês
+   */
+  async ensureStockTransferFolder(
+    companyId: string,
+    date: Date = new Date(),
+    systemUserId?: string,
+  ): Promise<string> {
+    // 1. Pasta raiz: Estoque
+    const estoqueFolder = await this.findOrCreateFolder(
+      'Estoque',
+      companyId,
+      undefined,
+      systemUserId,
+    );
+
+    // 2. Subpasta: Transferências
+    const transferenciasFolder = await this.findOrCreateFolder(
+      'Transferências',
+      companyId,
+      estoqueFolder.id,
+      systemUserId,
+    );
+
+    // 3. Subpasta: Ano (YYYY)
+    const year = date.getFullYear().toString();
+    const yearFolder = await this.findOrCreateFolder(
+      year,
+      companyId,
+      transferenciasFolder.id,
+      systemUserId,
+    );
+
+    // 4. Subpasta: Mês (MM - Janeiro, Fevereiro, etc)
+    const monthNames = [
+      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+    const monthName = monthNames[date.getMonth()];
+    const monthFolder = await this.findOrCreateFolder(
+      monthName,
+      companyId,
+      yearFolder.id,
+      systemUserId,
+    );
+
+    return monthFolder.id;
+  }
+
   async getUserRoles(userId: string, companyId: string) {
     const userCompany = await this.prisma.userCompany.findFirst({
       where: {
@@ -589,10 +755,23 @@ export class DocumentsService {
       throw new BadRequestException('Nenhum arquivo foi enviado');
     }
 
+    let folderId = dto.folderId;
+
+    // Se não foi fornecido folderId, mas foi fornecido contexto, criar pasta automaticamente
+    if (!folderId && dto.context) {
+      const currentDate = new Date();
+      
+      if (dto.context === 'stock_movement') {
+        folderId = await this.ensureStockMovementFolder(companyId, currentDate, userId);
+      } else if (dto.context === 'stock_transfer') {
+        folderId = await this.ensureStockTransferFolder(companyId, currentDate, userId);
+      }
+    }
+
     // Verificar se pasta existe (se fornecida)
-    if (dto.folderId) {
+    if (folderId) {
       const folder = await this.prisma.documentFolder.findUnique({
-        where: { id: dto.folderId },
+        where: { id: folderId },
       });
 
       if (!folder || folder.companyId !== companyId) {
@@ -620,7 +799,7 @@ export class DocumentsService {
     const document = await this.prisma.document.create({
       data: {
         companyId,
-        folderId: dto.folderId || null,
+        folderId: folderId || null,
         name: dto.name || file.originalname,
         description: dto.description,
         fileName: file.originalname,

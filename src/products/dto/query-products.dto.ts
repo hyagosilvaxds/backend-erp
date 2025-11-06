@@ -2,6 +2,19 @@ import { IsOptional, IsString, IsBoolean, IsUUID, IsInt, Min, IsEnum } from 'cla
 import { Transform, Type } from 'class-transformer';
 import { ProductType, ProductAvailability } from './create-product.dto';
 
+export enum SortBy {
+  NAME = 'name',
+  SKU = 'sku',
+  SALE_PRICE = 'salePrice',
+  CURRENT_STOCK = 'currentStock',
+  CREATED_AT = 'createdAt',
+}
+
+export enum SortOrder {
+  ASC = 'asc',
+  DESC = 'desc',
+}
+
 export class QueryProductsDto {
   @IsString()
   @IsOptional()
@@ -44,4 +57,12 @@ export class QueryProductsDto {
   @IsOptional()
   @Type(() => Number)
   limit?: number = 50;
+
+  @IsEnum(SortBy)
+  @IsOptional()
+  sortBy?: SortBy = SortBy.CREATED_AT;
+
+  @IsEnum(SortOrder)
+  @IsOptional()
+  sortOrder?: SortOrder = SortOrder.DESC;
 }

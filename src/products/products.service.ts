@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { DocumentsService } from '../documents/documents.service';
 import { CreateProductCategoryDto } from './dto/create-product-category.dto';
 import { UpdateProductCategoryDto } from './dto/update-product-category.dto';
 import { CreateProductUnitDto } from './dto/create-product-unit.dto';
@@ -10,12 +11,14 @@ import { UpdateProductBrandDto } from './dto/update-product-brand.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { QueryProductsDto } from './dto/query-products.dto';
+import { CreateStockMovementDto } from './dto/create-stock-movement.dto';
 
 @Injectable()
 export class ProductsService {
   constructor(
     private prisma: PrismaService,
     private auditService: AuditService,
+    private documentsService: DocumentsService,
   ) {}
 
   // ==================== CATEGORIAS ====================
@@ -388,6 +391,12 @@ export class ProductsService {
   // ==================== PRODUTOS ====================
 
   async createProduct(dto: CreateProductDto, companyId: string, userId: string) {
+    // Normalizar 'type' para 'productType' se enviado
+    if (dto.type && !dto.productType) {
+      dto.productType = dto.type;
+    }
+    delete dto.type; // Remove 'type' para evitar conflito no Prisma
+
     // Verificar se categoria existe
     if (dto.categoryId) {
       const category = await this.prisma.productCategory.findUnique({
@@ -449,13 +458,39 @@ export class ProductsService {
       }
     }
 
+    // Calcular estoque total inicial
+    let totalInitialStock = 0;
+    if (dto.manageStock && dto.initialStockByLocations && dto.initialStockByLocations.length > 0) {
+      totalInitialStock = dto.initialStockByLocations.reduce((sum, stock) => sum + stock.quantity, 0);
+    }
+
+    // Validar locais de estoque se fornecidos
+    if (dto.manageStock && dto.initialStockByLocations && dto.initialStockByLocations.length > 0) {
+      for (const stockByLocation of dto.initialStockByLocations) {
+        const location = await this.prisma.stockLocation.findUnique({
+          where: { id: stockByLocation.locationId },
+        });
+
+        if (!location || location.companyId !== companyId) {
+          throw new NotFoundException(`Local de estoque ${stockByLocation.locationId} não encontrado`);
+        }
+
+        if (!location.active) {
+          throw new BadRequestException(`Local de estoque "${location.name}" está inativo`);
+        }
+      }
+    }
+
+    // Preparar dados do produto (remover campo que não existe no schema)
+    const { initialStockByLocations, ...productData } = dto;
+
     // Criar produto
     const product = await this.prisma.product.create({
       data: {
-        ...dto,
+        ...productData,
         companyId,
         createdById: userId,
-        currentStock: dto.initialStock || 0,
+        currentStock: totalInitialStock,
       },
       include: {
         category: true,
@@ -465,20 +500,34 @@ export class ProductsService {
       },
     });
 
-    // Registrar movimentação inicial de estoque se gerenciar estoque
-    if (dto.manageStock && (dto.initialStock || 0) > 0) {
-      await this.prisma.productStockMovement.create({
-        data: {
-          companyId,
-          productId: product.id,
-          type: 'ENTRY',
-          quantity: dto.initialStock || 0,
-          previousStock: 0,
-          newStock: dto.initialStock || 0,
-          reason: 'Estoque inicial',
-          userId,
-        },
-      });
+    // Criar estoque inicial em múltiplos locais
+    if (dto.manageStock && dto.initialStockByLocations && dto.initialStockByLocations.length > 0) {
+      for (const stockByLocation of dto.initialStockByLocations) {
+        // Criar estoque no local
+        await this.prisma.productStockByLocation.create({
+          data: {
+            companyId,
+            productId: product.id,
+            locationId: stockByLocation.locationId,
+            quantity: stockByLocation.quantity,
+          },
+        });
+
+        // Registrar movimentação para cada local
+        await this.prisma.productStockMovement.create({
+          data: {
+            companyId,
+            productId: product.id,
+            type: 'ENTRY',
+            quantity: stockByLocation.quantity,
+            previousStock: 0,
+            newStock: stockByLocation.quantity,
+            reason: 'Estoque inicial',
+            locationId: stockByLocation.locationId,
+            userId,
+          },
+        });
+      }
     }
 
     // Registrar auditoria
@@ -595,6 +644,27 @@ export class ProductsService {
             },
           },
         },
+        // Incluir estoque por local
+        stocksByLocation: {
+          include: {
+            location: {
+              select: {
+                id: true,
+                name: true,
+                code: true,
+                description: true,
+                address: true,
+                isDefault: true,
+                active: true,
+              },
+            },
+          },
+          orderBy: {
+            location: {
+              name: 'asc',
+            },
+          },
+        },
       },
     });
 
@@ -602,7 +672,28 @@ export class ProductsService {
       throw new NotFoundException('Produto não encontrado');
     }
 
-    return product;
+    // Calcular estatísticas de estoque
+    const stockSummary = {
+      totalStock: product.currentStock.toNumber(),
+      stockByLocations: product.stocksByLocation.map(stock => ({
+        locationId: stock.location.id,
+        locationName: stock.location.name,
+        locationCode: stock.location.code,
+        quantity: stock.quantity.toNumber(),
+        isDefault: stock.location.isDefault,
+        active: stock.location.active,
+        address: stock.location.address,
+        updatedAt: stock.updatedAt,
+      })),
+      locationsCount: product.stocksByLocation.length,
+      locationsWithStock: product.stocksByLocation.filter(s => s.quantity.toNumber() > 0).length,
+      locationsOutOfStock: product.stocksByLocation.filter(s => s.quantity.toNumber() === 0).length,
+    };
+
+    return {
+      ...product,
+      stockSummary,
+    };
   }
 
   async updateProduct(id: string, dto: UpdateProductDto, companyId: string, userId: string) {
@@ -671,9 +762,35 @@ export class ProductsService {
       }
     }
 
+    // Preparar dados para atualização (remover campos de relacionamento)
+    const { categoryId, brandId, unitId, type, ...updateData } = dto;
+    
+    // Construir objeto de atualização com relacionamentos corretos
+    const data: any = {
+      ...updateData,
+    };
+
+    // Adicionar relacionamentos usando connect/disconnect
+    if (categoryId !== undefined) {
+      data.category = categoryId ? { connect: { id: categoryId } } : { disconnect: true };
+    }
+
+    if (brandId !== undefined) {
+      data.brand = brandId ? { connect: { id: brandId } } : { disconnect: true };
+    }
+
+    if (unitId !== undefined) {
+      data.unit = unitId ? { connect: { id: unitId } } : { disconnect: true };
+    }
+
+    // Tratar campo type -> productType
+    if (type) {
+      data.productType = type;
+    }
+
     const updatedProduct = await this.prisma.product.update({
       where: { id },
-      data: dto,
+      data,
       include: {
         category: true,
         brand: true,
@@ -759,55 +876,145 @@ export class ProductsService {
 
   async addStockMovement(
     productId: string,
+    dto: CreateStockMovementDto,
     companyId: string,
     userId: string,
-    type: string,
-    quantity: number,
-    reason?: string,
-    notes?: string,
-    reference?: string,
   ) {
+    const { type, quantity, locationId, reason, notes, reference, documentId } = dto;
+
+    // Verificar se produto existe
     const product = await this.findProductById(productId, companyId);
 
     if (!product.manageStock) {
       throw new BadRequestException('Este produto não gerencia estoque');
     }
 
-    const previousStock = product.currentStock;
-    let newStock: number;
+    // Validar local de estoque
+    const location = await this.prisma.stockLocation.findUnique({
+      where: { id: locationId },
+    });
+
+    if (!location || location.companyId !== companyId) {
+      throw new NotFoundException('Local de estoque não encontrado');
+    }
+
+    if (!location.active) {
+      throw new BadRequestException('Local de estoque não está ativo');
+    }
+
+    // Se documentId foi informado, validar e garantir estrutura de pastas
+    if (documentId) {
+      const document = await this.prisma.document.findUnique({
+        where: { id: documentId },
+      });
+
+      if (!document || document.companyId !== companyId) {
+        throw new NotFoundException('Documento não encontrado');
+      }
+
+      // Criar estrutura de pastas automaticamente se o documento não estiver em pasta
+      if (!document.folderId) {
+        const movementDate = new Date(); // Data da movimentação
+        const folderId = await this.documentsService.ensureStockMovementFolder(
+          companyId,
+          movementDate,
+          userId,
+        );
+
+        // Mover documento para a pasta correta
+        await this.prisma.document.update({
+          where: { id: documentId },
+          data: { folderId },
+        });
+      }
+    }
+
+    // Buscar estoque atual do produto neste local
+    const stockByLocation = await this.prisma.productStockByLocation.findUnique({
+      where: {
+        productId_locationId: {
+          productId,
+          locationId,
+        },
+      },
+    });
+
+    const previousStockInLocation = stockByLocation?.quantity || 0;
+    const previousStockTotal = product.currentStock;
+    let newStockInLocation: number;
+    let newStockTotal: number;
 
     // Calcular novo estoque baseado no tipo
     if (type === 'ENTRY' || type === 'RETURN' || type === 'ADJUSTMENT') {
-      newStock = Number(previousStock) + quantity;
+      newStockInLocation = Number(previousStockInLocation) + quantity;
+      newStockTotal = Number(previousStockTotal) + quantity;
     } else if (type === 'EXIT' || type === 'LOSS') {
-      newStock = Number(previousStock) - quantity;
-      if (newStock < 0) {
-        throw new BadRequestException('Estoque não pode ficar negativo');
+      newStockInLocation = Number(previousStockInLocation) - quantity;
+      newStockTotal = Number(previousStockTotal) - quantity;
+      
+      if (newStockInLocation < 0) {
+        throw new BadRequestException(
+          `Estoque insuficiente no local "${location.name}". Disponível: ${previousStockInLocation}`,
+        );
       }
+      
+      if (newStockTotal < 0) {
+        throw new BadRequestException('Estoque total não pode ficar negativo');
+      }
+    } else if (type === 'TRANSFER') {
+      throw new BadRequestException(
+        'Use o endpoint de transferências para mover estoque entre locais',
+      );
     } else {
       throw new BadRequestException('Tipo de movimentação inválido');
     }
 
-    // Registrar movimentação
-    const movement = await this.prisma.productStockMovement.create({
-      data: {
-        companyId,
-        productId,
-        type,
-        quantity,
-        previousStock,
-        newStock,
-        reason,
-        notes,
-        reference,
-        userId,
-      },
-    });
+    // Realizar movimentação em transação
+    const movement = await this.prisma.$transaction(async (prisma) => {
+      // Registrar movimentação
+      const mov = await prisma.productStockMovement.create({
+        data: {
+          companyId,
+          productId,
+          type,
+          quantity,
+          previousStock: previousStockTotal,
+          newStock: newStockTotal,
+          locationId,
+          reason,
+          notes,
+          reference,
+          documentId,
+          userId,
+        },
+      });
 
-    // Atualizar estoque do produto
-    await this.prisma.product.update({
-      where: { id: productId },
-      data: { currentStock: newStock },
+      // Atualizar ou criar estoque por local
+      await prisma.productStockByLocation.upsert({
+        where: {
+          productId_locationId: {
+            productId,
+            locationId,
+          },
+        },
+        create: {
+          companyId,
+          productId,
+          locationId,
+          quantity: newStockInLocation,
+        },
+        update: {
+          quantity: newStockInLocation,
+        },
+      });
+
+      // Atualizar estoque total do produto
+      await prisma.product.update({
+        where: { id: productId },
+        data: { currentStock: newStockTotal },
+      });
+
+      return mov;
     });
 
     // Registrar auditoria
@@ -816,9 +1023,16 @@ export class ProductsService {
       userId,
       action: 'STOCK_MOVEMENT',
       entityType: 'Product',
-      description: `Movimentação de estoque: ${type} - ${quantity} unidades do produto "${product.name}"`,
-      oldValue: JSON.stringify({ currentStock: previousStock }),
-      newValue: JSON.stringify({ currentStock: newStock, movement }),
+      description: `Movimentação de estoque no local "${location.name}": ${type} - ${quantity} unidades do produto "${product.name}"`,
+      oldValue: JSON.stringify({ 
+        currentStock: previousStockTotal,
+        stockInLocation: previousStockInLocation,
+      }),
+      newValue: JSON.stringify({ 
+        currentStock: newStockTotal,
+        stockInLocation: newStockInLocation,
+        movement,
+      }),
     });
 
     return movement;
@@ -832,9 +1046,309 @@ export class ProductsService {
         productId,
         companyId,
       },
+      include: {
+        location: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+        document: {
+          select: {
+            id: true,
+            fileName: true,
+            filePath: true,
+            name: true,
+            documentType: true,
+            tags: true,
+            fileSize: true,
+            mimeType: true,
+            folder: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
       take: limit,
     });
+  }
+
+  async getStockMovements(
+    productId: string | undefined,
+    companyId: string,
+    filters?: {
+      type?: string;
+      locationId?: string;
+      startDate?: Date;
+      endDate?: Date;
+      page?: number;
+      limit?: number;
+    },
+  ) {
+    // Se productId for fornecido, validar se o produto existe
+    if (productId) {
+      await this.findProductById(productId, companyId);
+    }
+
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 50;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      companyId,
+    };
+
+    // Adicionar filtro de produto apenas se fornecido
+    if (productId) {
+      where.productId = productId;
+    }
+
+    if (filters?.type) {
+      where.type = filters.type;
+    }
+
+    if (filters?.locationId) {
+      where.locationId = filters.locationId;
+    }
+
+    if (filters?.startDate || filters?.endDate) {
+      where.createdAt = {};
+      if (filters.startDate) {
+        where.createdAt.gte = filters.startDate;
+      }
+      if (filters.endDate) {
+        where.createdAt.lte = filters.endDate;
+      }
+    }
+
+    const [movements, total] = await Promise.all([
+      this.prisma.productStockMovement.findMany({
+        where,
+        include: {
+          product: {
+            select: {
+              id: true,
+              name: true,
+              sku: true,
+              barcode: true,
+            },
+          },
+          location: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+              address: true,
+            },
+          },
+          document: {
+            select: {
+              id: true,
+              fileName: true,
+              filePath: true,
+              name: true,
+              documentType: true,
+              tags: true,
+              fileSize: true,
+              mimeType: true,
+              folder: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.productStockMovement.count({ where }),
+    ]);
+
+    return {
+      data: movements,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  // Estatísticas de estoque de um produto
+  async getProductStockStats(productId: string, companyId: string) {
+    // Buscar o produto com validação
+    const product = await this.findProductById(productId, companyId);
+
+    // Buscar estoque por localização
+    const stocksByLocation = await this.prisma.productStockByLocation.findMany({
+      where: {
+        productId,
+        companyId,
+      },
+      include: {
+        location: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+      },
+    });
+
+    // Calcular estoque total (soma de todos os locais)
+    const totalStock = stocksByLocation.reduce(
+      (sum, stock) => sum + Number(stock.quantity),
+      0,
+    );
+
+    return {
+      productId: product.id,
+      productName: product.name,
+      sku: product.sku,
+      barcode: product.barcode,
+      manageStock: product.manageStock,
+      stats: {
+        currentStock: Number(product.currentStock),
+        minStock: Number(product.minStock),
+        maxStock: product.maxStock ? Number(product.maxStock) : null,
+        totalStock, // Soma de todos os locais
+        needsRestock: Number(product.currentStock) <= Number(product.minStock),
+        isOverstocked: product.maxStock 
+          ? Number(product.currentStock) >= Number(product.maxStock) 
+          : false,
+        stockPercentage: product.maxStock 
+          ? (Number(product.currentStock) / Number(product.maxStock)) * 100 
+          : null,
+      },
+      stockByLocation: stocksByLocation.map((stock) => ({
+        locationId: stock.locationId,
+        locationName: stock.location.name,
+        locationCode: stock.location.code,
+        quantity: Number(stock.quantity),
+      })),
+      unit: product.unit
+        ? {
+            id: product.unit.id,
+            name: product.unit.name,
+            abbreviation: product.unit.abbreviation,
+          }
+        : null,
+    };
+  }
+
+  async getAllProductsStock(companyId: string, filters?: {
+    categoryId?: string;
+    brandId?: string;
+    search?: string;
+    lowStock?: boolean;
+    outOfStock?: boolean;
+  }) {
+    const where: any = {
+      companyId,
+      active: true,
+      manageStock: true,
+    };
+
+    if (filters?.categoryId) {
+      where.categoryId = filters.categoryId;
+    }
+
+    if (filters?.brandId) {
+      where.brandId = filters.brandId;
+    }
+
+    if (filters?.search) {
+      where.OR = [
+        { name: { contains: filters.search, mode: 'insensitive' } },
+        { sku: { contains: filters.search, mode: 'insensitive' } },
+        { barcode: { contains: filters.search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (filters?.lowStock) {
+      where.currentStock = { lte: this.prisma.product.fields.minStock };
+    }
+
+    if (filters?.outOfStock) {
+      where.currentStock = { lte: 0 };
+    }
+
+    const products = await this.prisma.product.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        sku: true,
+        barcode: true,
+        currentStock: true,
+        minStock: true,
+        maxStock: true,
+        category: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        brand: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        unit: {
+          select: {
+            id: true,
+            name: true,
+            abbreviation: true,
+          },
+        },
+        costPrice: true,
+        salePrice: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    // Calcular valores totais
+    const totalStockValue = products.reduce((sum, product) => {
+      const stockValue = Number(product.currentStock) * Number(product.costPrice || 0);
+      return sum + stockValue;
+    }, 0);
+
+    const totalSaleValue = products.reduce((sum, product) => {
+      const stockValue = Number(product.currentStock) * Number(product.salePrice || 0);
+      return sum + stockValue;
+    }, 0);
+
+    const lowStockCount = products.filter(p => Number(p.currentStock) <= Number(p.minStock || 0)).length;
+    const outOfStockCount = products.filter(p => Number(p.currentStock) <= 0).length;
+
+    return {
+      products: products.map(p => ({
+        ...p,
+        stockValue: Number(p.currentStock) * Number(p.costPrice || 0),
+        saleValue: Number(p.currentStock) * Number(p.salePrice || 0),
+        status: Number(p.currentStock) <= 0 
+          ? 'OUT_OF_STOCK' 
+          : Number(p.currentStock) <= Number(p.minStock || 0) 
+            ? 'LOW_STOCK' 
+            : 'NORMAL',
+      })),
+      summary: {
+        totalProducts: products.length,
+        lowStockCount,
+        outOfStockCount,
+        totalStockValue: totalStockValue.toFixed(2),
+        totalSaleValue: totalSaleValue.toFixed(2),
+      },
+    };
   }
 
   // ==================== ESTATÍSTICAS ====================
@@ -1062,5 +1576,615 @@ export class ProductsService {
     });
 
     return updatedPhotos;
+  }
+
+  // ==================== LOCAIS DE ESTOQUE ====================
+
+  async createStockLocation(dto: any, companyId: string) {
+    // Verificar se código já existe
+    const existing = await this.prisma.stockLocation.findUnique({
+      where: {
+        companyId_code: {
+          companyId,
+          code: dto.code,
+        },
+      },
+    });
+
+    if (existing) {
+      throw new ConflictException('Já existe um local de estoque com este código');
+    }
+
+    // Se marcar como padrão, desmarcar outros
+    if (dto.isDefault) {
+      await this.prisma.stockLocation.updateMany({
+        where: { companyId, isDefault: true },
+        data: { isDefault: false },
+      });
+    }
+
+    return this.prisma.stockLocation.create({
+      data: {
+        ...dto,
+        companyId,
+      },
+    });
+  }
+
+  async findAllStockLocations(companyId: string) {
+    return this.prisma.stockLocation.findMany({
+      where: { companyId },
+      include: {
+        _count: {
+          select: {
+            productStocks: true,
+            stockMovements: true,
+          },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async findStockLocationById(id: string, companyId: string) {
+    const location = await this.prisma.stockLocation.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            productStocks: true,
+            stockMovements: true,
+          },
+        },
+      },
+    });
+
+    if (!location || location.companyId !== companyId) {
+      throw new NotFoundException('Local de estoque não encontrado');
+    }
+
+    return location;
+  }
+
+  async updateStockLocation(id: string, dto: any, companyId: string) {
+    const location = await this.findStockLocationById(id, companyId);
+
+    // Se código foi alterado, verificar duplicação
+    if (dto.code && dto.code !== location.code) {
+      const existing = await this.prisma.stockLocation.findUnique({
+        where: {
+          companyId_code: {
+            companyId,
+            code: dto.code,
+          },
+        },
+      });
+
+      if (existing) {
+        throw new ConflictException('Já existe um local de estoque com este código');
+      }
+    }
+
+    // Se marcar como padrão, desmarcar outros
+    if (dto.isDefault && !location.isDefault) {
+      await this.prisma.stockLocation.updateMany({
+        where: { companyId, isDefault: true },
+        data: { isDefault: false },
+      });
+    }
+
+    return this.prisma.stockLocation.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
+  async deleteStockLocation(id: string, companyId: string) {
+    const location = await this.findStockLocationById(id, companyId);
+
+    // Verificar se há estoque neste local
+    const hasStock = await this.prisma.productStockByLocation.findFirst({
+      where: {
+        locationId: id,
+        quantity: { gt: 0 },
+      },
+    });
+
+    if (hasStock) {
+      throw new BadRequestException('Não é possível deletar local com estoque');
+    }
+
+    // Verificar se há transferências pendentes
+    const hasPendingTransfers = await this.prisma.stockTransfer.findFirst({
+      where: {
+        OR: [
+          { fromLocationId: id },
+          { toLocationId: id },
+        ],
+        status: { in: ['PENDING', 'IN_TRANSIT'] },
+      },
+    });
+
+    if (hasPendingTransfers) {
+      throw new BadRequestException('Não é possível deletar local com transferências pendentes');
+    }
+
+    await this.prisma.stockLocation.delete({
+      where: { id },
+    });
+
+    return { message: 'Local de estoque deletado com sucesso' };
+  }
+
+  // ==================== ESTOQUE POR LOCAL ====================
+
+  async getProductStockByLocation(productId: string, companyId: string) {
+    const product = await this.findProductById(productId, companyId);
+
+    const stocks = await this.prisma.productStockByLocation.findMany({
+      where: {
+        productId,
+        companyId,
+      },
+      include: {
+        location: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            active: true,
+          },
+        },
+      },
+      orderBy: {
+        location: {
+          name: 'asc',
+        },
+      },
+    });
+
+    return {
+      product: {
+        id: product.id,
+        name: product.name,
+        sku: product.sku,
+        totalStock: product.currentStock,
+      },
+      stocksByLocation: stocks,
+    };
+  }
+
+  async getAllStocksByLocation(companyId: string, locationId?: string) {
+    const where: any = { companyId };
+    
+    if (locationId) {
+      where.locationId = locationId;
+    }
+
+    const stocks = await this.prisma.productStockByLocation.findMany({
+      where,
+      include: {
+        product: {
+          select: {
+            id: true,
+            name: true,
+            sku: true,
+            barcode: true,
+            unit: {
+              select: {
+                abbreviation: true,
+              },
+            },
+          },
+        },
+        location: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+      },
+      orderBy: [
+        { location: { name: 'asc' } },
+        { product: { name: 'asc' } },
+      ],
+    });
+
+    return stocks;
+  }
+
+  // ==================== TRANSFERÊNCIAS ====================
+
+  async createStockTransfer(dto: any, companyId: string, userId: string) {
+    // Validar locais
+    const fromLocation = await this.findStockLocationById(dto.fromLocationId, companyId);
+    const toLocation = await this.findStockLocationById(dto.toLocationId, companyId);
+
+    if (dto.fromLocationId === dto.toLocationId) {
+      throw new BadRequestException('Local de origem e destino não podem ser iguais');
+    }
+
+    // Se documentId foi informado, validar e garantir estrutura de pastas
+    if (dto.documentId) {
+      const document = await this.prisma.document.findUnique({
+        where: { id: dto.documentId },
+      });
+
+      if (!document || document.companyId !== companyId) {
+        throw new NotFoundException('Documento não encontrado');
+      }
+
+      // Criar estrutura de pastas automaticamente se o documento não estiver em pasta
+      if (!document.folderId) {
+        const transferDate = new Date(); // Data da transferência
+        const folderId = await this.documentsService.ensureStockTransferFolder(
+          companyId,
+          transferDate,
+          userId,
+        );
+
+        // Mover documento para a pasta correta
+        await this.prisma.document.update({
+          where: { id: dto.documentId },
+          data: { folderId },
+        });
+      }
+    }
+
+    // Verificar estoque disponível nos locais de origem
+    for (const item of dto.items) {
+      const stock = await this.prisma.productStockByLocation.findUnique({
+        where: {
+          productId_locationId: {
+            productId: item.productId,
+            locationId: dto.fromLocationId,
+          },
+        },
+      });
+
+      if (!stock || stock.quantity.toNumber() < item.quantity) {
+        const product = await this.prisma.product.findUnique({
+          where: { id: item.productId },
+          select: { name: true },
+        });
+        throw new BadRequestException(
+          `Estoque insuficiente de "${product?.name}" no local de origem`,
+        );
+      }
+    }
+
+    // Gerar código da transferência
+    const lastTransfer = await this.prisma.stockTransfer.findFirst({
+      where: { companyId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const lastNumber = lastTransfer?.code.match(/\d+$/)?.[0] || '0';
+    const newNumber = (parseInt(lastNumber) + 1).toString().padStart(6, '0');
+    const code = `TRANS-${newNumber}`;
+
+    // Criar transferência
+    const transfer = await this.prisma.stockTransfer.create({
+      data: {
+        companyId,
+        code,
+        fromLocationId: dto.fromLocationId,
+        toLocationId: dto.toLocationId,
+        status: 'PENDING',
+        notes: dto.notes,
+        documentId: dto.documentId,
+        requestedBy: userId,
+        items: {
+          create: dto.items.map((item: any) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            notes: item.notes,
+          })),
+        },
+      },
+      include: {
+        fromLocation: true,
+        toLocation: true,
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                sku: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return transfer;
+  }
+
+  async approveStockTransfer(id: string, companyId: string, userId: string) {
+    const transfer = await this.prisma.stockTransfer.findUnique({
+      where: { id },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+
+    if (!transfer || transfer.companyId !== companyId) {
+      throw new NotFoundException('Transferência não encontrada');
+    }
+
+    if (transfer.status !== 'PENDING') {
+      throw new BadRequestException('Transferência não está pendente');
+    }
+
+    // Verificar estoque novamente
+    for (const item of transfer.items) {
+      const stock = await this.prisma.productStockByLocation.findUnique({
+        where: {
+          productId_locationId: {
+            productId: item.productId,
+            locationId: transfer.fromLocationId,
+          },
+        },
+      });
+
+      if (!stock || stock.quantity.toNumber() < item.quantity.toNumber()) {
+        throw new BadRequestException(
+          `Estoque insuficiente de "${item.product.name}" no local de origem`,
+        );
+      }
+    }
+
+    return this.prisma.stockTransfer.update({
+      where: { id },
+      data: {
+        status: 'IN_TRANSIT',
+        approvedBy: userId,
+        approvedAt: new Date(),
+      },
+      include: {
+        fromLocation: true,
+        toLocation: true,
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+  }
+
+  async completeStockTransfer(id: string, companyId: string, userId: string) {
+    const transfer = await this.prisma.stockTransfer.findUnique({
+      where: { id },
+      include: {
+        fromLocation: true,
+        toLocation: true,
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+
+    if (!transfer || transfer.companyId !== companyId) {
+      throw new NotFoundException('Transferência não encontrada');
+    }
+
+    if (transfer.status !== 'IN_TRANSIT' && transfer.status !== 'PENDING') {
+      throw new BadRequestException('Transferência não pode ser completada');
+    }
+
+    // Realizar movimentações de estoque em uma transação
+    await this.prisma.$transaction(async (prisma) => {
+      for (const item of transfer.items) {
+        // Subtrair do local de origem
+        const fromStock = await prisma.productStockByLocation.findUnique({
+          where: {
+            productId_locationId: {
+              productId: item.productId,
+              locationId: transfer.fromLocationId,
+            },
+          },
+        });
+
+        if (fromStock) {
+          await prisma.productStockByLocation.update({
+            where: {
+              productId_locationId: {
+                productId: item.productId,
+                locationId: transfer.fromLocationId,
+              },
+            },
+            data: {
+              quantity: { decrement: item.quantity },
+            },
+          });
+        }
+
+        // Adicionar no local de destino
+        await prisma.productStockByLocation.upsert({
+          where: {
+            productId_locationId: {
+              productId: item.productId,
+              locationId: transfer.toLocationId,
+            },
+          },
+          create: {
+            companyId,
+            productId: item.productId,
+            locationId: transfer.toLocationId,
+            quantity: item.quantity,
+          },
+          update: {
+            quantity: { increment: item.quantity },
+          },
+        });
+
+        // Registrar movimentações
+        const previousStock = fromStock?.quantity || 0;
+        const newStock = typeof previousStock === 'number' 
+          ? previousStock - item.quantity.toNumber() 
+          : previousStock.toNumber() - item.quantity.toNumber();
+
+        await prisma.productStockMovement.create({
+          data: {
+            companyId,
+            productId: item.productId,
+            type: 'TRANSFER',
+            quantity: item.quantity,
+            previousStock,
+            newStock,
+            locationId: transfer.fromLocationId,
+            transferId: transfer.id,
+            reason: `Transferência ${transfer.code} para ${transfer.toLocation.name}`,
+            userId,
+          },
+        });
+
+        await prisma.productStockMovement.create({
+          data: {
+            companyId,
+            productId: item.productId,
+            type: 'TRANSFER',
+            quantity: item.quantity,
+            previousStock: 0,
+            newStock: item.quantity,
+            locationId: transfer.toLocationId,
+            transferId: transfer.id,
+            reason: `Transferência ${transfer.code} de ${transfer.fromLocation.name}`,
+            userId,
+          },
+        });
+      }
+
+      // Atualizar status da transferência
+      await prisma.stockTransfer.update({
+        where: { id },
+        data: {
+          status: 'COMPLETED',
+          completedBy: userId,
+          completedAt: new Date(),
+        },
+      });
+    });
+
+    // Buscar transferência atualizada
+    return this.prisma.stockTransfer.findUnique({
+      where: { id },
+      include: {
+        fromLocation: true,
+        toLocation: true,
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+  }
+
+  async cancelStockTransfer(id: string, companyId: string) {
+    const transfer = await this.prisma.stockTransfer.findUnique({
+      where: { id },
+    });
+
+    if (!transfer || transfer.companyId !== companyId) {
+      throw new NotFoundException('Transferência não encontrada');
+    }
+
+    if (transfer.status === 'COMPLETED') {
+      throw new BadRequestException('Não é possível cancelar transferência completada');
+    }
+
+    return this.prisma.stockTransfer.update({
+      where: { id },
+      data: { status: 'CANCELLED' },
+      include: {
+        fromLocation: true,
+        toLocation: true,
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+  }
+
+  async findAllStockTransfers(companyId: string, status?: string) {
+    const where: any = { companyId };
+    
+    if (status) {
+      where.status = status;
+    }
+
+    return this.prisma.stockTransfer.findMany({
+      where,
+      include: {
+        fromLocation: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+        toLocation: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                sku: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findStockTransferById(id: string, companyId: string) {
+    const transfer = await this.prisma.stockTransfer.findUnique({
+      where: { id },
+      include: {
+        fromLocation: true,
+        toLocation: true,
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                sku: true,
+                barcode: true,
+                unit: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!transfer || transfer.companyId !== companyId) {
+      throw new NotFoundException('Transferência não encontrada');
+    }
+
+    return transfer;
   }
 }

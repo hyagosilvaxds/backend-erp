@@ -11,6 +11,7 @@ import { CentroCustoModule } from './centro-custo/centro-custo.module';
 import { RolesModule } from './roles/roles.module';
 import { DocumentsModule } from './documents/documents.module';
 import { ProductsModule } from './products/products.module';
+import { CustomersModule } from './customers/customers.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ProductsModule } from './products/products.module';
     RolesModule,
     DocumentsModule,
     ProductsModule,
+    CustomersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

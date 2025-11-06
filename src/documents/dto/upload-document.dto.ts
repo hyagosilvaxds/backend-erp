@@ -57,4 +57,9 @@ export class UploadDocumentDto {
     return value;
   })
   allowedRoleIds?: string[];
+
+  // Contexto para organização automática
+  @IsString()
+  @IsOptional()
+  context?: 'stock_movement' | 'stock_transfer' | 'other';
 }

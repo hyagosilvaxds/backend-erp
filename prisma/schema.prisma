@@ -127,6 +127,12 @@ model Company {
   productBrands ProductBrand[]
   products Product[]
   productStockMovements ProductStockMovement[]
+  stockLocations StockLocation[]
+  productStocksByLocation ProductStockByLocation[]
+  stockTransfers StockTransfer[]
+  
+  // Clientes
+  customers Customer[]
 
   @@map("companies")
 }
@@ -405,6 +411,11 @@ model Document {
   uploadedById  String
   uploadedBy    User     @relation("DocumentUploadedBy", fields: [uploadedById], references: [id])
   
+  // Relacionamentos com produtos
+  productPhotos ProductPhoto[]
+  stockMovements ProductStockMovement[]
+  stockTransfers StockTransfer[]
+  
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   
@@ -450,8 +461,9 @@ model ProductUnit {
   companyId   String
   company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   
-  name        String   // Nome da unidade (ex: Unidade, Caixa, Kg, Litro)
-  abbreviation String  // Abreviação (ex: UN, CX, KG, L)
+  name         String   // Nome da unidade (ex: Unidade, Caixa, Kg, Litro)
+  abbreviation String   // Abreviação (ex: UN, CX, KG, L)
+  fractionable Boolean  @default(false) // Permite quantidades fracionadas (0.5 KG)
   
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
@@ -508,8 +520,10 @@ model Product {
   // Preços e valores
   costPrice        Decimal  @default(0) @db.Decimal(10, 2)  // Preço de custo
   profitMargin     Decimal  @default(0) @db.Decimal(5, 2)   // % de lucro
-  salePrice        Decimal  @default(0) @db.Decimal(10, 2)  // Preço de venda à vista
+  salePrice        Decimal  @default(0) @db.Decimal(10, 2)  // Preço de venda padrão
+  salePriceCash    Decimal? @db.Decimal(10, 2)              // Preço à vista
   salePriceInstallment Decimal @default(0) @db.Decimal(10, 2) // Preço de venda a prazo
+  minPrice         Decimal? @db.Decimal(10, 2)              // Preço mínimo (alias)
   minSalePrice     Decimal  @default(0) @db.Decimal(10, 2)  // Valor mínimo de venda
   wholesalePrice   Decimal? @db.Decimal(10, 2)              // Valor de atacado
   minWholesaleQty  Int?                                     // Quantidade mínima para atacado
@@ -572,6 +586,23 @@ model Product {
   cofinsCst    String?  // CST do COFINS
   cofinsRate   Decimal? @db.Decimal(5, 2)  // Alíquota do COFINS
   
+  // CFOP - Código Fiscal de Operações e Prestações
+  cfopEstadual             String?  // CFOP para vendas dentro do estado (ex: 5102)
+  cfopInterestadual        String?  // CFOP para vendas fora do estado (ex: 6102)
+  cfopEntradaEstadual      String?  // CFOP para compras dentro do estado (ex: 1102)
+  cfopEntradaInterestadual String?  // CFOP para compras fora do estado (ex: 2102)
+  
+  // Tipo do Item SPED (00-99)
+  tipoItemSped  String?  // Tipo do item para escrituração fiscal (EFD ICMS/IPI)
+  
+  // Tipo do Produto (PRODUTO ou SERVICO)
+  tipoProduto   String?  @default("PRODUTO")  // Define se é produto físico ou serviço
+  
+  // ISS - Imposto Sobre Serviços (usado quando tipoProduto = 'SERVICO')
+  codigoServico     String?  // Código do serviço municipal
+  issRate           Decimal? @db.Decimal(5, 2)  // Alíquota do ISS
+  itemListaServico  String?  // Item da lista de serviços LC 116/2003
+  
   // Auditoria
   createdById  String?
   createdAt    DateTime @default(now())
@@ -585,6 +616,8 @@ model Product {
   comboItems   ProductCombo[]     @relation("ComboProduct")
   itemsInCombo ProductCombo[]     @relation("ComboItem")
   stockMovements ProductStockMovement[]
+  stocksByLocation ProductStockByLocation[]
+  transferItems StockTransferItem[]
   
   @@unique([companyId, barcode])
   @@unique([companyId, sku])
@@ -606,6 +639,7 @@ model ProductPhoto {
   product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   
   documentId String   // Referência ao documento no hub
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Restrict)
   isPrimary  Boolean  @default(false)  // Se é a foto principal
   order      Int      @default(0)      // Ordem de exibição
   
@@ -700,12 +734,287 @@ model ProductStockMovement {
   notes       String?  // Observações
   reference   String?  // Referência (ex: número da NF)
   
+  // Relacionamento com local de estoque
+  locationId  String?
+  location    StockLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  
+  // Para transferências entre locais
+  transferId  String?
+  transfer    StockTransfer? @relation(fields: [transferId], references: [id], onDelete: SetNull)
+  
+  // Documento vinculado (nota fiscal, recibo, etc)
+  documentId  String?
+  document    Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  
   userId      String?  // Usuário que fez a movimentação
   createdAt   DateTime @default(now())
   
   @@index([companyId])
   @@index([productId])
+  @@index([locationId])
+  @@index([transferId])
   @@index([type])
   @@index([createdAt])
   @@map("product_stock_movements")
+}
+
+// Local de Estoque (Depósito, Loja, etc)
+model StockLocation {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  name        String   // Nome do local (ex: "Depósito Central", "Loja Shopping")
+  code        String   // Código único do local (ex: "DEP-01", "LOJA-01")
+  description String?  // Descrição do local
+  address     String?  // Endereço do local
+  isDefault   Boolean  @default(false) // Local padrão para novas movimentações
+  active      Boolean  @default(true)
+  
+  // Relacionamentos
+  productStocks ProductStockByLocation[] // Estoque de produtos neste local
+  stockMovements ProductStockMovement[] // Movimentações neste local
+  transfersFrom StockTransfer[] @relation("TransferFrom") // Transferências saindo deste local
+  transfersTo   StockTransfer[] @relation("TransferTo")   // Transferências chegando neste local
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([companyId, code]) // Código único por empresa
+  @@index([companyId])
+  @@index([active])
+  @@map("stock_locations")
+}
+
+// Estoque de Produto por Local
+model ProductStockByLocation {
+  id         String   @id @default(uuid())
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  locationId String
+  location   StockLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  
+  quantity   Decimal  @db.Decimal(10, 3) // Quantidade em estoque neste local
+  
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  @@unique([productId, locationId]) // Um produto só pode ter um registro por local
+  @@index([companyId])
+  @@index([productId])
+  @@index([locationId])
+  @@map("product_stock_by_location")
+}
+
+// Transferência de Estoque entre Locais
+model StockTransfer {
+  id              String   @id @default(uuid())
+  companyId       String
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  code            String   // Código da transferência (ex: "TRANS-001")
+  fromLocationId  String
+  fromLocation    StockLocation @relation("TransferFrom", fields: [fromLocationId], references: [id], onDelete: Restrict)
+  toLocationId    String
+  toLocation      StockLocation @relation("TransferTo", fields: [toLocationId], references: [id], onDelete: Restrict)
+  
+  status          String   // PENDING, IN_TRANSIT, COMPLETED, CANCELLED
+  
+  notes           String?  // Observações sobre a transferência
+  requestedBy     String?  // Usuário que solicitou
+  approvedBy      String?  // Usuário que aprovou
+  completedBy     String?  // Usuário que completou
+  
+  requestedAt     DateTime @default(now())
+  approvedAt      DateTime?
+  completedAt     DateTime?
+  
+  // Itens da transferência
+  items           StockTransferItem[]
+  
+  // Movimentações relacionadas
+  stockMovements  ProductStockMovement[]
+  
+  // Documento vinculado (guia de transferência, etc)
+  documentId      String?
+  document        Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([companyId, code]) // Código único por empresa
+  @@index([companyId])
+  @@index([status])
+  @@index([fromLocationId])
+  @@index([toLocationId])
+  @@map("stock_transfers")
+}
+
+// Item da Transferência
+model StockTransferItem {
+  id          String   @id @default(uuid())
+  transferId  String
+  transfer    StockTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  
+  quantity    Decimal  @db.Decimal(10, 3) // Quantidade a transferir
+  notes       String?  // Observações sobre este item
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([transferId])
+  @@index([productId])
+  @@map("stock_transfer_items")
+}
+
+// ==================== CLIENTES ====================
+
+// Modelo de Cliente
+model Customer {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  // Tipo de pessoa
+  personType  String   // FISICA (CPF) ou JURIDICA (CNPJ)
+  
+  // ==================== PESSOA FÍSICA ====================
+  // Dados básicos
+  name        String?  // Nome completo
+  cpf         String?  // CPF (somente números)
+  rg          String?  // RG
+  rgIssuer    String?  // Órgão emissor do RG (ex: SSP)
+  rgState     String?  // UF do órgão emissor
+  birthDate   DateTime? // Data de nascimento
+  gender      String?  // MALE (Masculino), FEMALE (Feminino), OTHER (Outro)
+  maritalStatus String? // SINGLE (Solteiro), MARRIED (Casado), DIVORCED (Divorciado), WIDOWED (Viúvo), OTHER (Outro)
+  motherName  String?  // Nome da mãe
+  profession  String?  // Profissão
+  nationality String?  // Nacionalidade (ex: Brasileiro, Estrangeiro)
+  
+  // ==================== PESSOA JURÍDICA ====================
+  // Dados básicos
+  companyName String?  // Razão Social
+  tradeName   String?  // Nome Fantasia
+  cnpj        String?  // CNPJ (somente números)
+  stateRegistration String? // Inscrição Estadual
+  stateRegistrationExempt Boolean @default(false) // Isento de IE
+  municipalRegistration String? // Inscrição Municipal
+  cnae        String?  // CNAE principal
+  taxRegime   String?  // SIMPLES_NACIONAL, LUCRO_PRESUMIDO, LUCRO_REAL, MEI
+  
+  // Dados do responsável (para PJ)
+  responsibleName  String? // Nome do responsável/representante legal
+  responsibleCpf   String? // CPF do responsável
+  responsibleEmail String? // Email do responsável
+  responsiblePhone String? // Telefone do responsável
+  
+  // ==================== INFORMAÇÕES GERAIS ====================
+  email       String?  // Email principal
+  phone       String?  // Telefone principal
+  mobile      String?  // Celular/WhatsApp
+  website     String?  // Site da empresa
+  
+  // Limite de crédito e condições comerciais
+  creditLimit Decimal? @db.Decimal(10, 2) // Limite de crédito
+  
+  // Status e observações
+  active      Boolean  @default(true)
+  notes       String?  @db.Text // Observações gerais
+  
+  // Auditoria
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relacionamentos
+  addresses   CustomerAddress[]
+  contacts    CustomerContact[]
+  
+  @@unique([companyId, cpf])
+  @@unique([companyId, cnpj])
+  @@index([companyId])
+  @@index([personType])
+  @@index([active])
+  @@index([cpf])
+  @@index([cnpj])
+  @@index([email])
+  @@index([name])
+  @@index([companyName])
+  @@map("customers")
+}
+
+// Endereços do Cliente
+model CustomerAddress {
+  id          String   @id @default(uuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
+  // Tipo de endereço
+  type        String   // BILLING (cobrança), SHIPPING (entrega), MAIN (principal), OTHER (outro)
+  label       String?  // Label personalizado (ex: "Filial SP", "Escritório Centro")
+  
+  // Endereço completo
+  zipCode     String   // CEP
+  street      String   // Logradouro
+  number      String   // Número
+  complement  String?  // Complemento
+  neighborhood String  // Bairro
+  city        String   // Cidade
+  state       String   // UF (2 letras)
+  country     String   @default("Brasil")
+  
+  // Referência
+  reference   String?  // Ponto de referência
+  
+  // Status
+  isDefault   Boolean  @default(false) // Endereço padrão
+  active      Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([customerId])
+  @@index([type])
+  @@index([zipCode])
+  @@map("customer_addresses")
+}
+
+// Contatos do Cliente
+model CustomerContact {
+  id          String   @id @default(uuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
+  // Tipo de contato
+  type        String   // MAIN (principal), FINANCIAL (financeiro), COMMERCIAL (comercial), OTHER (outro)
+  
+  // Dados do contato
+  name        String   // Nome do contato
+  position    String?  // Cargo/Função
+  department  String?  // Departamento
+  
+  // Comunicação
+  email       String?  // Email
+  phone       String?  // Telefone fixo
+  mobile      String?  // Celular/WhatsApp
+  
+  // Observações
+  notes       String?  @db.Text
+  
+  // Status
+  isPrimary   Boolean  @default(false) // Contato principal deste tipo
+  active      Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([customerId])
+  @@index([type])
+  @@index([email])
+  @@map("customer_contacts")
 }

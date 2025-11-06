@@ -15,6 +15,16 @@ import {
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 
+// DTO para estoque inicial por local
+export class InitialStockByLocationDto {
+  @IsUUID()
+  locationId: string; // ID do local
+
+  @IsNumber()
+  @Min(0)
+  quantity: number; // Quantidade no local
+}
+
 export enum ProductType {
   SIMPLE = 'SIMPLE',
   COMPOSITE = 'COMPOSITE',
@@ -30,11 +40,33 @@ export enum ProductAvailability {
 }
 
 export enum DimensionType {
+  STANDARD = 'STANDARD', // Padrão da empresa
+  DETAILED = 'DETAILED', // Dimensões detalhadas
   UNITS = 'UNITS',
   CM = 'CM',
   M = 'M',
   IN = 'IN',
   FT = 'FT',
+}
+
+export enum TipoItemSped {
+  MERCADORIA_REVENDA = '00', // Mercadoria para Revenda
+  MATERIA_PRIMA = '01', // Matéria-Prima
+  EMBALAGEM = '02', // Embalagem
+  PRODUTO_PROCESSO = '03', // Produto em Processo
+  PRODUTO_ACABADO = '04', // Produto Acabado
+  SUBPRODUTO = '05', // Subproduto
+  PRODUTO_INTERMEDIARIO = '06', // Produto Intermediário
+  MATERIAL_USO_CONSUMO = '07', // Material de Uso e Consumo
+  ATIVO_IMOBILIZADO = '08', // Ativo Imobilizado
+  SERVICOS = '09', // Serviços
+  OUTROS_INSUMOS = '10', // Outros Insumos
+  OUTRAS = '99', // Outras
+}
+
+export enum TipoProduto {
+  PRODUTO = 'PRODUTO', // Produto (usa ICMS, IPI, PIS, COFINS)
+  SERVICO = 'SERVICO', // Serviço (usa ISS ao invés de ICMS)
 }
 
 export class CreateProductDto {
@@ -93,13 +125,25 @@ export class CreateProductDto {
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   @IsOptional()
-  @Transform(({ value }) => (value ? parseFloat(value) : 0))
+  @Transform(({ value }) => (value ? parseFloat(value) : null))
+  salePriceCash?: number;
+
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @IsOptional()
+  @Transform(({ value }) => (value ? parseFloat(value) : null))
   salePriceInstallment?: number;
 
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   @IsOptional()
-  @Transform(({ value }) => (value ? parseFloat(value) : 0))
+  @Transform(({ value }) => (value ? parseFloat(value) : null))
+  minPrice?: number;
+
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @IsOptional()
+  @Transform(({ value }) => (value ? parseFloat(value) : null))
   minSalePrice?: number;
 
   @IsNumber({ maxDecimalPlaces: 2 })
@@ -120,11 +164,11 @@ export class CreateProductDto {
   @Transform(({ value }) => value === 'true' || value === true)
   manageStock?: boolean;
 
-  @IsNumber({ maxDecimalPlaces: 3 })
-  @Min(0)
+  @IsArray()
   @IsOptional()
-  @Transform(({ value }) => (value ? parseFloat(value) : 0))
-  initialStock?: number;
+  @ValidateNested({ each: true })
+  @Type(() => InitialStockByLocationDto)
+  initialStockByLocations?: InitialStockByLocationDto[]; // Array de estoques por local
 
   @IsNumber({ maxDecimalPlaces: 3 })
   @Min(0)
@@ -195,6 +239,11 @@ export class CreateProductDto {
   @IsEnum(ProductType)
   @IsOptional()
   productType?: ProductType;
+
+  // Alias para productType (aceita 'type' no payload)
+  @IsEnum(ProductType)
+  @IsOptional()
+  type?: ProductType;
 
   @IsBoolean()
   @IsOptional()
@@ -295,4 +344,52 @@ export class CreateProductDto {
   @IsOptional()
   @Transform(({ value }) => (value ? parseFloat(value) : null))
   cofinsRate?: number;
+
+  // CFOP - Código Fiscal de Operações e Prestações
+  @IsString()
+  @IsOptional()
+  @MaxLength(4)
+  cfopEstadual?: string; // CFOP para vendas dentro do estado
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(4)
+  cfopInterestadual?: string; // CFOP para vendas fora do estado
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(4)
+  cfopEntradaEstadual?: string; // CFOP para compras dentro do estado
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(4)
+  cfopEntradaInterestadual?: string; // CFOP para compras fora do estado
+
+  // Tipo do Item SPED
+  @IsEnum(TipoItemSped)
+  @IsOptional()
+  tipoItemSped?: TipoItemSped;
+
+  // Tipo do Produto (Produto ou Serviço)
+  @IsEnum(TipoProduto)
+  @IsOptional()
+  tipoProduto?: TipoProduto;
+
+  // ISS (para serviços) - usado quando tipoProduto = 'SERVICO'
+  @IsString()
+  @IsOptional()
+  @MaxLength(20)
+  codigoServico?: string; // Código do serviço municipal
+
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @IsOptional()
+  @Transform(({ value }) => (value ? parseFloat(value) : null))
+  issRate?: number; // Alíquota do ISS (%)
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(20)
+  itemListaServico?: string; // Item da lista de serviços LC 116/2003
 }

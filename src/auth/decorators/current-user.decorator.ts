@@ -10,6 +10,7 @@ export const CurrentUser = createParamDecorator(
 export const CurrentCompany = createParamDecorator(
   (data: unknown, ctx: ExecutionContext) => {
     const request = ctx.switchToHttp().getRequest();
-    return request.company;
+    // Retorna apenas o ID da empresa
+    return request.company?.id;
   },
 );
