@@ -1,0 +1,658 @@
+### ============================================
+### INTEGRAÇÃO: Vendas + Financeiro + Estoque
+### ============================================
+### 📚 Documentação: docs/API_SALES_CREATE.md
+### ============================================
+
+@baseUrl = http://localhost:3000
+@token = seu_token_aqui
+
+### ============================================
+### SETUP INICIAL: Obter IDs necessários
+### ============================================
+
+### 0.1 - Listar Clientes
+GET {{baseUrl}}/customers
+Authorization: Bearer {{token}}
+
+### 0.2 - Listar Produtos (com estoque)
+GET {{baseUrl}}/products?includeStock=true
+Authorization: Bearer {{token}}
+
+### 0.3 - Listar Locais de Estoque
+GET {{baseUrl}}/stock-locations
+Authorization: Bearer {{token}}
+
+### 0.4 - Listar Métodos de Pagamento
+GET {{baseUrl}}/sales/payment-methods
+Authorization: Bearer {{token}}
+
+### ============================================
+### TESTE 1: Criar e Confirmar Venda
+### Verifica se cria conta a receber e baixa estoque
+### ============================================
+
+### 1.1 - Criar Venda (Orçamento)
+# ⚠️ Substitua os IDs pelos valores reais obtidos no SETUP
+POST {{baseUrl}}/sales
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "customerId": "uuid-do-cliente",
+  "status": "QUOTE",
+  "paymentMethodId": "uuid-metodo-pagamento",
+  "installments": 3,
+  "items": [
+    {
+      "productId": "uuid-do-produto",
+      "quantity": 10,
+      "unitPrice": 120.00,
+      "stockLocationId": "uuid-do-local-estoque"
+    }
+  ],
+  "notes": "Orçamento para teste de integração"
+}
+
+### 1.2 - Verificar Estoque ANTES da Confirmação
+# Deve mostrar estoque original (ex: 50 unidades)
+GET {{baseUrl}}/products/uuid-do-produto
+Authorization: Bearer {{token}}
+
+### 1.3 - Confirmar Venda
+POST {{baseUrl}}/sales/{{saleId}}/confirm
+Authorization: Bearer {{token}}
+
+### 1.4 - Verificar Estoque DEPOIS da Confirmação
+# Deve mostrar estoque reduzido (ex: 40 unidades)
+GET {{baseUrl}}/products/uuid-do-produto
+Authorization: Bearer {{token}}
+
+### 1.5 - Verificar Movimentações de Estoque
+# Deve mostrar movimentação tipo EXIT
+GET {{baseUrl}}/products/uuid-do-produto/stock-history
+Authorization: Bearer {{token}}
+
+### 1.6 - Verificar Contas a Receber Criadas
+# Deve mostrar 3 parcelas de R$ 400,00 cada
+GET {{baseUrl}}/financial/accounts-receivable?customerId=uuid-do-cliente
+Authorization: Bearer {{token}}
+
+### ============================================
+### TESTE 2: Cancelar Venda
+### Verifica se cancela conta a receber e devolve estoque
+### ============================================
+
+### 2.1 - Cancelar Venda
+POST {{baseUrl}}/sales/{{saleId}}/cancel
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "cancellationReason": "Cliente desistiu da compra"
+}
+
+### 2.2 - Verificar Estoque DEPOIS do Cancelamento
+# Deve mostrar estoque restaurado (ex: 50 unidades novamente)
+GET {{baseUrl}}/products/uuid-do-produto
+Authorization: Bearer {{token}}
+
+### 2.3 - Verificar Movimentações de Estoque
+# Deve mostrar movimentação tipo RETURN
+GET {{baseUrl}}/products/uuid-do-produto/stock-history
+Authorization: Bearer {{token}}
+
+### 2.4 - Verificar Contas a Receber Canceladas
+# Deve mostrar 3 parcelas com status CANCELADO
+GET {{baseUrl}}/financial/accounts-receivable?customerId=uuid-do-cliente
+Authorization: Bearer {{token}}
+
+### ============================================
+### TESTE 3: Tentativa de Confirmação Sem Estoque
+### Verifica se bloqueia quando não há estoque suficiente
+### ============================================
+
+### 3.1 - Criar Venda com Quantidade Maior que Estoque
+POST {{baseUrl}}/sales
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "customerId": "uuid-do-cliente",
+  "status": "QUOTE",
+  "paymentMethodId": "uuid-metodo-pagamento",
+  "items": [
+    {
+      "productId": "uuid-do-produto",
+      "quantity": 9999,
+      "unitPrice": 120.00,
+      "stockLocationId": "uuid-do-local"
+    }
+  ]
+}
+
+### 3.2 - Tentar Confirmar (Deve Falhar)
+# Esperado: 400 Bad Request
+# "Estoque insuficiente para o produto..."
+POST {{baseUrl}}/sales/{{saleId}}/confirm
+Authorization: Bearer {{token}}
+
+### ============================================
+### TESTE 4: Venda Parcelada
+### Verifica criação de múltiplas contas a receber
+### ============================================
+
+### 4.1 - Criar Venda Parcelada em 6x
+POST {{baseUrl}}/sales
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "customerId": "uuid-do-cliente",
+  "status": "QUOTE",
+  "paymentMethodId": "uuid-metodo-pagamento",
+  "installments": 6,
+  "items": [
+    {
+      "productId": "uuid-do-produto",
+      "quantity": 5,
+      "unitPrice": 240.00,
+      "stockLocationId": "uuid-do-local"
+    }
+  ]
+}
+
+### 4.2 - Confirmar Venda
+POST {{baseUrl}}/sales/{{saleId}}/confirm
+Authorization: Bearer {{token}}
+
+### 4.3 - Verificar 6 Contas a Receber
+# Deve mostrar 6 parcelas de R$ 200,00 cada
+# Com vencimentos de 30 em 30 dias
+GET {{baseUrl}}/financial/accounts-receivable?documentNumber={{saleCode}}
+Authorization: Bearer {{token}}
+
+### ============================================
+### TESTE 5: Venda Múltiplos Produtos
+### Verifica movimentação de estoque de vários produtos
+### ============================================
+
+### 5.1 - Criar Venda com Múltiplos Produtos
+POST {{baseUrl}}/sales
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "customerId": "uuid-do-cliente",
+  "status": "QUOTE",
+  "paymentMethodId": "uuid-metodo-pagamento",
+  "installments": 2,
+  "items": [
+    {
+      "productId": "uuid-produto-1",
+      "quantity": 10,
+      "unitPrice": 50.00,
+      "stockLocationId": "uuid-local"
+    },
+    {
+      "productId": "uuid-produto-2",
+      "quantity": 5,
+      "unitPrice": 100.00,
+      "stockLocationId": "uuid-local"
+    },
+    {
+      "productId": "uuid-produto-3",
+      "quantity": 3,
+      "unitPrice": 200.00,
+      "stockLocationId": "uuid-local"
+    }
+  ]
+}
+
+### 5.2 - Confirmar Venda
+POST {{baseUrl}}/sales/{{saleId}}/confirm
+Authorization: Bearer {{token}}
+
+### 5.3 - Verificar Estoque Produto 1
+GET {{baseUrl}}/products/uuid-produto-1
+Authorization: Bearer {{token}}
+
+### 5.4 - Verificar Estoque Produto 2
+GET {{baseUrl}}/products/uuid-produto-2
+Authorization: Bearer {{token}}
+
+### 5.5 - Verificar Estoque Produto 3
+GET {{baseUrl}}/products/uuid-produto-3
+Authorization: Bearer {{token}}
+
+### 5.6 - Verificar Conta a Receber Total
+# Total: (10x50) + (5x100) + (3x200) = R$ 1.600,00
+# 2 parcelas de R$ 800,00 cada
+GET {{baseUrl}}/financial/accounts-receivable?documentNumber={{saleCode}}
+Authorization: Bearer {{token}}
+
+### ============================================
+### TESTE 6: Cancelamento Parcial (Já Recebeu Parcela)
+### Verifica que não cancela parcelas já recebidas
+### ============================================
+
+### 6.1 - Criar e Confirmar Venda 3x
+POST {{baseUrl}}/sales
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "customerId": "uuid-do-cliente",
+  "status": "QUOTE",
+  "paymentMethodId": "uuid-metodo-pagamento",
+  "installments": 3,
+  "items": [
+    {
+      "productId": "uuid-do-produto",
+      "quantity": 3,
+      "unitPrice": 300.00,
+      "stockLocationId": "uuid-local"
+    }
+  ]
+}
+
+### 6.2 - Confirmar
+POST {{baseUrl}}/sales/{{saleId}}/confirm
+Authorization: Bearer {{token}}
+
+### 6.3 - Marcar Primeira Parcela como RECEBIDA (Manual no Financeiro)
+PATCH {{baseUrl}}/financial/accounts-receivable/{{receivableId1}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "RECEBIDO",
+  "receivedAmount": 300.00,
+  "receiptDate": "2024-11-10"
+}
+
+### 6.4 - Cancelar Venda
+POST {{baseUrl}}/sales/{{saleId}}/cancel
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "cancellationReason": "Cliente solicitou cancelamento"
+}
+
+### 6.5 - Verificar Contas a Receber
+# Esperado:
+# - Parcela 1: RECEBIDO (não foi cancelada)
+# - Parcela 2: CANCELADO
+# - Parcela 3: CANCELADO
+GET {{baseUrl}}/financial/accounts-receivable?documentNumber={{saleCode}}
+Authorization: Bearer {{token}}
+
+### ============================================
+### TESTE 7: Fluxo Completo com Validações
+### ============================================
+
+### 7.1 - Criar Cliente
+POST {{baseUrl}}/customers
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "João da Silva",
+  "personType": "PF",
+  "cpf": "123.456.789-00",
+  "email": "joao@email.com",
+  "phone": "(11) 98765-4321"
+}
+
+### 7.2 - Criar Método de Pagamento
+POST {{baseUrl}}/sales/payment-methods
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Boleto 30/60",
+  "code": "BOLETO_30_60",
+  "type": "BANK_SLIP",
+  "allowInstallments": true,
+  "maxInstallments": 2
+}
+
+### 7.3 - Criar Produto com Estoque
+POST {{baseUrl}}/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Produto Teste Integração",
+  "sku": "PROD-INT-001",
+  "price": 150.00,
+  "manageStock": true,
+  "initialStock": 100
+}
+
+### 7.4 - Criar Local de Estoque
+POST {{baseUrl}}/stock-locations
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Depósito Principal",
+  "code": "DEP-01",
+  "isDefault": true
+}
+
+### 7.5 - Criar Venda
+POST {{baseUrl}}/sales
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "paymentMethodId": "{{paymentMethodId}}",
+  "installments": 2,
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "quantity": 20,
+      "unitPrice": 150.00,
+      "stockLocationId": "{{locationId}}"
+    }
+  ]
+}
+
+### 7.6 - Confirmar Venda
+POST {{baseUrl}}/sales/{{saleId}}/confirm
+Authorization: Bearer {{token}}
+
+### 7.7 - Verificar Resultado Final
+GET {{baseUrl}}/sales/{{saleId}}
+Authorization: Bearer {{token}}
+
+### 7.8 - Verificar Estoque Final
+# Esperado: 100 - 20 = 80 unidades
+GET {{baseUrl}}/products/{{productId}}
+Authorization: Bearer {{token}}
+
+### 7.9 - Verificar Contas a Receber
+# Esperado: 2 parcelas de R$ 1.500,00 cada
+GET {{baseUrl}}/financial/accounts-receivable?customerId={{customerId}}
+Authorization: Bearer {{token}}
+
+### 7.10 - Verificar Movimentações
+GET {{baseUrl}}/products/{{productId}}/stock-history
+Authorization: Bearer {{token}}
+
+### ============================================
+### TESTE 8: Seleção de Local de Estoque
+### Demonstra a importância do stockLocationId
+### ============================================
+
+### 8.1 - Verificar Estoque do Produto por Local
+GET {{baseUrl}}/products/{{productId}}
+Authorization: Bearer {{token}}
+
+# Resposta esperada:
+# {
+#   "id": "prod-123",
+#   "name": "Notebook Dell",
+#   "stockByLocation": [
+#     { "locationId": "loc-depot", "locationName": "Depósito", "quantity": 50 },
+#     { "locationId": "loc-store", "locationName": "Loja", "quantity": 5 }
+#   ]
+# }
+
+### 8.2 - Criar Venda Retirando do Depósito
+POST {{baseUrl}}/sales
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "customerId": "uuid-do-cliente",
+  "status": "QUOTE",
+  "paymentMethodId": "uuid-metodo-pagamento",
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "quantity": 10,
+      "unitPrice": 3500.00,
+      "stockLocationId": "loc-depot",
+      "notes": "Retirar do depósito principal"
+    }
+  ]
+}
+
+### 8.3 - Criar Venda Retirando da Loja
+POST {{baseUrl}}/sales
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "customerId": "uuid-do-cliente",
+  "status": "QUOTE",
+  "paymentMethodId": "uuid-metodo-pagamento",
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "quantity": 3,
+      "unitPrice": 3500.00,
+      "stockLocationId": "loc-store",
+      "notes": "Cliente vai retirar na loja"
+    }
+  ]
+}
+
+### 8.4 - Venda com Produtos de Locais Diferentes
+# Cenário: Cliente compra 2 produtos, cada um de um local diferente
+POST {{baseUrl}}/sales
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "customerId": "uuid-do-cliente",
+  "status": "QUOTE",
+  "paymentMethodId": "uuid-metodo-pagamento",
+  "items": [
+    {
+      "productId": "prod-notebook",
+      "quantity": 1,
+      "unitPrice": 4500.00,
+      "stockLocationId": "loc-depot",
+      "notes": "Enviado do depósito"
+    },
+    {
+      "productId": "prod-mouse",
+      "quantity": 2,
+      "unitPrice": 150.00,
+      "stockLocationId": "loc-store",
+      "notes": "Retirado da loja"
+    }
+  ],
+  "shippingCost": 50.00,
+  "notes": "Notebook será enviado, mouse será retirado na loja"
+}
+
+### 8.5 - Tentar Confirmar Venda com Estoque Insuficiente
+# Este exemplo mostra o erro quando não há estoque suficiente no local
+POST {{baseUrl}}/sales
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "customerId": "uuid-do-cliente",
+  "status": "QUOTE",
+  "paymentMethodId": "uuid-metodo-pagamento",
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "quantity": 10,
+      "unitPrice": 3500.00,
+      "stockLocationId": "loc-store"  // Loja tem apenas 5 unidades!
+    }
+  ]
+}
+
+### 8.6 - Confirmar (Deve Falhar)
+# Esperado: 400 - Estoque insuficiente
+POST {{baseUrl}}/sales/{{saleId}}/confirm
+Authorization: Bearer {{token}}
+
+### ============================================
+### TESTE 9: Venda com Descontos e Frete
+### ============================================
+
+### 9.1 - Venda com Desconto Percentual
+POST {{baseUrl}}/sales
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "customerId": "uuid-do-cliente",
+  "status": "QUOTE",
+  "paymentMethodId": "uuid-metodo-pagamento",
+  "installments": 3,
+  "discountPercent": 10,
+  "shippingCost": 80.00,
+  "items": [
+    {
+      "productId": "prod-001",
+      "quantity": 2,
+      "unitPrice": 500.00,
+      "stockLocationId": "loc-depot"
+    },
+    {
+      "productId": "prod-002",
+      "quantity": 1,
+      "unitPrice": 300.00,
+      "stockLocationId": "loc-depot"
+    }
+  ],
+  "notes": "Desconto de 10% aplicado"
+}
+
+# Cálculo:
+# Subtotal: (2 × 500) + (1 × 300) = 1.300,00
+# Desconto: 10% de 1.300 = 130,00
+# Frete: 80,00
+# Total: 1.300 - 130 + 80 = 1.250,00
+
+### 9.2 - Venda com Desconto Fixo
+POST {{baseUrl}}/sales
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "customerId": "uuid-do-cliente",
+  "status": "QUOTE",
+  "paymentMethodId": "uuid-metodo-pagamento",
+  "discountAmount": 200.00,
+  "items": [
+    {
+      "productId": "prod-tv",
+      "quantity": 1,
+      "unitPrice": 2800.00,
+      "stockLocationId": "loc-store"
+    }
+  ],
+  "notes": "Promoção Black Friday - R$ 200 OFF"
+}
+
+# Cálculo:
+# Subtotal: 2.800,00
+# Desconto: 200,00
+# Total: 2.600,00
+
+### 9.3 - Venda com Desconto por Item
+POST {{baseUrl}}/sales
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "customerId": "uuid-do-cliente",
+  "status": "QUOTE",
+  "paymentMethodId": "uuid-metodo-pagamento",
+  "items": [
+    {
+      "productId": "prod-A",
+      "quantity": 3,
+      "unitPrice": 100.00,
+      "discount": 30.00,
+      "stockLocationId": "loc-depot",
+      "notes": "Desconto de R$ 10 por unidade"
+    },
+    {
+      "productId": "prod-B",
+      "quantity": 2,
+      "unitPrice": 200.00,
+      "stockLocationId": "loc-depot"
+    }
+  ]
+}
+
+# Cálculo:
+# Item A: (3 × 100) - 30 = 270,00
+# Item B: (2 × 200) = 400,00
+# Total: 670,00
+
+### 9.4 - Venda Completa com Tudo
+POST {{baseUrl}}/sales
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "customerId": "uuid-do-cliente",
+  "status": "QUOTE",
+  "paymentMethodId": "uuid-metodo-pagamento",
+  "installments": 6,
+  "discountPercent": 5,
+  "shippingCost": 80.00,
+  "otherCharges": 30.00,
+  "otherChargesDesc": "Seguro do transporte",
+  "useCustomerAddress": false,
+  "deliveryAddress": {
+    "street": "Av. Paulista",
+    "number": "1000",
+    "complement": "Conjunto 25",
+    "neighborhood": "Bela Vista",
+    "city": "São Paulo",
+    "state": "SP",
+    "zipCode": "01310-100"
+  },
+  "items": [
+    {
+      "productId": "prod-notebook",
+      "quantity": 1,
+      "unitPrice": 4500.00,
+      "stockLocationId": "loc-depot",
+      "notes": "Versão com 16GB RAM"
+    },
+    {
+      "productId": "prod-mouse",
+      "quantity": 2,
+      "unitPrice": 150.00,
+      "discount": 20.00,
+      "stockLocationId": "loc-store"
+    },
+    {
+      "productId": "prod-keyboard",
+      "quantity": 1,
+      "unitPrice": 350.00,
+      "stockLocationId": "loc-depot"
+    }
+  ],
+  "notes": "Entregar entre 9h-12h",
+  "internalNotes": "Cliente preferencial - priorizar entrega",
+  "validUntil": "2025-12-31"
+}
+
+# Cálculo completo:
+# Item 1: 1 × 4500 = 4.500,00
+# Item 2: (2 × 150) - 20 = 280,00
+# Item 3: 1 × 350 = 350,00
+# Subtotal: 5.130,00
+# Desconto 5%: 256,50
+# Total produtos: 4.873,50
+# Frete: 80,00
+# Outras: 30,00
+# TOTAL: 4.983,50
+# Parcelamento: 6x de R$ 830,58

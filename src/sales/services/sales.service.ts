@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
+import { FinancialTransactionsService } from '../../financial/services/financial-transactions.service';
 import { CreateSaleDto } from '../dto/create-sale.dto';
 import { UpdateSaleDto } from '../dto/update-sale.dto';
 import {
@@ -12,7 +13,10 @@ import {
 
 @Injectable()
 export class SalesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private financialService: FinancialTransactionsService,
+  ) {}
 
   async create(companyId: string, dto: CreateSaleDto) {
     // Validar cliente
@@ -90,7 +94,9 @@ export class SalesService {
 
     // Gerar código único para a venda
     const count = await this.prisma.sale.count({ where: { companyId } });
-    const code = `VDA-${String(count + 1).padStart(6, '0')}`;
+    const isQuote = !dto.status || dto.status === 'QUOTE';
+    const prefix = isQuote ? 'ORC' : 'VEN';
+    const code = `${prefix}-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
 
     // Calcular totais
     let subtotal = 0;
@@ -415,7 +421,7 @@ export class SalesService {
     // Validar e dar baixa no estoque
     for (const item of sale.items) {
       if (item.stockLocationId) {
-        // Verificar disponibilidade
+        // Verificar disponibilidade no local específico
         const stockByLocation = await this.prisma.productStockByLocation.findUnique({
           where: {
             productId_locationId: {
@@ -432,10 +438,10 @@ export class SalesService {
           );
         }
 
-        // Calcular novo estoque
+        // Calcular novo estoque do local
         const newQuantity = available - item.quantity;
 
-        // Atualizar estoque
+        // Atualizar estoque por local
         await this.prisma.productStockByLocation.upsert({
           where: {
             productId_locationId: {
@@ -454,6 +460,22 @@ export class SalesService {
           },
         });
 
+        // Atualizar estoque geral do produto (currentStock)
+        const product = await this.prisma.product.findUnique({
+          where: { id: item.productId },
+          select: { currentStock: true },
+        });
+
+        const currentProductStock = Number(product?.currentStock || 0);
+        const newProductStock = currentProductStock - item.quantity;
+
+        await this.prisma.product.update({
+          where: { id: item.productId },
+          data: {
+            currentStock: new Prisma.Decimal(newProductStock),
+          },
+        });
+
         // Registrar movimentação
         await this.prisma.productStockMovement.create({
           data: {
@@ -469,6 +491,64 @@ export class SalesService {
           },
         });
       }
+    }
+
+    // Criar lançamento financeiro (contas a receber)
+    try {
+      // Buscar categoria de receita de vendas (ou criar se não existir)
+      let salesCategory = await this.prisma.financialCategory.findFirst({
+        where: {
+          companyId,
+          name: 'Vendas',
+          type: 'RECEITA',
+        },
+      });
+
+      if (!salesCategory) {
+        salesCategory = await this.prisma.financialCategory.create({
+          data: {
+            companyId,
+            name: 'Vendas',
+            type: 'RECEITA',
+            description: 'Receitas provenientes de vendas',
+          },
+        });
+      }
+
+      // Criar conta a receber para cada parcela
+      const installmentValue = sale.totalAmount / sale.installments;
+      const today = new Date();
+
+      for (let i = 1; i <= sale.installments; i++) {
+        // Calcular data de vencimento (30 dias entre parcelas)
+        const dueDate = new Date(today);
+        dueDate.setDate(dueDate.getDate() + (30 * (i - 1)));
+
+        await this.prisma.accountReceivable.create({
+          data: {
+            companyId,
+            customerName: sale.customer.name || 'Cliente não identificado',
+            customerDocument: sale.customer.cpf || sale.customer.cnpj || null,
+            customerId: sale.customerId,
+            description: `Venda #${sale.code} - Parcela ${i}/${sale.installments}`,
+            documentNumber: sale.code,
+            originalAmount: installmentValue,
+            receivedAmount: 0,
+            remainingAmount: installmentValue,
+            issueDate: today,
+            dueDate,
+            competenceDate: today,
+            installmentNumber: i,
+            totalInstallments: sale.installments,
+            status: 'PENDENTE',
+            paymentMethod: sale.paymentMethod?.name || 'Não informado',
+            categoryId: salesCategory.id,
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao criar lançamento financeiro:', error);
+      // Não bloqueia a confirmação da venda se houver erro no financeiro
     }
 
     // Atualizar status
@@ -512,7 +592,7 @@ export class SalesService {
     ) {
       for (const item of sale.items) {
         if (item.stockLocationId) {
-          // Buscar estoque atual
+          // Buscar estoque atual do local
           const stockByLocation = await this.prisma.productStockByLocation.findUnique({
             where: {
               productId_locationId: {
@@ -525,7 +605,7 @@ export class SalesService {
           const currentQuantity = Number(stockByLocation?.quantity || 0);
           const newQuantity = currentQuantity + item.quantity;
 
-          // Atualizar estoque
+          // Atualizar estoque por local
           await this.prisma.productStockByLocation.upsert({
             where: {
               productId_locationId: {
@@ -541,6 +621,22 @@ export class SalesService {
             },
             update: {
               quantity: newQuantity,
+            },
+          });
+
+          // Atualizar estoque geral do produto (currentStock)
+          const product = await this.prisma.product.findUnique({
+            where: { id: item.productId },
+            select: { currentStock: true },
+          });
+
+          const currentProductStock = Number(product?.currentStock || 0);
+          const newProductStock = currentProductStock + item.quantity;
+
+          await this.prisma.product.update({
+            where: { id: item.productId },
+            data: {
+              currentStock: new Prisma.Decimal(newProductStock),
             },
           });
 
@@ -560,6 +656,26 @@ export class SalesService {
           });
         }
       }
+    }
+
+    // Cancelar contas a receber da venda
+    try {
+      await this.prisma.accountReceivable.updateMany({
+        where: {
+          companyId,
+          documentNumber: sale.code,
+          status: {
+            in: ['PENDENTE', 'VENCIDO'],
+          },
+        },
+        data: {
+          status: 'CANCELADO',
+          notes: `Venda cancelada: ${dto.cancellationReason}`,
+        },
+      });
+    } catch (error) {
+      console.error('Erro ao cancelar contas a receber:', error);
+      // Não bloqueia o cancelamento da venda se houver erro no financeiro
     }
 
     return this.prisma.sale.update({
@@ -702,4 +818,264 @@ export class SalesService {
       },
     });
   }
+
+  /**
+   * Obter estatísticas para o dashboard
+   */
+  async getDashboardStats(companyId: string) {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0-11
+
+    // Data de início e fim do mês atual
+    const currentMonthStart = new Date(currentYear, currentMonth, 1);
+    const currentMonthEnd = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999);
+
+    // Data de início e fim do mês anterior
+    const previousMonthStart = new Date(currentYear, currentMonth - 1, 1);
+    const previousMonthEnd = new Date(currentYear, currentMonth, 0, 23, 59, 59, 999);
+
+    // 1. Vendas do mês atual (confirmadas)
+    const currentMonthSales = await this.prisma.sale.aggregate({
+      where: {
+        companyId,
+        status: 'CONFIRMED',
+        confirmedAt: {
+          gte: currentMonthStart,
+          lte: currentMonthEnd,
+        },
+      },
+      _sum: {
+        totalAmount: true,
+      },
+      _count: true,
+    });
+
+    // Vendas do mês anterior
+    const previousMonthSales = await this.prisma.sale.aggregate({
+      where: {
+        companyId,
+        status: 'CONFIRMED',
+        confirmedAt: {
+          gte: previousMonthStart,
+          lte: previousMonthEnd,
+        },
+      },
+      _sum: {
+        totalAmount: true,
+      },
+    });
+
+    const currentMonthTotal = Number(currentMonthSales._sum.totalAmount || 0);
+    const previousMonthTotal = Number(previousMonthSales._sum.totalAmount || 0);
+    const salesChange = previousMonthTotal > 0
+      ? ((currentMonthTotal - previousMonthTotal) / previousMonthTotal) * 100
+      : currentMonthTotal > 0 ? 100 : 0;
+
+    // 2. Produtos ativos (assumindo que produtos com currentStock > 0 são ativos)
+    const currentActiveProducts = await this.prisma.product.count({
+      where: {
+        companyId,
+        active: true,
+        currentStock: { gt: 0 },
+      },
+    });
+
+    // Produtos ativos no mês anterior (snapshot)
+    // Para simplificar, vamos comparar com total atual vs total de produtos criados
+    const totalProducts = await this.prisma.product.count({
+      where: {
+        companyId,
+        active: true,
+      },
+    });
+
+    const previousActiveProducts = await this.prisma.product.count({
+      where: {
+        companyId,
+        active: true,
+        createdAt: {
+          lt: previousMonthEnd,
+        },
+      },
+    });
+
+    const productsChange = previousActiveProducts > 0
+      ? ((currentActiveProducts - previousActiveProducts) / previousActiveProducts) * 100
+      : currentActiveProducts > 0 ? 100 : 0;
+
+    // 3. Clientes ativos
+    const currentCustomers = await this.prisma.customer.count({
+      where: {
+        companyId,
+        active: true,
+      },
+    });
+
+    const previousCustomers = await this.prisma.customer.count({
+      where: {
+        companyId,
+        active: true,
+        createdAt: {
+          lt: previousMonthEnd,
+        },
+      },
+    });
+
+    const customersChange = previousCustomers > 0
+      ? ((currentCustomers - previousCustomers) / previousCustomers) * 100
+      : currentCustomers > 0 ? 100 : 0;
+
+    // 4. Ticket médio (total de vendas / número de vendas)
+    const currentTicketAvg = currentMonthSales._count > 0
+      ? currentMonthTotal / currentMonthSales._count
+      : 0;
+
+    const previousMonthSalesCount = await this.prisma.sale.count({
+      where: {
+        companyId,
+        status: 'CONFIRMED',
+        confirmedAt: {
+          gte: previousMonthStart,
+          lte: previousMonthEnd,
+        },
+      },
+    });
+
+    const previousTicketAvg = previousMonthSalesCount > 0
+      ? previousMonthTotal / previousMonthSalesCount
+      : 0;
+
+    const ticketChange = previousTicketAvg > 0
+      ? ((currentTicketAvg - previousTicketAvg) / previousTicketAvg) * 100
+      : currentTicketAvg > 0 ? 100 : 0;
+
+    // 5. Vendas recentes (últimas 4)
+    const recentSales = await this.prisma.sale.findMany({
+      where: {
+        companyId,
+        status: 'CONFIRMED',
+      },
+      orderBy: {
+        confirmedAt: 'desc',
+      },
+      take: 4,
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            cpf: true,
+            cnpj: true,
+          },
+        },
+        paymentMethod: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    // 6. Produtos com mais vendas
+    const topProducts = await this.prisma.saleItem.groupBy({
+      by: ['productId'],
+      where: {
+        sale: {
+          companyId,
+          status: 'CONFIRMED',
+          confirmedAt: {
+            gte: currentMonthStart,
+            lte: currentMonthEnd,
+          },
+        },
+      },
+      _sum: {
+        quantity: true,
+      },
+      _count: {
+        id: true,
+      },
+      orderBy: {
+        _sum: {
+          quantity: 'desc',
+        },
+      },
+      take: 4,
+    });
+
+    // Buscar informações dos produtos
+    const topProductsWithDetails = await Promise.all(
+      topProducts.map(async (item) => {
+        const product = await this.prisma.product.findUnique({
+          where: { id: item.productId },
+          select: {
+            id: true,
+            name: true,
+            sku: true,
+            salePrice: true,
+            currentStock: true,
+          },
+        });
+
+        return {
+          product,
+          quantitySold: Number(item._sum.quantity || 0),
+          salesCount: item._count.id,
+        };
+      }),
+    );
+
+    return {
+      period: {
+        currentMonth: {
+          start: currentMonthStart,
+          end: currentMonthEnd,
+        },
+        previousMonth: {
+          start: previousMonthStart,
+          end: previousMonthEnd,
+        },
+      },
+      metrics: {
+        sales: {
+          current: currentMonthTotal,
+          previous: previousMonthTotal,
+          change: Math.round(salesChange * 100) / 100, // 2 casas decimais
+          changePercent: `${salesChange >= 0 ? '+' : ''}${Math.round(salesChange * 100) / 100}%`,
+        },
+        products: {
+          current: currentActiveProducts,
+          previous: previousActiveProducts,
+          change: Math.round(productsChange * 100) / 100,
+          changePercent: `${productsChange >= 0 ? '+' : ''}${Math.round(productsChange * 100) / 100}%`,
+        },
+        customers: {
+          current: currentCustomers,
+          previous: previousCustomers,
+          change: Math.round(customersChange * 100) / 100,
+          changePercent: `${customersChange >= 0 ? '+' : ''}${Math.round(customersChange * 100) / 100}%`,
+        },
+        averageTicket: {
+          current: Math.round(currentTicketAvg * 100) / 100,
+          previous: Math.round(previousTicketAvg * 100) / 100,
+          change: Math.round(ticketChange * 100) / 100,
+          changePercent: `${ticketChange >= 0 ? '+' : ''}${Math.round(ticketChange * 100) / 100}%`,
+        },
+      },
+      recentSales: recentSales.map((sale) => ({
+        id: sale.id,
+        code: sale.code,
+        customer: sale.customer,
+        totalAmount: Number(sale.totalAmount),
+        installments: sale.installments,
+        paymentMethod: sale.paymentMethod,
+        confirmedAt: sale.confirmedAt,
+        status: sale.status,
+      })),
+      topProducts: topProductsWithDetails,
+    };
+  }
 }
+

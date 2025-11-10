@@ -107,6 +107,18 @@ O sistema **cria automaticamente** a seguinte estrutura ao vincular documentos:
 
 ## 🔐 Autenticação e Permissões
 
+### Autenticação
+
+| Documento | Descrição | Atualizado |
+|-----------|-----------|------------|
+| [AUTHENTICATION_DOCS.md](../AUTHENTICATION_DOCS.md) | Documentação completa de autenticação (login, JWT, permissões) | ✅ 2025 |
+| [AUTH_CHANGE_PASSWORD.md](./AUTH_CHANGE_PASSWORD.md) | Endpoint para usuário alterar sua própria senha | ✅ 10/11/2025 |
+
+**Endpoints de Autenticação**:
+- ✅ `POST /auth/login` - Login e obtenção do token JWT
+- ✅ `GET /auth/profile` - Obter perfil do usuário autenticado
+- ✅ `PATCH /auth/change-password` - Alterar a própria senha (requer senha antiga)
+
 ### Permissões do Módulo de Produtos
 
 | Permissão | Descrição |
@@ -404,7 +416,54 @@ R: Veja [STOCK_MOVEMENTS_WITH_LOCATIONS_GUIDE.md](./STOCK_MOVEMENTS_WITH_LOCATIO
 
 ---
 
-## 🔍 Busca Rápida
+## � Módulo de Vendas
+
+### Documentação Completa
+
+| Documento | Descrição | Atualizado |
+|-----------|-----------|------------|
+| [API_SALES_CREATE.md](./API_SALES_CREATE.md) | Guia completo de criação de vendas e orçamentos | ✅ 10/11/2025 |
+| [API_SALES_MANAGEMENT.md](./API_SALES_MANAGEMENT.md) | Gerenciamento: listar, editar, confirmar, cancelar | ✅ 10/11/2025 |
+| [API_SALES_EXPORT.md](./API_SALES_EXPORT.md) | Exportação em PDF e Excel com filtros | ✅ 10/11/2025 |
+| [SALES_INTEGRATION_FINANCE_STOCK.md](./SALES_INTEGRATION_FINANCE_STOCK.md) | Integração automática com financeiro e estoque | ✅ 10/11/2025 |
+
+**Conteúdo Abordado**:
+- ✅ Criação de orçamentos e vendas
+- ✅ Seleção de local de estoque por produto
+- ✅ Confirmação de venda (baixa estoque + cria contas a receber)
+- ✅ Cancelamento de venda (devolve estoque + cancela financeiro)
+- ✅ Análise de crédito (aprovar/rejeitar)
+- ✅ Fluxo de status (QUOTE → CONFIRMED → DELIVERED → COMPLETED)
+- ✅ Exportação em PDF com logo da empresa
+- ✅ Exportação em Excel com 3 planilhas e filtros avançados
+- ✅ Integração automática com módulo financeiro
+
+### Endpoints Principais
+
+| Endpoint | Método | Descrição |
+|----------|--------|-----------|
+| `/sales` | POST | Criar orçamento/venda |
+| `/sales` | GET | Listar com filtros e paginação |
+| `/sales/:id` | GET | Consultar detalhes |
+| `/sales/:id` | PUT | Editar venda |
+| `/sales/:id/confirm` | POST | Confirmar venda |
+| `/sales/:id/cancel` | POST | Cancelar venda |
+| `/sales/:id/status` | PATCH | Alterar status |
+| `/sales/:id/pdf` | GET | Exportar PDF |
+| `/sales/export/excel` | GET | Exportar Excel |
+
+### Status do Ciclo de Vida
+
+```
+QUOTE → PENDING_APPROVAL → APPROVED → CONFIRMED → 
+IN_PRODUCTION → READY_TO_SHIP → SHIPPED → DELIVERED → COMPLETED
+                                                ↓
+                                           CANCELED
+```
+
+---
+
+## �🔍 Busca Rápida
 
 ### Por Funcionalidade
 
@@ -414,6 +473,10 @@ R: Veja [STOCK_MOVEMENTS_WITH_LOCATIONS_GUIDE.md](./STOCK_MOVEMENTS_WITH_LOCATIO
 | Movimentação de estoque (entrada/saída) | [API_ENDPOINTS_CLIENT.md](./API_ENDPOINTS_CLIENT.md) |
 | Upload de nota fiscal | [STOCK_DOCUMENTS_UPLOAD_GUIDE.md](./STOCK_DOCUMENTS_UPLOAD_GUIDE.md) |
 | Transferência entre locais | [STOCK_MOVEMENTS_WITH_LOCATIONS_GUIDE.md](./STOCK_MOVEMENTS_WITH_LOCATIONS_GUIDE.md) |
+| Criar orçamento ou venda | [API_SALES_CREATE.md](./API_SALES_CREATE.md) |
+| Confirmar venda (baixa estoque) | [API_SALES_MANAGEMENT.md](./API_SALES_MANAGEMENT.md) |
+| Exportar PDF/Excel | [API_SALES_EXPORT.md](./API_SALES_EXPORT.md) |
+| Integração financeiro + estoque | [SALES_INTEGRATION_FINANCE_STOCK.md](./SALES_INTEGRATION_FINANCE_STOCK.md) |
 | Integração React/Angular/Vue | [API_CLIENT_EXAMPLES.md](./API_CLIENT_EXAMPLES.md) |
 | Criação automática de pastas (técnico) | [AUTO_FOLDER_CREATION.md](./AUTO_FOLDER_CREATION.md) |
 

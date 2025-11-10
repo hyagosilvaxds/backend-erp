@@ -124,7 +124,6 @@ export class CreateSaleDto {
   @IsOptional()
   internalNotes?: string;
 
-  @IsDateString()
   @Transform(transformToISODate)
   @IsOptional()
   validUntil?: string;

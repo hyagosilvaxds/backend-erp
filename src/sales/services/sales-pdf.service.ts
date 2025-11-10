@@ -105,13 +105,23 @@ export class SalesPdfService {
 
     // Obter logo da empresa (se existir)
     let logoBase64 = '';
-    if (sale.company.logoUrl) {
-      const logoPath = path.join(process.cwd(), 'uploads', sale.company.logoUrl);
-      if (fs.existsSync(logoPath)) {
-        const logoBuffer = fs.readFileSync(logoPath);
-        const ext = path.extname(logoPath).toLowerCase();
-        const mimeType = ext === '.png' ? 'image/png' : 'image/jpeg';
-        logoBase64 = `data:${mimeType};base64,${logoBuffer.toString('base64')}`;
+    if (sale.company.logoFileName) {
+      // Construir caminho para o arquivo da logo
+      const logoPath = path.join(process.cwd(), 'uploads', 'logos', sale.company.logoFileName);
+      
+      try {
+        if (fs.existsSync(logoPath)) {
+          const logoBuffer = fs.readFileSync(logoPath);
+          const ext = path.extname(logoPath).toLowerCase();
+          const mimeType = ext === '.png' ? 'image/png' : 
+                          ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' :
+                          ext === '.svg' ? 'image/svg+xml' : 'image/png';
+          logoBase64 = `data:${mimeType};base64,${logoBuffer.toString('base64')}`;
+        } else {
+          console.warn(`Logo não encontrada no caminho: ${logoPath}`);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar logo:', error);
       }
     }
 
@@ -402,7 +412,7 @@ export class SalesPdfService {
     <div class="header">
       <div class="company-info">
         ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" class="logo">` : ''}
-        <div class="company-name">${sale.company.tradeName || sale.company.companyName}</div>
+        <div class="company-name">${sale.company.tradeName || sale.company.companyName || 'Empresa'}</div>
         <div class="company-details">
           ${sale.company.cpfCnpj ? `CNPJ: ${sale.company.cpfCnpj}<br>` : ''}
           ${sale.company.street ? `${sale.company.street}${sale.company.number ? ', ' + sale.company.number : ''}${sale.company.complement ? ' - ' + sale.company.complement : ''}<br>` : ''}
@@ -436,8 +446,8 @@ export class SalesPdfService {
       <div class="info-box">
         <div class="info-box-title">Pagamento</div>
         <div class="info-box-content">
-          <div class="info-row"><strong>${sale.paymentMethod.name}</strong></div>
-          <div class="info-row">Parcelas: ${sale.installments}x</div>
+          <div class="info-row"><strong>${sale.paymentMethod?.name || 'A definir'}</strong></div>
+          <div class="info-row">Parcelas: ${sale.installments || 1}x</div>
           ${sale.installments > 1 ? `<div class="info-row">Valor da parcela: ${formatCurrency(sale.totalAmount / sale.installments)}</div>` : ''}
         </div>
       </div>

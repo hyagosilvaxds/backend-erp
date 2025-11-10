@@ -69,6 +69,11 @@ export class SalesController {
     return this.salesService.findAll(companyId, filters);
   }
 
+  @Get('dashboard/stats')
+  getDashboardStats(@CompanyId() companyId: string) {
+    return this.salesService.getDashboardStats(companyId);
+  }
+
   @Get(':id')
   findOne(@CompanyId() companyId: string, @Param('id') id: string) {
     return this.salesService.findOne(companyId, id);

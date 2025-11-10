@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
@@ -154,5 +154,57 @@ export class AuthService {
     } catch (error) {
       throw new UnauthorizedException('Token inválido');
     }
+  }
+
+  /**
+   * Alterar senha do usuário autenticado
+   * Valida a senha antiga e atualiza para a nova
+   */
+  async changePassword(
+    userId: string,
+    oldPassword: string,
+    newPassword: string,
+  ) {
+    // Buscar usuário
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    // Validar senha antiga
+    const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
+    if (!isPasswordValid) {
+      throw new ForbiddenException('Senha antiga incorreta');
+    }
+
+    // Validar nova senha
+    if (newPassword.length < 6) {
+      throw new BadRequestException(
+        'Nova senha deve ter no mínimo 6 caracteres',
+      );
+    }
+
+    // Não permitir senha igual à antiga
+    if (oldPassword === newPassword) {
+      throw new BadRequestException(
+        'Nova senha deve ser diferente da senha antiga',
+      );
+    }
+
+    // Hash da nova senha
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Atualizar senha
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    return {
+      message: 'Senha alterada com sucesso',
+    };
   }
 }

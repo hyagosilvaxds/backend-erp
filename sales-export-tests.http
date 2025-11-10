@@ -1,0 +1,216 @@
+# ============================================
+# TESTES DE EXPORTAÇÃO - MÓDULO DE VENDAS
+# ============================================
+# 
+# Este arquivo contém testes para exportação de PDFs e Excel
+#
+
+@baseUrl = http://localhost:3000
+@token = seu_token_jwt_aqui
+@companyId = seu_company_id_aqui
+@saleId = id_da_venda_aqui
+
+# ============================================
+# EXPORTAÇÃO PDF
+# ============================================
+
+### 1. Exportar Orçamento em PDF
+GET {{baseUrl}}/sales/{{saleId}}/pdf
+Authorization: Bearer {{token}}
+
+### 2. Exportar Venda Confirmada em PDF
+# Use o ID de uma venda com status diferente de QUOTE
+GET {{baseUrl}}/sales/{{saleId}}/pdf
+Authorization: Bearer {{token}}
+
+# ============================================
+# EXPORTAÇÃO EXCEL - SEM FILTROS
+# ============================================
+
+### 3. Exportar Todas as Vendas em Excel
+GET {{baseUrl}}/sales/export/excel
+Authorization: Bearer {{token}}
+
+# ============================================
+# EXPORTAÇÃO EXCEL - FILTRO POR STATUS
+# ============================================
+
+### 4. Exportar Apenas Orçamentos (QUOTE)
+GET {{baseUrl}}/sales/export/excel?status=QUOTE
+Authorization: Bearer {{token}}
+
+### 5. Exportar Apenas Vendas Aprovadas
+GET {{baseUrl}}/sales/export/excel?status=APPROVED
+Authorization: Bearer {{token}}
+
+### 6. Exportar Apenas Vendas Concluídas
+GET {{baseUrl}}/sales/export/excel?status=COMPLETED
+Authorization: Bearer {{token}}
+
+### 7. Exportar Vendas Canceladas
+GET {{baseUrl}}/sales/export/excel?status=CANCELED
+Authorization: Bearer {{token}}
+
+# ============================================
+# EXPORTAÇÃO EXCEL - FILTRO POR PERÍODO
+# ============================================
+
+### 8. Exportar Vendas do Mês Atual
+GET {{baseUrl}}/sales/export/excel?startDate=2024-11-01&endDate=2024-11-30
+Authorization: Bearer {{token}}
+
+### 9. Exportar Vendas do Ano
+GET {{baseUrl}}/sales/export/excel?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{token}}
+
+### 10. Exportar Vendas da Última Semana
+GET {{baseUrl}}/sales/export/excel?startDate=2024-11-04&endDate=2024-11-10
+Authorization: Bearer {{token}}
+
+# ============================================
+# EXPORTAÇÃO EXCEL - FILTRO POR VALOR
+# ============================================
+
+### 11. Exportar Vendas Acima de R$ 1.000
+GET {{baseUrl}}/sales/export/excel?minAmount=1000
+Authorization: Bearer {{token}}
+
+### 12. Exportar Vendas Entre R$ 500 e R$ 5.000
+GET {{baseUrl}}/sales/export/excel?minAmount=500&maxAmount=5000
+Authorization: Bearer {{token}}
+
+### 13. Exportar Vendas Acima de R$ 10.000
+GET {{baseUrl}}/sales/export/excel?minAmount=10000
+Authorization: Bearer {{token}}
+
+# ============================================
+# EXPORTAÇÃO EXCEL - FILTRO POR CLIENTE
+# ============================================
+
+### 14. Exportar Vendas de Um Cliente Específico
+@customerId = uuid_do_cliente_aqui
+GET {{baseUrl}}/sales/export/excel?customerId={{customerId}}
+Authorization: Bearer {{token}}
+
+### 15. Exportar Vendas Aprovadas de Um Cliente
+GET {{baseUrl}}/sales/export/excel?customerId={{customerId}}&status=APPROVED
+Authorization: Bearer {{token}}
+
+# ============================================
+# EXPORTAÇÃO EXCEL - FILTRO POR MÉTODO DE PAGAMENTO
+# ============================================
+
+### 16. Exportar Vendas por Método de Pagamento
+@paymentMethodId = uuid_do_metodo_aqui
+GET {{baseUrl}}/sales/export/excel?paymentMethodId={{paymentMethodId}}
+Authorization: Bearer {{token}}
+
+### 17. Exportar Vendas PIX Aprovadas
+GET {{baseUrl}}/sales/export/excel?paymentMethodId={{paymentMethodId}}&status=APPROVED
+Authorization: Bearer {{token}}
+
+# ============================================
+# EXPORTAÇÃO EXCEL - FILTROS COMBINADOS
+# ============================================
+
+### 18. Exportar Vendas Aprovadas do Mês Acima de R$ 1.000
+GET {{baseUrl}}/sales/export/excel?status=APPROVED&startDate=2024-11-01&endDate=2024-11-30&minAmount=1000
+Authorization: Bearer {{token}}
+
+### 19. Exportar Vendas de Cliente no Período
+GET {{baseUrl}}/sales/export/excel?customerId={{customerId}}&startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{token}}
+
+### 20. Exportar Vendas Completas: Status + Período + Valor
+GET {{baseUrl}}/sales/export/excel?status=COMPLETED&startDate=2024-10-01&endDate=2024-11-10&minAmount=500&maxAmount=10000
+Authorization: Bearer {{token}}
+
+### 21. Relatório Completo: Cliente + Método + Período
+GET {{baseUrl}}/sales/export/excel?customerId={{customerId}}&paymentMethodId={{paymentMethodId}}&startDate=2024-11-01&endDate=2024-11-30
+Authorization: Bearer {{token}}
+
+# ============================================
+# TESTES ESPECÍFICOS
+# ============================================
+
+### 22. Exportar Orçamentos Pendentes
+GET {{baseUrl}}/sales/export/excel?status=QUOTE
+Authorization: Bearer {{token}}
+
+### 23. Exportar Vendas Aguardando Aprovação
+GET {{baseUrl}}/sales/export/excel?status=PENDING_APPROVAL
+Authorization: Bearer {{token}}
+
+### 24. Exportar Vendas em Produção
+GET {{baseUrl}}/sales/export/excel?status=IN_PRODUCTION
+Authorization: Bearer {{token}}
+
+### 25. Exportar Vendas Prontas para Envio
+GET {{baseUrl}}/sales/export/excel?status=READY_TO_SHIP
+Authorization: Bearer {{token}}
+
+### 26. Exportar Vendas Enviadas
+GET {{baseUrl}}/sales/export/excel?status=SHIPPED
+Authorization: Bearer {{token}}
+
+### 27. Exportar Vendas Entregues
+GET {{baseUrl}}/sales/export/excel?status=DELIVERED
+Authorization: Bearer {{token}}
+
+# ============================================
+# CENÁRIOS DE NEGÓCIO
+# ============================================
+
+### 28. Relatório Mensal de Faturamento (Vendas Concluídas)
+GET {{baseUrl}}/sales/export/excel?status=COMPLETED&startDate=2024-11-01&endDate=2024-11-30
+Authorization: Bearer {{token}}
+
+### 29. Análise de Orçamentos Não Convertidos
+GET {{baseUrl}}/sales/export/excel?status=QUOTE&startDate=2024-10-01&endDate=2024-10-31
+Authorization: Bearer {{token}}
+
+### 30. Top Vendas (Acima de R$ 5.000)
+GET {{baseUrl}}/sales/export/excel?minAmount=5000&status=COMPLETED
+Authorization: Bearer {{token}}
+
+### 31. Vendas de Pequeno Valor (Até R$ 500)
+GET {{baseUrl}}/sales/export/excel?maxAmount=500
+Authorization: Bearer {{token}}
+
+### 32. Relatório Trimestral
+GET {{baseUrl}}/sales/export/excel?startDate=2024-09-01&endDate=2024-11-30
+Authorization: Bearer {{token}}
+
+### 33. Vendas Canceladas para Análise
+GET {{baseUrl}}/sales/export/excel?status=CANCELED&startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{token}}
+
+# ============================================
+# NOTAS
+# ============================================
+# 
+# 1. PDF:
+#    - Exporta UMA venda específica por vez
+#    - Inclui logo da empresa se configurada
+#    - Nome do arquivo: orcamento-{code}.pdf ou venda-{code}.pdf
+# 
+# 2. Excel:
+#    - Exporta MÚLTIPLAS vendas com filtros
+#    - Contém 3 abas: Vendas, Itens Detalhados, Resumo
+#    - Nome do arquivo baseado nos filtros aplicados
+#    - Formatação profissional com cores e bordas
+# 
+# 3. Filtros do Excel podem ser combinados:
+#    - status: filtra por status da venda
+#    - customerId: filtra por cliente
+#    - paymentMethodId: filtra por método de pagamento
+#    - startDate/endDate: filtra por período
+#    - minAmount/maxAmount: filtra por valor
+# 
+# 4. Ambos retornam arquivos binários para download
+# 
+# 5. Status disponíveis:
+#    QUOTE, PENDING_APPROVAL, APPROVED, CONFIRMED,
+#    IN_PRODUCTION, READY_TO_SHIP, SHIPPED, DELIVERED,
+#    COMPLETED, CANCELED, REJECTED
+# 
