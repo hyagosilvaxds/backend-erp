@@ -1,0 +1,240 @@
+### Variáveis
+@baseUrl = http://localhost:3000
+@token = seu_token_jwt_aqui
+@companyId = id_da_empresa_aqui
+
+### =========================
+### CONTAS BANCÁRIAS
+### =========================
+
+### Listar Contas Bancárias
+GET {{baseUrl}}/financial/bank-accounts?companyId={{companyId}}
+Authorization: Bearer {{token}}
+
+### Criar Conta Bancária
+POST {{baseUrl}}/financial/bank-accounts
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "companyId": "{{companyId}}",
+  "bankName": "Banco do Brasil",
+  "bankCode": "001",
+  "agencyNumber": "1234",
+  "agencyDigit": "5",
+  "accountNumber": "12345",
+  "accountDigit": "6",
+  "accountType": "CORRENTE",
+  "accountName": "Conta Principal",
+  "pixKey": "12345678000190",
+  "initialBalance": 10000.00,
+  "active": true,
+  "isMainAccount": true
+}
+
+### =========================
+### CATEGORIAS FINANCEIRAS
+### =========================
+
+### Listar Categorias (Receitas)
+GET {{baseUrl}}/financial/categories?companyId={{companyId}}&type=RECEITA
+Authorization: Bearer {{token}}
+
+### Criar Categoria de Receita
+POST {{baseUrl}}/financial/categories
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "companyId": "{{companyId}}",
+  "name": "Vendas de Produtos",
+  "description": "Receitas com vendas",
+  "type": "RECEITA",
+  "color": "#4CAF50",
+  "icon": "attach_money",
+  "active": true
+}
+
+### Criar Categoria de Despesa
+POST {{baseUrl}}/financial/categories
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "companyId": "{{companyId}}",
+  "name": "Fornecedores",
+  "description": "Despesas com fornecedores",
+  "type": "DESPESA",
+  "color": "#F44336",
+  "icon": "shopping_cart",
+  "active": true
+}
+
+### =========================
+### LANÇAMENTOS FINANCEIROS
+### =========================
+
+### Listar Lançamentos
+GET {{baseUrl}}/financial/transactions?companyId={{companyId}}
+Authorization: Bearer {{token}}
+
+### Criar Lançamento (Receita)
+POST {{baseUrl}}/financial/transactions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "companyId": "{{companyId}}",
+  "bankAccountId": "id_conta_bancaria",
+  "categoryId": "id_categoria",
+  "centroCustoId": "id_centro_custo",
+  "contaContabilId": "id_conta_contabil",
+  "type": "RECEITA",
+  "transactionType": "PIX",
+  "amount": 1000.00,
+  "fees": 0,
+  "description": "Pagamento de cliente",
+  "transactionDate": "2024-11-10T10:00:00.000Z",
+  "competenceDate": "2024-11-10T00:00:00.000Z"
+}
+
+### Criar Lançamento (Despesa)
+POST {{baseUrl}}/financial/transactions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "companyId": "{{companyId}}",
+  "bankAccountId": "id_conta_bancaria",
+  "categoryId": "id_categoria",
+  "centroCustoId": "id_centro_custo",
+  "contaContabilId": "id_conta_contabil",
+  "type": "DESPESA",
+  "transactionType": "TRANSFERENCIA",
+  "amount": 500.00,
+  "fees": 5.00,
+  "description": "Pagamento a fornecedor",
+  "transactionDate": "2024-11-10T14:00:00.000Z",
+  "competenceDate": "2024-11-10T00:00:00.000Z"
+}
+
+### =========================
+### CONTAS A PAGAR
+### =========================
+
+### Listar Contas a Pagar
+GET {{baseUrl}}/financial/accounts-payable?companyId={{companyId}}&status=PENDENTE
+Authorization: Bearer {{token}}
+
+### Criar Conta a Pagar
+POST {{baseUrl}}/financial/accounts-payable
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "companyId": "{{companyId}}",
+  "categoryId": "id_categoria",
+  "centroCustoId": "id_centro_custo",
+  "contaContabilId": "id_conta_contabil",
+  "supplierName": "Fornecedor XYZ",
+  "supplierDocument": "12345678000190",
+  "description": "Compra de materiais",
+  "documentNumber": "NF-12345",
+  "originalAmount": 5000.00,
+  "issueDate": "2024-11-10",
+  "dueDate": "2024-12-10",
+  "competenceDate": "2024-11-10",
+  "status": "PENDENTE"
+}
+
+### Pagar Conta
+PATCH {{baseUrl}}/financial/accounts-payable/id_conta/pay?companyId={{companyId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "amount": 5000.00,
+  "paymentDate": "2024-11-15",
+  "bankAccountId": "id_conta_bancaria"
+}
+
+### Listar Contas Vencidas
+GET {{baseUrl}}/financial/accounts-payable/overdue?companyId={{companyId}}
+Authorization: Bearer {{token}}
+
+### =========================
+### CONTAS A RECEBER
+### =========================
+
+### Listar Contas a Receber
+GET {{baseUrl}}/financial/accounts-receivable?companyId={{companyId}}&status=PENDENTE
+Authorization: Bearer {{token}}
+
+### Criar Conta a Receber
+POST {{baseUrl}}/financial/accounts-receivable
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "companyId": "{{companyId}}",
+  "categoryId": "id_categoria",
+  "centroCustoId": "id_centro_custo",
+  "contaContabilId": "id_conta_contabil",
+  "customerName": "Cliente ABC",
+  "customerDocument": "12345678901",
+  "customerId": "id_cliente",
+  "description": "Venda de produtos",
+  "documentNumber": "NF-54321",
+  "originalAmount": 10000.00,
+  "issueDate": "2024-11-10",
+  "dueDate": "2024-12-10",
+  "competenceDate": "2024-11-10",
+  "status": "PENDENTE"
+}
+
+### Receber Pagamento
+PATCH {{baseUrl}}/financial/accounts-receivable/id_conta/receive?companyId={{companyId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "amount": 10000.00,
+  "receiptDate": "2024-11-15",
+  "bankAccountId": "id_conta_bancaria"
+}
+
+### Listar Contas Vencidas
+GET {{baseUrl}}/financial/accounts-receivable/overdue?companyId={{companyId}}
+Authorization: Bearer {{token}}
+
+### =========================
+### RELATÓRIOS
+### =========================
+
+### Dashboard Financeiro
+GET {{baseUrl}}/financial/reports/dashboard?companyId={{companyId}}
+Authorization: Bearer {{token}}
+
+### Fluxo de Caixa
+GET {{baseUrl}}/financial/reports/cash-flow?companyId={{companyId}}&startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{token}}
+
+### Exportar Fluxo de Caixa (Excel)
+GET {{baseUrl}}/financial/reports/cash-flow/export?companyId={{companyId}}&startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{token}}
+
+### Exportar Contas a Pagar (Excel)
+GET {{baseUrl}}/financial/reports/accounts-payable/export?companyId={{companyId}}&status=PENDENTE
+Authorization: Bearer {{token}}
+
+### Exportar Contas a Receber (Excel)
+GET {{baseUrl}}/financial/reports/accounts-receivable/export?companyId={{companyId}}&status=PENDENTE
+Authorization: Bearer {{token}}
+
+### Exportar Transações por Centro de Custo (Excel)
+GET {{baseUrl}}/financial/reports/transactions/by-centro-custo/export?companyId={{companyId}}&startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{token}}
+
+### Exportar Transações por Conta Contábil (Excel)
+GET {{baseUrl}}/financial/reports/transactions/by-conta-contabil/export?companyId={{companyId}}&startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{token}}

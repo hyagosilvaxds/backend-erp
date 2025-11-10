@@ -159,6 +159,21 @@ model Company {
   // Módulo Jurídico
   legalDocumentCategories LegalDocumentCategory[]
   legalDocuments LegalDocument[]
+  
+  // Módulo Financeiro
+  bankAccounts BankAccount[]
+  financialCategories FinancialCategory[]
+  financialTransactions FinancialTransaction[]
+  accountsPayable AccountPayable[]
+  accountsReceivable AccountReceivable[]
+  ofxImports OFXImport[]
+  
+  // Módulo de Investidores SCP
+  investors Investor[]
+  scpProjects ScpProject[]
+  investments Investment[]
+  distributionPolicies DistributionPolicy[]
+  distributions Distribution[]
 
   @@map("companies")
 }
@@ -205,6 +220,11 @@ model ContaContabil {
   planoContas PlanoContas @relation(fields: [planoContasId], references: [id], onDelete: Cascade)
   contaPai    ContaContabil? @relation("ContaHierarquia", fields: [contaPaiId], references: [id])
   subContas   ContaContabil[] @relation("ContaHierarquia")
+  
+  // Vínculos financeiros
+  financialTransactions FinancialTransaction[]
+  accountsPayable AccountPayable[] @relation("AccountPayableContaContabil")
+  accountsReceivable AccountReceivable[] @relation("AccountReceivableContaContabil")
 
   @@unique([planoContasId, codigo])
   @@map("contas_contabeis")
@@ -341,6 +361,9 @@ model CentroCusto {
   
   // Relacionamentos
   employees   Employee[] // Colaboradores vinculados
+  accountsPayable AccountPayable[] // Contas a pagar vinculadas
+  accountsReceivable AccountReceivable[] // Contas a receber vinculadas
+  financialTransactions FinancialTransaction[] // Lançamentos financeiros
   
   // Timestamps
   createdAt   DateTime @default(now())
@@ -1608,3 +1631,673 @@ model LegalDocument {
   @@index([dueDate])
   @@map("legal_documents")
 }
+
+// ============================================
+// MÓDULO FINANCEIRO
+// ============================================
+
+// Contas Bancárias
+model BankAccount {
+  id              String   @id @default(uuid())
+  companyId       String
+  
+  // Informações do banco
+  bankName        String   // Nome do banco (ex: Banco do Brasil, Itaú)
+  bankCode        String   // Código do banco (ex: 001, 341)
+  agencyNumber    String   // Número da agência
+  agencyDigit     String?  // Dígito verificador da agência
+  accountNumber   String   // Número da conta
+  accountDigit    String?  // Dígito verificador da conta
+  accountType     String   // Tipo de conta: CORRENTE, POUPANCA, SALARIO
+  
+  // Identificação e controle
+  accountName     String   // Nome de identificação da conta (ex: "Conta Principal", "Conta Folha")
+  pixKey          String?  // Chave PIX (se houver)
+  
+  // Saldos
+  initialBalance  Float    @default(0) // Saldo inicial ao criar a conta
+  currentBalance  Float    @default(0) // Saldo atual (atualizado automaticamente)
+  
+  // Status
+  active          Boolean  @default(true)
+  isMainAccount   Boolean  @default(false) // Indica se é a conta principal
+  
+  // Observações
+  notes           String?
+  
+  // Datas
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relacionamentos
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  transactions    FinancialTransaction[]
+  ofxImports      OFXImport[]
+  investments     Investment[]
+  distributions   Distribution[]
+  
+  @@index([companyId])
+  @@index([active])
+  @@map("bank_accounts")
+}
+
+// Categorias Financeiras (para organizar receitas e despesas)
+model FinancialCategory {
+  id              String   @id @default(uuid())
+  companyId       String
+  
+  // Informações da categoria
+  name            String   // Nome da categoria (ex: "Fornecedores", "Vendas", "Salários")
+  description     String?
+  type            String   // RECEITA ou DESPESA
+  color           String?  // Cor para identificação visual (hex)
+  icon            String?  // Ícone para identificação visual
+  
+  // Hierarquia (categorias podem ter subcategorias)
+  parentId        String?
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  // Datas
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relacionamentos
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  parent          FinancialCategory? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children        FinancialCategory[] @relation("CategoryHierarchy")
+  transactions    FinancialTransaction[]
+  accountsPayable AccountPayable[]
+  accountsReceivable AccountReceivable[]
+  
+  @@index([companyId])
+  @@index([type])
+  @@index([active])
+  @@index([parentId])
+  @@map("financial_categories")
+}
+
+// Transações Financeiras (movimentações realizadas)
+model FinancialTransaction {
+  id                String   @id @default(uuid())
+  companyId         String
+  bankAccountId     String?
+  categoryId        String?
+  centroCustoId     String?
+  contaContabilId   String?
+  
+  // Tipo e natureza
+  type              String   // RECEITA ou DESPESA
+  transactionType   String   // DINHEIRO, TRANSFERENCIA, BOLETO, CARTAO_CREDITO, CARTAO_DEBITO, PIX, CHEQUE, OUTROS
+  
+  // Valores
+  amount            Float    // Valor da transação
+  fees              Float    @default(0) // Taxas bancárias ou de transação
+  netAmount         Float    // Valor líquido (amount - fees)
+  
+  // Informações
+  description       String   // Descrição da transação
+  referenceNumber   String?  // Número de referência (número do documento, comprovante, etc.)
+  documentNumber    String?  // Número do documento fiscal (NF, recibo, etc.)
+  
+  // Datas
+  transactionDate   DateTime // Data em que a transação ocorreu
+  competenceDate    DateTime // Data de competência (para relatórios contábeis)
+  
+  // Relacionamento com contas a pagar/receber
+  accountPayableId  String?  @unique
+  accountReceivableId String? @unique
+  
+  // Conciliação bancária
+  reconciled        Boolean  @default(false)
+  reconciledAt      DateTime?
+  
+  // Observações
+  notes             String?
+  attachments       String[] // URLs de anexos (comprovantes, notas fiscais, etc.)
+  
+  // Datas de controle
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relacionamentos
+  company           Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  bankAccount       BankAccount? @relation(fields: [bankAccountId], references: [id])
+  category          FinancialCategory? @relation(fields: [categoryId], references: [id])
+  centroCusto       CentroCusto? @relation(fields: [centroCustoId], references: [id])
+  contaContabil     ContaContabil? @relation(fields: [contaContabilId], references: [id])
+  accountPayable    AccountPayable? @relation(fields: [accountPayableId], references: [id])
+  accountReceivable AccountReceivable? @relation(fields: [accountReceivableId], references: [id])
+  investment        Investment?
+  distribution      Distribution?
+  
+  @@index([companyId])
+  @@index([bankAccountId])
+  @@index([categoryId])
+  @@index([centroCustoId])
+  @@index([contaContabilId])
+  @@index([type])
+  @@index([transactionDate])
+  @@index([competenceDate])
+  @@index([reconciled])
+  @@map("financial_transactions")
+}
+
+// Contas a Pagar
+model AccountPayable {
+  id                String   @id @default(uuid())
+  companyId         String
+  categoryId        String?
+  centroCustoId     String?
+  contaContabilId   String?
+  
+  // Fornecedor/Credor
+  supplierName      String   // Nome do fornecedor ou credor
+  supplierDocument  String?  // CPF/CNPJ do fornecedor
+  
+  // Informações da conta
+  description       String   // Descrição da despesa
+  documentNumber    String?  // Número da nota fiscal, fatura, etc.
+  
+  // Valores
+  originalAmount    Float    // Valor original da conta
+  paidAmount        Float    @default(0) // Valor já pago
+  remainingAmount   Float    // Valor restante a pagar
+  discountAmount    Float    @default(0) // Descontos aplicados
+  interestAmount    Float    @default(0) // Juros por atraso
+  fineAmount        Float    @default(0) // Multa por atraso
+  
+  // Datas
+  issueDate         DateTime // Data de emissão
+  dueDate           DateTime // Data de vencimento
+  competenceDate    DateTime // Data de competência
+  paymentDate       DateTime? // Data do pagamento efetivo
+  
+  // Parcelamento
+  installmentNumber Int?     // Número da parcela (se parcelado)
+  totalInstallments Int?     // Total de parcelas
+  parentId          String?  // ID da conta pai (se for parcela)
+  
+  // Status
+  status            String   // PENDENTE, PAGO, VENCIDO, PARCIAL, CANCELADO
+  
+  // Forma de pagamento
+  paymentMethod     String?  // DINHEIRO, BOLETO, TRANSFERENCIA, PIX, CARTAO, etc.
+  bankAccountId     String?  // Conta bancária usada no pagamento
+  
+  // Observações
+  notes             String?
+  attachments       String[] // URLs de anexos
+  
+  // Recorrência
+  isRecurring       Boolean  @default(false)
+  recurringPattern  String?  // MENSAL, TRIMESTRAL, SEMESTRAL, ANUAL
+  
+  // Datas de controle
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relacionamentos
+  company           Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category          FinancialCategory? @relation(fields: [categoryId], references: [id])
+  centroCusto       CentroCusto? @relation(fields: [centroCustoId], references: [id])
+  contaContabil     ContaContabil? @relation("AccountPayableContaContabil", fields: [contaContabilId], references: [id])
+  parent            AccountPayable? @relation("PayableInstallments", fields: [parentId], references: [id])
+  installments      AccountPayable[] @relation("PayableInstallments")
+  transaction       FinancialTransaction?
+  
+  @@index([companyId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([paymentDate])
+  @@index([centroCustoId])
+  @@index([isRecurring])
+  @@map("accounts_payable")
+}
+
+// Contas a Receber
+model AccountReceivable {
+  id                String   @id @default(uuid())
+  companyId         String
+  categoryId        String?
+  centroCustoId     String?
+  contaContabilId   String?
+  
+  // Cliente/Devedor
+  customerName      String   // Nome do cliente ou devedor
+  customerDocument  String?  // CPF/CNPJ do cliente
+  customerId        String?  // ID do cliente (se cadastrado)
+  
+  // Informações da conta
+  description       String   // Descrição da receita
+  documentNumber    String?  // Número da nota fiscal, recibo, etc.
+  
+  // Valores
+  originalAmount    Float    // Valor original da conta
+  receivedAmount    Float    @default(0) // Valor já recebido
+  remainingAmount   Float    // Valor restante a receber
+  discountAmount    Float    @default(0) // Descontos concedidos
+  interestAmount    Float    @default(0) // Juros por atraso
+  fineAmount        Float    @default(0) // Multa por atraso
+  
+  // Datas
+  issueDate         DateTime // Data de emissão
+  dueDate           DateTime // Data de vencimento
+  competenceDate    DateTime // Data de competência
+  receiptDate       DateTime? // Data do recebimento efetivo
+  
+  // Parcelamento
+  installmentNumber Int?     // Número da parcela (se parcelado)
+  totalInstallments Int?     // Total de parcelas
+  parentId          String?  // ID da conta pai (se for parcela)
+  
+  // Status
+  status            String   // PENDENTE, RECEBIDO, VENCIDO, PARCIAL, CANCELADO
+  
+  // Forma de recebimento
+  paymentMethod     String?  // DINHEIRO, BOLETO, TRANSFERENCIA, PIX, CARTAO, etc.
+  bankAccountId     String?  // Conta bancária do recebimento
+  
+  // Observações
+  notes             String?
+  attachments       String[] // URLs de anexos
+  
+  // Recorrência
+  isRecurring       Boolean  @default(false)
+  recurringPattern  String?  // MENSAL, TRIMESTRAL, SEMESTRAL, ANUAL
+  
+  // Datas de controle
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relacionamentos
+  company           Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category          FinancialCategory? @relation(fields: [categoryId], references: [id])
+  centroCusto       CentroCusto? @relation(fields: [centroCustoId], references: [id])
+  contaContabil     ContaContabil? @relation("AccountReceivableContaContabil", fields: [contaContabilId], references: [id])
+  parent            AccountReceivable? @relation("ReceivableInstallments", fields: [parentId], references: [id])
+  installments      AccountReceivable[] @relation("ReceivableInstallments")
+  transaction       FinancialTransaction?
+  
+  @@index([companyId])
+  @@index([categoryId])
+  @@index([customerId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([receiptDate])
+  @@index([centroCustoId])
+  @@index([isRecurring])
+  @@map("accounts_receivable")
+}
+
+// Extratos OFX Importados
+model OFXImport {
+  id                String   @id @default(uuid())
+  companyId         String
+  bankAccountId     String
+  
+  // Informações do extrato
+  fileName          String   // Nome do arquivo importado
+  fileSize          Int      // Tamanho do arquivo em bytes
+  
+  // Dados do extrato
+  bankId            String   // Código do banco
+  accountId         String   // Número da conta
+  accountType       String   // Tipo da conta
+  
+  // Período do extrato
+  startDate         DateTime // Data inicial
+  endDate           DateTime // Data final
+  
+  // Saldo
+  balance           Float    // Saldo final do extrato
+  balanceDate       DateTime // Data do saldo
+  
+  // Estatísticas da importação
+  totalTransactions Int      // Total de transações no arquivo
+  importedCount     Int      // Transações novas importadas
+  duplicateCount    Int      // Transações duplicadas (já existiam)
+  reconciledCount   Int      @default(0) // Transações conciliadas
+  
+  // Transações (armazenadas como JSON)
+  transactions      Json     // Array de transações OFX
+  
+  // Status
+  status            String   @default("COMPLETED") // COMPLETED, PROCESSING, ERROR
+  errorMessage      String?  // Mensagem de erro, se houver
+  
+  // Datas de controle
+  importedAt        DateTime @default(now())
+  importedBy        String?  // ID do usuário que importou
+  
+  // Relacionamentos
+  company           Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  bankAccount       BankAccount  @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  
+  @@index([companyId])
+  @@index([bankAccountId])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([importedAt])
+  @@map("ofx_imports")
+}
+
+// ==================== MÓDULO DE INVESTIDORES SCP ====================
+
+// Investidores
+model Investor {
+  id                String   @id @default(uuid())
+  companyId         String
+  
+  // Tipo
+  type              String   // PESSOA_FISICA ou PESSOA_JURIDICA
+  
+  // Dados Pessoa Física
+  fullName          String?  // Nome completo (PF)
+  cpf               String?  // CPF (PF)
+  rg                String?  // RG (PF)
+  rgIssuer          String?  // Órgão emissor do RG
+  birthDate         DateTime? // Data de nascimento
+  gender            String?  // MASCULINO, FEMININO, OUTRO
+  maritalStatus     String?  // SOLTEIRO, CASADO, DIVORCIADO, VIUVO, UNIAO_ESTAVEL
+  nationality       String?  // Nacionalidade
+  profession        String?  // Profissão
+  motherName        String?  // Nome da mãe
+  fatherName        String?  // Nome do pai
+  
+  // Dados Pessoa Jurídica
+  companyName       String?  // Razão social (PJ)
+  tradeName         String?  // Nome fantasia (PJ)
+  cnpj              String?  // CNPJ (PJ)
+  stateRegistration String?  // Inscrição Estadual
+  municipalRegistration String? // Inscrição Municipal
+  foundedDate       DateTime? // Data de fundação
+  legalNature       String?  // Natureza jurídica
+  mainActivity      String?  // Atividade principal
+  
+  // Representante Legal (para PJ)
+  legalRepName      String?  // Nome do representante
+  legalRepDocument  String?  // CPF do representante
+  legalRepRole      String?  // Cargo do representante
+  
+  // Contatos
+  email             String?
+  alternativeEmail  String?
+  phone             String?
+  mobilePhone       String?
+  whatsapp          String?
+  
+  // Endereço Residencial/Comercial
+  addressType       String?  // RESIDENCIAL, COMERCIAL
+  street            String?  // Logradouro
+  number            String?  // Número
+  complement        String?  // Complemento
+  neighborhood      String?  // Bairro
+  city              String?  // Cidade
+  state             String?  // Estado (UF)
+  zipCode           String?  // CEP
+  country           String   @default("Brasil") // País
+  
+  // Endereço de Correspondência (se diferente)
+  mailingAddressSame Boolean @default(true) // Se é o mesmo do principal
+  mailingStreet     String?
+  mailingNumber     String?
+  mailingComplement String?
+  mailingNeighborhood String?
+  mailingCity       String?
+  mailingState      String?
+  mailingZipCode    String?
+  mailingCountry    String?
+  
+  // Dados Bancários
+  bankName          String?
+  bankCode          String?
+  agencyNumber      String?
+  agencyDigit       String?
+  accountNumber     String?
+  accountDigit      String?
+  accountType       String?  // CORRENTE, POUPANCA, SALARIO
+  pixKeyType        String?  // CPF, CNPJ, EMAIL, PHONE, RANDOM
+  pixKey            String?
+  
+  // Informações Financeiras
+  monthlyIncome     Float?   // Renda mensal (PF)
+  patrimony         Float?   // Patrimônio total
+  investorProfile   String?  // CONSERVADOR, MODERADO, ARROJADO
+  investmentGoal    String?  // Objetivo do investimento
+  
+  // Documentos
+  identityDocUrl    String?  // URL do RG/CNH
+  cpfDocUrl         String?  // URL do CPF
+  addressProofUrl   String?  // Comprovante de residência
+  incomeProofUrl    String?  // Comprovante de renda
+  socialContractUrl String?  // Contrato social (PJ)
+  cnpjDocUrl        String?  // Cartão CNPJ
+  attachments       String[] // Outros documentos
+  
+  // Informações Adicionais
+  investorCode      String?  // Código interno do investidor
+  category          String?  // Categoria: QUALIFICADO, PROFISSIONAL, etc
+  isAccreditedInvestor Boolean @default(false) // Investidor qualificado
+  termsAcceptedAt   DateTime? // Data de aceite dos termos
+  privacyPolicyAcceptedAt DateTime? // Data de aceite da política de privacidade
+  
+  // Status e Observações
+  active            Boolean  @default(true)
+  status            String   @default("ATIVO") // ATIVO, INATIVO, SUSPENSO, BLOQUEADO
+  statusReason      String?  // Motivo do status
+  notes             String?  // Observações gerais
+  internalNotes     String?  // Notas internas (não visíveis para o investidor)
+  
+  // Datas
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  lastContactDate   DateTime? // Data do último contato
+  
+  // Relacionamentos
+  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  investments       Investment[]
+  distributions     Distribution[]
+  distributionPolicies DistributionPolicy[]
+  
+  @@index([companyId])
+  @@index([cpf])
+  @@index([cnpj])
+  @@index([investorCode])
+  @@index([active])
+  @@index([status])
+  @@index([email])
+  @@map("investors")
+}
+
+// Projetos SCP
+model ScpProject {
+  id                String   @id @default(uuid())
+  companyId         String
+  
+  // Informações do projeto
+  name              String
+  description       String?
+  code              String   // Código único do projeto
+  
+  // Valores
+  totalValue        Float    // Valor total do projeto
+  investedValue     Float    @default(0) // Valor já investido
+  distributedValue  Float    @default(0) // Valor já distribuído
+  
+  // Datas
+  startDate         DateTime
+  endDate           DateTime?
+  
+  // Status
+  status            String   @default("ATIVO") // ATIVO, CONCLUIDO, CANCELADO, SUSPENSO
+  active            Boolean  @default(true)
+  
+  // Informações adicionais
+  notes             String?
+  attachments       String[] // URLs de documentos
+  
+  // Datas de controle
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relacionamentos
+  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  investments       Investment[]
+  distributionPolicies DistributionPolicy[]
+  distributions     Distribution[]
+  
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([status])
+  @@index([active])
+  @@map("scp_projects")
+}
+
+// Aportes/Investimentos
+model Investment {
+  id                String   @id @default(uuid())
+  companyId         String
+  projectId         String
+  investorId        String
+  
+  // Dados do aporte
+  amount            Float    // Valor do aporte
+  investmentDate    DateTime // Data do aporte
+  
+  // Referências
+  referenceNumber   String?  // Número de referência/recibo
+  documentNumber    String?  // Número do documento
+  
+  // Forma de pagamento
+  paymentMethod     String?  // DINHEIRO, TRANSFERENCIA, PIX, TED, DOC, BOLETO
+  
+  // Conta bancária (se vinculado ao financeiro)
+  bankAccountId     String?
+  financialTransactionId String? @unique
+  
+  // Status
+  status            String   @default("CONFIRMADO") // PENDENTE, CONFIRMADO, CANCELADO
+  
+  // Observações
+  notes             String?
+  attachments       String[] // Comprovantes
+  
+  // Datas de controle
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relacionamentos
+  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  project           ScpProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  investor          Investor @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  bankAccount       BankAccount? @relation(fields: [bankAccountId], references: [id])
+  financialTransaction FinancialTransaction? @relation(fields: [financialTransactionId], references: [id])
+  
+  @@index([companyId])
+  @@index([projectId])
+  @@index([investorId])
+  @@index([investmentDate])
+  @@index([status])
+  @@map("investments")
+}
+
+// Políticas de Distribuição
+model DistributionPolicy {
+  id                String   @id @default(uuid())
+  companyId         String
+  projectId         String
+  investorId        String
+  
+  // Percentual de participação
+  percentage        Float    // Percentual de 0 a 100
+  
+  // Tipo de política
+  type              String   @default("PROPORCIONAL") // PROPORCIONAL, FIXO, PERSONALIZADO
+  
+  // Status
+  active            Boolean  @default(true)
+  
+  // Datas de vigência
+  startDate         DateTime
+  endDate           DateTime?
+  
+  // Observações
+  notes             String?
+  
+  // Datas de controle
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relacionamentos
+  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  project           ScpProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  investor          Investor @relation(fields: [investorId], references: [id])
+  
+  @@index([companyId])
+  @@index([projectId])
+  @@index([investorId])
+  @@index([active])
+  @@map("distribution_policies")
+}
+
+// Distribuições
+model Distribution {
+  id                String   @id @default(uuid())
+  companyId         String
+  projectId         String
+  investorId        String
+  
+  // Dados da distribuição
+  amount            Float    // Valor a distribuir
+  percentage        Float    // Percentual aplicado
+  baseValue         Float    // Valor base do cálculo
+  
+  // Referências
+  referenceNumber   String?  // Número de referência
+  distributionDate  DateTime // Data da distribuição
+  competenceDate    DateTime // Data de competência (período)
+  
+  // Pagamento
+  paymentMethod     String?  // DINHEIRO, TRANSFERENCIA, PIX, TED, DOC
+  paymentDate       DateTime? // Data do pagamento efetivo
+  
+  // Conta bancária (se vinculado ao financeiro)
+  bankAccountId     String?
+  financialTransactionId String? @unique
+  
+  // Status
+  status            String   @default("PENDENTE") // PENDENTE, PAGO, CANCELADO
+  
+  // Impostos e deduções
+  irrf              Float    @default(0) // Imposto de Renda Retido na Fonte
+  otherDeductions   Float    @default(0) // Outras deduções
+  netAmount         Float    // Valor líquido (amount - irrf - otherDeductions)
+  
+  // Observações
+  notes             String?
+  attachments       String[] // Comprovantes
+  
+  // Datas de controle
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  paidAt            DateTime?
+  
+  // Relacionamentos
+  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  project           ScpProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  investor          Investor @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  bankAccount       BankAccount? @relation(fields: [bankAccountId], references: [id])
+  financialTransaction FinancialTransaction? @relation(fields: [financialTransactionId], references: [id])
+  
+  @@index([companyId])
+  @@index([projectId])
+  @@index([investorId])
+  @@index([distributionDate])
+  @@index([competenceDate])
+  @@index([status])
+  @@map("distributions")
+}
+

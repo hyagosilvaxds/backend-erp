@@ -1,0 +1,316 @@
+### SCP - Testes de Upload de Documentos em Projetos
+
+### Variáveis
+@baseUrl = http://localhost:3000
+@token = SEU_TOKEN_JWT_AQUI
+@projectId = ID_DO_PROJETO_AQUI
+@documentId = ID_DO_DOCUMENTO_AQUI
+
+###############################################
+# 1. UPLOAD DE DOCUMENTO
+###############################################
+
+### 1.1. Upload de Contrato
+POST {{baseUrl}}/scp/projects/documents/upload
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="file"; filename="contrato.pdf"
+Content-Type: application/pdf
+
+< /path/to/contrato.pdf
+------Boundary
+Content-Disposition: form-data; name="projectId"
+
+{{projectId}}
+------Boundary
+Content-Disposition: form-data; name="name"
+
+Contrato de Investimento SCP
+------Boundary
+Content-Disposition: form-data; name="description"
+
+Contrato entre a SCP e os investidores para o projeto
+------Boundary
+Content-Disposition: form-data; name="category"
+
+CONTRATO
+------Boundary
+Content-Disposition: form-data; name="tags"
+
+investimento,contrato,2024
+------Boundary--
+
+### 1.2. Upload de Estatuto
+POST {{baseUrl}}/scp/projects/documents/upload
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="file"; filename="estatuto.pdf"
+Content-Type: application/pdf
+
+< /path/to/estatuto.pdf
+------Boundary
+Content-Disposition: form-data; name="projectId"
+
+{{projectId}}
+------Boundary
+Content-Disposition: form-data; name="name"
+
+Estatuto Social da SCP
+------Boundary
+Content-Disposition: form-data; name="description"
+
+Estatuto social da Sociedade em Conta de Participação
+------Boundary
+Content-Disposition: form-data; name="category"
+
+ESTATUTO
+------Boundary
+Content-Disposition: form-data; name="tags"
+
+estatuto,sociedade,legal
+------Boundary--
+
+### 1.3. Upload de Relatório Financeiro
+POST {{baseUrl}}/scp/projects/documents/upload
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="file"; filename="relatorio-jan-2024.xlsx"
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+< /path/to/relatorio.xlsx
+------Boundary
+Content-Disposition: form-data; name="projectId"
+
+{{projectId}}
+------Boundary
+Content-Disposition: form-data; name="name"
+
+Relatório Financeiro - Janeiro 2024
+------Boundary
+Content-Disposition: form-data; name="description"
+
+Relatório financeiro mensal do projeto com receitas, despesas e distribuições
+------Boundary
+Content-Disposition: form-data; name="category"
+
+RELATORIO
+------Boundary
+Content-Disposition: form-data; name="tags"
+
+financeiro,mensal,janeiro,2024
+------Boundary--
+
+### 1.4. Upload de Comprovante de Pagamento
+POST {{baseUrl}}/scp/projects/documents/upload
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="file"; filename="comprovante-ted.pdf"
+Content-Type: application/pdf
+
+< /path/to/comprovante.pdf
+------Boundary
+Content-Disposition: form-data; name="projectId"
+
+{{projectId}}
+------Boundary
+Content-Disposition: form-data; name="name"
+
+Comprovante TED - Distribuição Jan/2024
+------Boundary
+Content-Disposition: form-data; name="description"
+
+Comprovante de transferência bancária para distribuição de lucros
+------Boundary
+Content-Disposition: form-data; name="category"
+
+COMPROVANTE
+------Boundary
+Content-Disposition: form-data; name="tags"
+
+pagamento,distribuicao,janeiro,2024
+------Boundary--
+
+### 1.5. Upload de Projeto Técnico
+POST {{baseUrl}}/scp/projects/documents/upload
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="file"; filename="projeto-tecnico.pdf"
+Content-Type: application/pdf
+
+< /path/to/projeto-tecnico.pdf
+------Boundary
+Content-Disposition: form-data; name="projectId"
+
+{{projectId}}
+------Boundary
+Content-Disposition: form-data; name="name"
+
+Projeto Técnico da Usina Solar
+------Boundary
+Content-Disposition: form-data; name="description"
+
+Projeto técnico completo da usina fotovoltaica
+------Boundary
+Content-Disposition: form-data; name="category"
+
+PROJETO_TECNICO
+------Boundary
+Content-Disposition: form-data; name="tags"
+
+tecnico,engenharia,solar
+------Boundary--
+
+###############################################
+# 2. LISTAR DOCUMENTOS
+###############################################
+
+### 2.1. Listar todos os documentos do projeto (página 1)
+GET {{baseUrl}}/scp/projects/documents/project/{{projectId}}?page=1&limit=10
+Authorization: Bearer {{token}}
+
+### 2.2. Listar todos os documentos do projeto (página 2)
+GET {{baseUrl}}/scp/projects/documents/project/{{projectId}}?page=2&limit=10
+Authorization: Bearer {{token}}
+
+### 2.3. Listar com limite maior
+GET {{baseUrl}}/scp/projects/documents/project/{{projectId}}?page=1&limit=50
+Authorization: Bearer {{token}}
+
+###############################################
+# 3. DOWNLOAD DE DOCUMENTO
+###############################################
+
+### 3.1. Download de documento específico
+GET {{baseUrl}}/scp/projects/documents/{{documentId}}/download
+Authorization: Bearer {{token}}
+
+###############################################
+# 4. EXCLUIR DOCUMENTO
+###############################################
+
+### 4.1. Excluir documento
+DELETE {{baseUrl}}/scp/projects/documents/{{documentId}}
+Authorization: Bearer {{token}}
+
+###############################################
+# 5. TESTES DE ERRO
+###############################################
+
+### 5.1. Upload sem arquivo (deve retornar 400)
+POST {{baseUrl}}/scp/projects/documents/upload
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="projectId"
+
+{{projectId}}
+------Boundary
+Content-Disposition: form-data; name="name"
+
+Teste sem arquivo
+------Boundary--
+
+### 5.2. Upload com projeto inválido (deve retornar 404)
+POST {{baseUrl}}/scp/projects/documents/upload
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="file"; filename="teste.pdf"
+Content-Type: application/pdf
+
+< /path/to/file.pdf
+------Boundary
+Content-Disposition: form-data; name="projectId"
+
+00000000-0000-0000-0000-000000000000
+------Boundary
+Content-Disposition: form-data; name="name"
+
+Teste Projeto Inválido
+------Boundary--
+
+### 5.3. Listar documentos de projeto inválido (deve retornar 404)
+GET {{baseUrl}}/scp/projects/documents/project/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{token}}
+
+### 5.4. Download de documento inexistente (deve retornar 404)
+GET {{baseUrl}}/scp/projects/documents/00000000-0000-0000-0000-000000000000/download
+Authorization: Bearer {{token}}
+
+### 5.5. Excluir documento inexistente (deve retornar 404)
+DELETE {{baseUrl}}/scp/projects/documents/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{token}}
+
+###############################################
+# 6. TESTES SEM AUTENTICAÇÃO
+###############################################
+
+### 6.1. Upload sem token (deve retornar 401)
+POST {{baseUrl}}/scp/projects/documents/upload
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="projectId"
+
+{{projectId}}
+------Boundary--
+
+### 6.2. Listar sem token (deve retornar 401)
+GET {{baseUrl}}/scp/projects/documents/project/{{projectId}}
+
+### 6.3. Download sem token (deve retornar 401)
+GET {{baseUrl}}/scp/projects/documents/{{documentId}}/download
+
+### 6.4. Excluir sem token (deve retornar 401)
+DELETE {{baseUrl}}/scp/projects/documents/{{documentId}}
+
+###############################################
+# NOTAS DE USO
+###############################################
+
+# 1. Substitua as variáveis no topo do arquivo:
+#    - @token: obtenha através do endpoint POST /auth/login
+#    - @projectId: ID de um projeto SCP existente
+#    - @documentId: ID retornado após upload
+
+# 2. Para upload de arquivos reais, substitua os caminhos:
+#    < /path/to/file.pdf
+#    Pelo caminho real do arquivo no seu sistema
+
+# 3. Categorias disponíveis:
+#    - CONTRATO
+#    - ESTATUTO
+#    - ATA
+#    - RELATORIO
+#    - COMPROVANTE
+#    - LICENCA
+#    - ALVARA
+#    - PROJETO_TECNICO
+#    - PLANILHA
+#    - OUTRO
+
+# 4. Os documentos são organizados automaticamente na estrutura:
+#    SCP > Projetos > [Código - Nome do Projeto] > [Categoria]
+
+# 5. Tags automáticas são adicionadas:
+#    - SCP
+#    - Projeto
+#    - [Código do Projeto]
+#    - [Categoria]
+#    - [Tags customizadas informadas]
+
+# 6. Permissões necessárias:
+#    - Admin/Administrador: acesso total
+#    - Recursos: investidores, scp, projetos_scp ou documents

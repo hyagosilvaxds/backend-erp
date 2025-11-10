@@ -1,0 +1,156 @@
+### Criar Distribuição em Lote para Múltiplos Investidores
+POST http://localhost:3000/scp/distributions/bulk
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "PROJECT_ID_AQUI",
+  "baseValue": 100000.00,
+  "referenceNumber": "DIST-2024-001",
+  "distributionDate": "2024-01-15",
+  "competenceDate": "2024-01-01",
+  "paymentMethod": "TED",
+  "status": "PENDENTE",
+  "distributions": [
+    {
+      "investorId": "INVESTOR_1_ID",
+      "amount": 40000.00,
+      "percentage": 40.0,
+      "irrf": 6000.00,
+      "otherDeductions": 0,
+      "notes": "Distribuição referente ao 1º trimestre de 2024"
+    },
+    {
+      "investorId": "INVESTOR_2_ID",
+      "amount": 30000.00,
+      "percentage": 30.0,
+      "irrf": 4500.00,
+      "otherDeductions": 0,
+      "notes": "Distribuição referente ao 1º trimestre de 2024"
+    },
+    {
+      "investorId": "INVESTOR_3_ID",
+      "amount": 30000.00,
+      "percentage": 30.0,
+      "irrf": 4500.00,
+      "otherDeductions": 0,
+      "notes": "Distribuição referente ao 1º trimestre de 2024"
+    }
+  ]
+}
+
+###
+
+### Criar Distribuição em Lote com Status PAGO
+POST http://localhost:3000/scp/distributions/bulk
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "PROJECT_ID_AQUI",
+  "baseValue": 50000.00,
+  "referenceNumber": "DIST-2024-002",
+  "distributionDate": "2024-02-15",
+  "competenceDate": "2024-02-01",
+  "paymentMethod": "PIX",
+  "paymentDate": "2024-02-15",
+  "status": "PAGO",
+  "attachments": ["comprovante-pagamento-1.pdf", "comprovante-pagamento-2.pdf"],
+  "distributions": [
+    {
+      "investorId": "INVESTOR_1_ID",
+      "amount": 25000.00,
+      "percentage": 50.0,
+      "irrf": 3750.00,
+      "otherDeductions": 100.00,
+      "notes": "Pagamento via PIX - 2º trimestre"
+    },
+    {
+      "investorId": "INVESTOR_2_ID",
+      "amount": 25000.00,
+      "percentage": 50.0,
+      "irrf": 3750.00,
+      "otherDeductions": 100.00,
+      "notes": "Pagamento via PIX - 2º trimestre"
+    }
+  ]
+}
+
+###
+
+### Criar Distribuição em Lote com Valores Diferentes
+POST http://localhost:3000/scp/distributions/bulk
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "PROJECT_ID_AQUI",
+  "baseValue": 120000.00,
+  "referenceNumber": "DIST-2024-003",
+  "distributionDate": "2024-03-15",
+  "competenceDate": "2024-03-01",
+  "paymentMethod": "TED",
+  "status": "PENDENTE",
+  "distributions": [
+    {
+      "investorId": "INVESTOR_1_ID",
+      "amount": 60000.00,
+      "percentage": 50.0,
+      "irrf": 9000.00,
+      "otherDeductions": 200.00,
+      "notes": "Maior participação no projeto"
+    },
+    {
+      "investorId": "INVESTOR_2_ID",
+      "amount": 36000.00,
+      "percentage": 30.0,
+      "irrf": 5400.00,
+      "otherDeductions": 0,
+      "notes": "Participação média"
+    },
+    {
+      "investorId": "INVESTOR_3_ID",
+      "amount": 24000.00,
+      "percentage": 20.0,
+      "irrf": 3600.00,
+      "otherDeductions": 0,
+      "notes": "Menor participação no projeto"
+    }
+  ]
+}
+
+###
+
+### Listar Todas as Distribuições (para verificar as criadas em lote)
+GET http://localhost:3000/scp/distributions?page=1&limit=50
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+###
+
+### Criar Distribuição Individual (endpoint original)
+POST http://localhost:3000/scp/distributions
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "PROJECT_ID_AQUI",
+  "investorId": "INVESTOR_ID_AQUI",
+  "amount": 10000.00,
+  "percentage": 100.0,
+  "baseValue": 10000.00,
+  "referenceNumber": "DIST-2024-SINGLE",
+  "distributionDate": "2024-01-15",
+  "competenceDate": "2024-01-01",
+  "paymentMethod": "TED",
+  "status": "PENDENTE",
+  "irrf": 1500.00,
+  "otherDeductions": 0,
+  "notes": "Distribuição individual"
+}
+
+###

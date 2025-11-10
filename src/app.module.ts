@@ -20,6 +20,8 @@ import { TaxTablesModule } from './tax-tables/tax-tables.module';
 import { PositionsModule } from './positions/positions.module';
 import { DepartmentsModule } from './departments/departments.module';
 import { LegalModule } from './legal/legal.module';
+import { FinancialModule } from './financial/financial.module';
+import { ScpModule } from './scp/scp.module';
 
 @Module({
   imports: [
@@ -42,6 +44,8 @@ import { LegalModule } from './legal/legal.module';
     PositionsModule,
     DepartmentsModule,
     LegalModule,
+    FinancialModule,
+    ScpModule,
   ],
   controllers: [AppController],
   providers: [AppService],

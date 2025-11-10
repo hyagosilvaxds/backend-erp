@@ -795,6 +795,32 @@ export class DocumentsService {
       }
     }
 
+    // Salvar arquivo no disco
+    const uploadsDir = path.join(process.cwd(), 'uploads', 'documents', companyId);
+    
+    // Criar diretório se não existir
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    // Gerar nome único para o arquivo
+    const fileExtension = path.extname(file.originalname);
+    const timestamp = Date.now();
+    const randomString = Math.random().toString(36).substring(2, 15);
+    const uniqueFileName = `${timestamp}-${randomString}${fileExtension}`;
+    const filePath = path.join(uploadsDir, uniqueFileName);
+
+    // Salvar arquivo (suporta buffer ou path)
+    if (file.buffer) {
+      // Arquivo está em memória (memoryStorage)
+      fs.writeFileSync(filePath, file.buffer);
+    } else if (file.path) {
+      // Arquivo já está no disco (diskStorage) - mover para local correto
+      fs.renameSync(file.path, filePath);
+    } else {
+      throw new BadRequestException('Arquivo inválido');
+    }
+
     // Criar documento
     const document = await this.prisma.document.create({
       data: {
@@ -803,7 +829,7 @@ export class DocumentsService {
         name: dto.name || file.originalname,
         description: dto.description,
         fileName: file.originalname,
-        filePath: file.path,
+        filePath: filePath,
         fileSize: file.size,
         mimeType: file.mimetype,
         fileExtension: path.extname(file.originalname),
@@ -988,6 +1014,32 @@ export class DocumentsService {
 
     const originalDoc = await this.findOneDocument(id, companyId);
 
+    // Salvar arquivo no disco
+    const uploadsDir = path.join(process.cwd(), 'uploads', 'documents', companyId);
+    
+    // Criar diretório se não existir
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    // Gerar nome único para o arquivo
+    const fileExtension = path.extname(file.originalname);
+    const timestamp = Date.now();
+    const randomString = Math.random().toString(36).substring(2, 15);
+    const uniqueFileName = `${timestamp}-${randomString}${fileExtension}`;
+    const filePath = path.join(uploadsDir, uniqueFileName);
+
+    // Salvar arquivo (suporta buffer ou path)
+    if (file.buffer) {
+      // Arquivo está em memória (memoryStorage)
+      fs.writeFileSync(filePath, file.buffer);
+    } else if (file.path) {
+      // Arquivo já está no disco (diskStorage) - mover para local correto
+      fs.renameSync(file.path, filePath);
+    } else {
+      throw new BadRequestException('Arquivo inválido');
+    }
+
     // Marcar documento original como não sendo mais a última versão
     await this.prisma.document.update({
       where: { id },
@@ -1002,7 +1054,7 @@ export class DocumentsService {
         name: originalDoc.name,
         description: description || originalDoc.description,
         fileName: file.originalname,
-        filePath: file.path,
+        filePath: filePath,
         fileSize: file.size,
         mimeType: file.mimetype,
         fileExtension: path.extname(file.originalname),

@@ -1453,10 +1453,7 @@ export class PayrollService {
 
     // Adicionar worksheet com detalhamento individual
     const detailSheet = workbook.addWorksheet('Detalhamento por Colaborador');
-    detailSheet.properties = {
-      ...detailSheet.properties,
-      tabColor: { argb: '70AD47' }
-    };
+    Object.assign(detailSheet.properties, { tabColor: { argb: '70AD47' } });
 
     // Para cada colaborador, criar uma seção detalhada
     let detailRow = 1;

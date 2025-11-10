@@ -8,7 +8,7 @@ import {
   IsObject,
   Min,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 
 export enum LegalDocumentType {
   CONTRATO = 'CONTRATO',
@@ -45,7 +45,17 @@ export class CreateLegalDocumentDto {
   @IsOptional()
   reference?: string;
 
-  @IsObject()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try {
+        return JSON.parse(value);
+      } catch (e) {
+        return value;
+      }
+    }
+    return value;
+  })
+  @IsArray()
   @IsOptional()
   parties?: any; // Array de objetos com {name, role, document, contact}
 
@@ -78,6 +88,16 @@ export class CreateLegalDocumentDto {
   @IsOptional()
   notes?: string;
 
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try {
+        return JSON.parse(value);
+      } catch (e) {
+        return value;
+      }
+    }
+    return value;
+  })
   @IsArray()
   @IsString({ each: true })
   @IsOptional()
