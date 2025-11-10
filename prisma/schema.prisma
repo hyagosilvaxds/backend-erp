@@ -16,27 +16,27 @@ model User {
   email     String   @unique
   password  String
   name      String
-  photoUrl  String?  // URL da foto do usuário
+  photoUrl  String? // URL da foto do usuário
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relacionamento com empresas
   companies UserCompany[]
-  
+
   // Auditoria
   companyAudits CompanyAudit[]
-  
+
   // Documentos
-  foldersCreated DocumentFolder[] @relation("FolderCreatedBy")
-  documentsUploaded Document[] @relation("DocumentUploadedBy")
-  
+  foldersCreated    DocumentFolder[] @relation("FolderCreatedBy")
+  documentsUploaded Document[]       @relation("DocumentUploadedBy")
+
   // RH
-  employeesCreated Employee[] @relation("EmployeeCreatedBy")
-  payrollsCreated Payroll[] @relation("PayrollCreatedBy")
-  payrollsApproved Payroll[] @relation("PayrollApprovedBy")
+  employeesCreated          Employee[]         @relation("EmployeeCreatedBy")
+  payrollsCreated           Payroll[]          @relation("PayrollCreatedBy")
+  payrollsApproved          Payroll[]          @relation("PayrollApprovedBy")
   employeeDocumentsUploaded EmployeeDocument[] @relation("DocumentUploadedByUser")
-  
+
   // Módulo Jurídico
   legalDocumentsCreated LegalDocument[] @relation("LegalDocumentCreatedBy")
 
@@ -48,67 +48,67 @@ model Company {
   id String @id @default(uuid())
 
   // Informações cadastrais básicas
-  razaoSocial       String // Nome jurídico da empresa
-  nomeFantasia      String? // Nome comercial usado no dia a dia
-  cnpj              String  @unique // Cadastro Nacional de Pessoa Jurídica
-  inscricaoEstadual String? // Cadastro na SEFAZ
+  razaoSocial        String // Nome jurídico da empresa
+  nomeFantasia       String? // Nome comercial usado no dia a dia
+  cnpj               String  @unique // Cadastro Nacional de Pessoa Jurídica
+  inscricaoEstadual  String? // Cadastro na SEFAZ
   inscricaoMunicipal String? // Para emissão de NFS-e
-  
+
   // Regime tributário e atividades
-  regimeTributario  String? // Simples Nacional, Lucro Presumido, Lucro Real
-  cnaePrincipal     String? // Código CNAE da atividade principal
-  cnaeSecundarios   String[] // Lista de códigos CNAE secundários
-  
+  regimeTributario String? // Simples Nacional, Lucro Presumido, Lucro Real
+  cnaePrincipal    String? // Código CNAE da atividade principal
+  cnaeSecundarios  String[] // Lista de códigos CNAE secundários
+
   // Datas e situação
   dataAbertura      DateTime? // Data de fundação da empresa
   situacaoCadastral String    @default("Ativa") // Ativa / Inativa / Suspensa
-  
+
   // Endereço
-  logradouro   String? // Rua, Avenida, etc.
-  numero       String? // Número do endereço
-  complemento  String? // Apto, sala, bloco, etc.
-  bairro       String? // Bairro
-  cidade       String? // Município
-  estado       String? // UF (sigla do estado)
-  cep          String? // CEP
-  pais         String  @default("Brasil") // País
-  
+  logradouro  String? // Rua, Avenida, etc.
+  numero      String? // Número do endereço
+  complemento String? // Apto, sala, bloco, etc.
+  bairro      String? // Bairro
+  cidade      String? // Município
+  estado      String? // UF (sigla do estado)
+  cep         String? // CEP
+  pais        String  @default("Brasil") // País
+
   // Contatos
-  telefone     String? // Telefone fixo
-  celular      String? // Celular / WhatsApp
-  email        String? // E-mail principal
-  site         String? // Site (opcional)
-  
+  telefone String? // Telefone fixo
+  celular  String? // Celular / WhatsApp
+  email    String? // E-mail principal
+  site     String? // Site (opcional)
+
   // Configurações fiscais e tributárias
-  tipoContribuinte       String? // ICMS, ISS, Isento, etc.
-  regimeApuracao         String? // Simples Nacional, Lucro Presumido, Lucro Real
-  codigoMunicipioIBGE    String? // Código IBGE do município
-  codigoEstadoIBGE       String? // Código IBGE do estado
-  cfopPadrao             String? // CFOP padrão para operações
-  
+  tipoContribuinte    String? // ICMS, ISS, Isento, etc.
+  regimeApuracao      String? // Simples Nacional, Lucro Presumido, Lucro Real
+  codigoMunicipioIBGE String? // Código IBGE do município
+  codigoEstadoIBGE    String? // Código IBGE do estado
+  cfopPadrao          String? // CFOP padrão para operações
+
   // Certificado digital para emissão de notas fiscais
-  certificadoDigitalPath String? // Caminho do arquivo do certificado A1
+  certificadoDigitalPath  String? // Caminho do arquivo do certificado A1
   certificadoDigitalSenha String? // Senha do certificado (criptografada)
-  
+
   // Numeração de notas fiscais
-  serieNFe               String? // Série da NF-e
-  ultimoNumeroNFe        Int?    @default(0) // Último número de NF-e emitido
-  serieNFCe              String? // Série da NFC-e
-  ultimoNumeroNFCe       Int?    @default(0) // Último número de NFC-e emitido
-  serieNFSe              String? // Série da NFS-e
-  ultimoNumeroNFSe       Int?    @default(0) // Último número de NFS-e emitido
-  
+  serieNFe         String? // Série da NF-e
+  ultimoNumeroNFe  Int?    @default(0) // Último número de NF-e emitido
+  serieNFCe        String? // Série da NFC-e
+  ultimoNumeroNFCe Int?    @default(0) // Último número de NFC-e emitido
+  serieNFSe        String? // Série da NFS-e
+  ultimoNumeroNFSe Int?    @default(0) // Último número de NFS-e emitido
+
   // Ambiente fiscal
-  ambienteFiscal         String  @default("Homologacao") // Homologacao ou Producao
-  
+  ambienteFiscal String @default("Homologacao") // Homologacao ou Producao
+
   // Logo e identidade visual
-  logoUrl                String? // URL ou caminho do arquivo de logo
-  logoFileName           String? // Nome do arquivo original
-  logoMimeType           String? // Tipo MIME (image/png, image/jpeg, etc.)
-  
+  logoUrl      String? // URL ou caminho do arquivo de logo
+  logoFileName String? // Nome do arquivo original
+  logoMimeType String? // Tipo MIME (image/png, image/jpeg, etc.)
+
   // Plano de contas
-  planoContasId          String? // ID do plano de contas padrão utilizado
-  
+  planoContasId String? // ID do plano de contas padrão utilizado
+
   // Controle interno
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -116,83 +116,87 @@ model Company {
 
   // Relacionamento com usuários
   users UserCompany[]
-  
+
   // Auditoria
   audits CompanyAudit[]
-  
+
   // Centros de custo
   centrosCusto CentroCusto[]
-  
+
   // Planos de contas
   planosContas PlanoContas[]
-  
+
   // Documentos
   documentFolders DocumentFolder[]
-  documents Document[]
-  
+  documents       Document[]
+
   // Produtos
-  productCategories ProductCategory[]
-  productUnits ProductUnit[]
-  productBrands ProductBrand[]
-  products Product[]
-  productStockMovements ProductStockMovement[]
-  stockLocations StockLocation[]
+  productCategories       ProductCategory[]
+  productUnits            ProductUnit[]
+  productBrands           ProductBrand[]
+  products                Product[]
+  productStockMovements   ProductStockMovement[]
+  stockLocations          StockLocation[]
   productStocksByLocation ProductStockByLocation[]
-  stockTransfers StockTransfer[]
-  
+  stockTransfers          StockTransfer[]
+
   // Clientes
   customers Customer[]
-  
+
   // RH
-  employees Employee[]
-  positions Position[]
-  departments Department[]
-  earningTypes EarningType[]
+  employees      Employee[]
+  positions      Position[]
+  departments    Department[]
+  earningTypes   EarningType[]
   deductionTypes DeductionType[]
-  payrolls Payroll[]
-  
+  payrolls       Payroll[]
+
   // Tabelas fiscais
   inssTables InssTable[]
   fgtsTables FgtsTable[]
   irrfTables IrrfTable[]
-  
+
   // Módulo Jurídico
   legalDocumentCategories LegalDocumentCategory[]
-  legalDocuments LegalDocument[]
-  
+  legalDocuments          LegalDocument[]
+
   // Módulo Financeiro
-  bankAccounts BankAccount[]
-  financialCategories FinancialCategory[]
+  bankAccounts          BankAccount[]
+  financialCategories   FinancialCategory[]
   financialTransactions FinancialTransaction[]
-  accountsPayable AccountPayable[]
-  accountsReceivable AccountReceivable[]
-  ofxImports OFXImport[]
-  
+  accountsPayable       AccountPayable[]
+  accountsReceivable    AccountReceivable[]
+  ofxImports            OFXImport[]
+
   // Módulo de Investidores SCP
-  investors Investor[]
-  scpProjects ScpProject[]
-  investments Investment[]
+  investors            Investor[]
+  scpProjects          ScpProject[]
+  investments          Investment[]
   distributionPolicies DistributionPolicy[]
-  distributions Distribution[]
+  distributions        Distribution[]
+
+  // Módulo de Vendas
+  paymentMethods PaymentMethod[]
+  sales          Sale[]
 
   @@map("companies")
 }
 
 // Modelo de Plano de Contas
 model PlanoContas {
-  id          String   @id @default(uuid())
-  
+  id String @id @default(uuid())
+
   // Empresa dona do plano de contas
-  companyId   String?  // Null para planos padrão do sistema
-  company     Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  nome        String // Ex: "Plano de Contas Padrão", "Plano Comercial", "Plano Industrial"
-  descricao   String?
-  tipo        String   @default("Gerencial") // Gerencial, Fiscal, Contabil
-  ativo       Boolean  @default(true)
-  padrao      Boolean  @default(false) // Se é o plano de contas padrão do sistema
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  companyId String? // Null para planos padrão do sistema
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  nome      String // Ex: "Plano de Contas Padrão", "Plano Comercial", "Plano Industrial"
+  descricao String?
+  tipo      String   @default("Gerencial") // Gerencial, Fiscal, Contabil
+  ativo     Boolean  @default(true)
+  padrao    Boolean  @default(false) // Se é o plano de contas padrão do sistema
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relacionamento com contas
   contas ContaContabil[]
@@ -203,28 +207,28 @@ model PlanoContas {
 
 // Modelo de Conta Contábil
 model ContaContabil {
-  id              String   @id @default(uuid())
-  planoContasId   String
-  codigo          String // Ex: "1.1.01.001"
-  nome            String // Ex: "Caixa Geral"
-  tipo            String // Ativo, Passivo, Receita, Despesa, Patrimônio Líquido
-  natureza        String // Devedora, Credora
-  nivel           Int // Nível hierárquico da conta (1, 2, 3, 4...)
-  contaPaiId      String? // Conta pai na hierarquia
-  aceitaLancamento Boolean @default(true) // Se aceita lançamentos diretos
-  ativo           Boolean @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id               String   @id @default(uuid())
+  planoContasId    String
+  codigo           String // Ex: "1.1.01.001"
+  nome             String // Ex: "Caixa Geral"
+  tipo             String // Ativo, Passivo, Receita, Despesa, Patrimônio Líquido
+  natureza         String // Devedora, Credora
+  nivel            Int // Nível hierárquico da conta (1, 2, 3, 4...)
+  contaPaiId       String? // Conta pai na hierarquia
+  aceitaLancamento Boolean  @default(true) // Se aceita lançamentos diretos
+  ativo            Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   // Relacionamentos
-  planoContas PlanoContas @relation(fields: [planoContasId], references: [id], onDelete: Cascade)
-  contaPai    ContaContabil? @relation("ContaHierarquia", fields: [contaPaiId], references: [id])
+  planoContas PlanoContas     @relation(fields: [planoContasId], references: [id], onDelete: Cascade)
+  contaPai    ContaContabil?  @relation("ContaHierarquia", fields: [contaPaiId], references: [id])
   subContas   ContaContabil[] @relation("ContaHierarquia")
-  
+
   // Vínculos financeiros
   financialTransactions FinancialTransaction[]
-  accountsPayable AccountPayable[] @relation("AccountPayableContaContabil")
-  accountsReceivable AccountReceivable[] @relation("AccountReceivableContaContabil")
+  accountsPayable       AccountPayable[]       @relation("AccountPayableContaContabil")
+  accountsReceivable    AccountReceivable[]    @relation("AccountReceivableContaContabil")
 
   @@unique([planoContasId, codigo])
   @@map("contas_contabeis")
@@ -258,7 +262,7 @@ model Role {
   updatedAt   DateTime @updatedAt
 
   // Relacionamentos
-  userCompanies  UserCompany[]
+  userCompanies   UserCompany[]
   rolePermissions RolePermission[]
 
   @@map("roles")
@@ -298,33 +302,33 @@ model RolePermission {
 
 // Modelo de Auditoria de Empresas
 model CompanyAudit {
-  id        String   @id @default(uuid())
-  
+  id String @id @default(uuid())
+
   // Empresa auditada
   companyId String
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
   // Usuário que fez a alteração
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
   // Tipo de ação
-  action    String   // CREATE, UPDATE, DELETE, UPLOAD_LOGO, REMOVE_LOGO, UPLOAD_CERTIFICATE, REMOVE_CERTIFICATE, TOGGLE_ACTIVE
-  
+  action String // CREATE, UPDATE, DELETE, UPLOAD_LOGO, REMOVE_LOGO, UPLOAD_CERTIFICATE, REMOVE_CERTIFICATE, TOGGLE_ACTIVE
+
   // Dados da alteração
   entityType String  @default("Company") // Tipo da entidade
   fieldName  String? // Campo específico alterado (opcional)
   oldValue   String? // Valor anterior (JSON string)
   newValue   String? // Novo valor (JSON string)
-  
+
   // Metadados
-  ipAddress  String? // IP do usuário
-  userAgent  String? // Browser/app do usuário
+  ipAddress   String? // IP do usuário
+  userAgent   String? // Browser/app do usuário
   description String? // Descrição legível da ação
-  
+
   // Timestamp
   createdAt DateTime @default(now())
-  
+
   @@index([companyId])
   @@index([userId])
   @@index([action])
@@ -334,41 +338,41 @@ model CompanyAudit {
 
 // Modelo de Centro de Custos
 model CentroCusto {
-  id          String   @id @default(uuid())
-  
+  id String @id @default(uuid())
+
   // Empresa dona do centro de custo
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
   // Hierarquia
-  codigo      String   // Ex: 01, 01.01, 01.01.001
-  nome        String   // Ex: Administrativo, Vendas, Marketing
-  descricao   String?  // Descrição detalhada
-  
+  codigo    String // Ex: 01, 01.01, 01.01.001
+  nome      String // Ex: Administrativo, Vendas, Marketing
+  descricao String? // Descrição detalhada
+
   // Estrutura hierárquica
   centroCustoPaiId String? // Centro de custo pai
   centroCustoPai   CentroCusto?  @relation("CentroCustoHierarchy", fields: [centroCustoPaiId], references: [id], onDelete: Restrict)
   subCentros       CentroCusto[] @relation("CentroCustoHierarchy")
-  
-  nivel       Int      // Nível na hierarquia (1, 2, 3, ...)
-  
+
+  nivel Int // Nível na hierarquia (1, 2, 3, ...)
+
   // Responsável
-  responsavel String?  // Nome do responsável pelo centro de custo
-  email       String?  // Email do responsável
-  
+  responsavel String? // Nome do responsável pelo centro de custo
+  email       String? // Email do responsável
+
   // Status
-  ativo       Boolean  @default(true)
-  
+  ativo Boolean @default(true)
+
   // Relacionamentos
-  employees   Employee[] // Colaboradores vinculados
-  accountsPayable AccountPayable[] // Contas a pagar vinculadas
-  accountsReceivable AccountReceivable[] // Contas a receber vinculadas
+  employees             Employee[] // Colaboradores vinculados
+  accountsPayable       AccountPayable[] // Contas a pagar vinculadas
+  accountsReceivable    AccountReceivable[] // Contas a receber vinculadas
   financialTransactions FinancialTransaction[] // Lançamentos financeiros
-  
+
   // Timestamps
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([companyId, codigo])
   @@index([companyId])
   @@index([centroCustoPaiId])
@@ -380,37 +384,37 @@ model CentroCusto {
 
 // Pastas de documentos
 model DocumentFolder {
-  id          String   @id @default(uuid())
-  
+  id String @id @default(uuid())
+
   // Empresa e organização
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
   // Dados da pasta
-  name        String   // Nome da pasta
-  description String?  // Descrição opcional
-  color       String?  // Cor para identificação visual (hex code)
-  icon        String?  // Ícone opcional
-  
+  name        String // Nome da pasta
+  description String? // Descrição opcional
+  color       String? // Cor para identificação visual (hex code)
+  icon        String? // Ícone opcional
+
   // Hierarquia de pastas
-  parentId    String?
-  parent      DocumentFolder?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
-  subfolders  DocumentFolder[] @relation("FolderHierarchy")
-  
+  parentId   String?
+  parent     DocumentFolder?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  subfolders DocumentFolder[] @relation("FolderHierarchy")
+
   // Documentos
-  documents   Document[]
-  
+  documents Document[]
+
   // Controle de acesso
-  isPublic    Boolean  @default(false) // Se true, todos da empresa podem ver
+  isPublic       Boolean  @default(false) // Se true, todos da empresa podem ver
   allowedRoleIds String[] @default([]) // IDs das roles que podem visualizar (vazio = todas)
-  
+
   // Auditoria
   createdById String
-  createdBy   User     @relation("FolderCreatedBy", fields: [createdById], references: [id])
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  createdBy   User   @relation("FolderCreatedBy", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([companyId])
   @@index([parentId])
   @@index([createdById])
@@ -419,61 +423,61 @@ model DocumentFolder {
 
 // Documentos
 model Document {
-  id            String   @id @default(uuid())
-  
+  id String @id @default(uuid())
+
   // Empresa e organização
-  companyId     String
-  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  folderId      String?
-  folder        DocumentFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  folderId String?
+  folder   DocumentFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
   // Dados do documento
-  name          String   // Nome do arquivo
-  description   String?  // Descrição do documento
-  
+  name        String // Nome do arquivo
+  description String? // Descrição do documento
+
   // Arquivo
-  fileName      String   // Nome original do arquivo
-  filePath      String   // Caminho no servidor
-  fileSize      Int      // Tamanho em bytes
-  mimeType      String   // Tipo MIME (application/pdf, image/jpeg, etc.)
-  fileExtension String   // Extensão (.pdf, .jpg, .docx, etc.)
-  
+  fileName      String // Nome original do arquivo
+  filePath      String // Caminho no servidor
+  fileSize      Int // Tamanho em bytes
+  mimeType      String // Tipo MIME (application/pdf, image/jpeg, etc.)
+  fileExtension String // Extensão (.pdf, .jpg, .docx, etc.)
+
   // Metadados
-  reference     String?  // Referência/código do documento
-  documentType  String?  // Tipo: "contrato", "nota_fiscal", "comprovante", "certificado", etc.
-  tags          String[] // Tags para busca e organização
-  
+  reference    String? // Referência/código do documento
+  documentType String? // Tipo: "contrato", "nota_fiscal", "comprovante", "certificado", etc.
+  tags         String[] // Tags para busca e organização
+
   // Validade
-  expiresAt     DateTime? // Data de validade/vencimento
-  isExpired     Boolean   @default(false) // Se o documento está vencido
-  
+  expiresAt DateTime? // Data de validade/vencimento
+  isExpired Boolean   @default(false) // Se o documento está vencido
+
   // Controle de versão
-  version       Int      @default(1) // Versão do documento
+  version           Int        @default(1) // Versão do documento
   previousVersionId String? // ID da versão anterior
-  previousVersion   Document? @relation("DocumentVersions", fields: [previousVersionId], references: [id], onDelete: SetNull)
+  previousVersion   Document?  @relation("DocumentVersions", fields: [previousVersionId], references: [id], onDelete: SetNull)
   nextVersions      Document[] @relation("DocumentVersions")
-  isLatest      Boolean  @default(true) // Se é a versão mais recente
-  
+  isLatest          Boolean    @default(true) // Se é a versão mais recente
+
   // Controle de acesso
-  isPublic      Boolean  @default(false) // Se true, todos da empresa podem ver
+  isPublic       Boolean  @default(false) // Se true, todos da empresa podem ver
   allowedRoleIds String[] @default([]) // IDs das roles que podem visualizar (vazio = todas)
-  
+
   // Auditoria
-  uploadedById  String
-  uploadedBy    User     @relation("DocumentUploadedBy", fields: [uploadedById], references: [id])
-  
+  uploadedById String
+  uploadedBy   User   @relation("DocumentUploadedBy", fields: [uploadedById], references: [id])
+
   // Relacionamentos com produtos
-  productPhotos ProductPhoto[]
+  productPhotos  ProductPhoto[]
   stockMovements ProductStockMovement[]
   stockTransfers StockTransfer[]
-  
+
   // Módulo Jurídico
   legalDocument LegalDocument?
-  
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([companyId])
   @@index([folderId])
   @@index([uploadedById])
@@ -487,23 +491,23 @@ model Document {
 
 // Modelo de Categoria de Produtos
 model ProductCategory {
-  id          String   @id @default(uuid())
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  name        String   // Nome da categoria
-  description String?  // Descrição
-  parentId    String?  // Para subcategorias
-  parent      ProductCategory?  @relation("CategorySubcategories", fields: [parentId], references: [id], onDelete: Restrict)
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  name          String // Nome da categoria
+  description   String? // Descrição
+  parentId      String? // Para subcategorias
+  parent        ProductCategory?  @relation("CategorySubcategories", fields: [parentId], references: [id], onDelete: Restrict)
   subcategories ProductCategory[] @relation("CategorySubcategories")
-  
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Produtos
-  products    Product[]
-  
+  products Product[]
+
   @@unique([companyId, name, parentId])
   @@index([companyId])
   @@index([parentId])
@@ -512,21 +516,21 @@ model ProductCategory {
 
 // Modelo de Unidade de Medida
 model ProductUnit {
-  id          String   @id @default(uuid())
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  name         String   // Nome da unidade (ex: Unidade, Caixa, Kg, Litro)
-  abbreviation String   // Abreviação (ex: UN, CX, KG, L)
-  fractionable Boolean  @default(false) // Permite quantidades fracionadas (0.5 KG)
-  
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  name         String // Nome da unidade (ex: Unidade, Caixa, Kg, Litro)
+  abbreviation String // Abreviação (ex: UN, CX, KG, L)
+  fractionable Boolean @default(false) // Permite quantidades fracionadas (0.5 KG)
+
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Produtos
-  products    Product[]
-  
+  products Product[]
+
   @@unique([companyId, abbreviation])
   @@index([companyId])
   @@map("product_units")
@@ -534,20 +538,20 @@ model ProductUnit {
 
 // Modelo de Marca
 model ProductBrand {
-  id          String   @id @default(uuid())
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  name        String   // Nome da marca
-  description String?  // Descrição
-  
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  name        String // Nome da marca
+  description String? // Descrição
+
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Produtos
-  products    Product[]
-  
+  products Product[]
+
   @@unique([companyId, name])
   @@index([companyId])
   @@map("product_brands")
@@ -555,125 +559,126 @@ model ProductBrand {
 
 // Modelo de Produto
 model Product {
-  id          String   @id @default(uuid())
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
   // Informações básicas
-  name        String   // Nome do produto
-  description String?  // Descrição detalhada
-  sku         String?  // Código SKU interno
-  barcode     String?  // Código de barras (EAN/GTIN)
-  reference   String?  // Referência (código do fornecedor)
-  
+  name        String // Nome do produto
+  description String? // Descrição detalhada
+  sku         String? // Código SKU interno
+  barcode     String? // Código de barras (EAN/GTIN)
+  reference   String? // Referência (código do fornecedor)
+
   // Categoria e classificação
-  categoryId  String?
-  category    ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  brandId     String?
-  brand       ProductBrand?    @relation(fields: [brandId], references: [id], onDelete: SetNull)
-  
+  categoryId String?
+  category   ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brandId    String?
+  brand      ProductBrand?    @relation(fields: [brandId], references: [id], onDelete: SetNull)
+
   // Preços e valores
-  costPrice        Decimal  @default(0) @db.Decimal(10, 2)  // Preço de custo
-  profitMargin     Decimal  @default(0) @db.Decimal(5, 2)   // % de lucro
-  salePrice        Decimal  @default(0) @db.Decimal(10, 2)  // Preço de venda padrão
-  salePriceCash    Decimal? @db.Decimal(10, 2)              // Preço à vista
-  salePriceInstallment Decimal @default(0) @db.Decimal(10, 2) // Preço de venda a prazo
-  minPrice         Decimal? @db.Decimal(10, 2)              // Preço mínimo (alias)
-  minSalePrice     Decimal  @default(0) @db.Decimal(10, 2)  // Valor mínimo de venda
-  wholesalePrice   Decimal? @db.Decimal(10, 2)              // Valor de atacado
-  minWholesaleQty  Int?                                     // Quantidade mínima para atacado
-  
+  costPrice            Decimal  @default(0) @db.Decimal(10, 2) // Preço de custo
+  profitMargin         Decimal  @default(0) @db.Decimal(5, 2) // % de lucro
+  salePrice            Decimal  @default(0) @db.Decimal(10, 2) // Preço de venda padrão
+  salePriceCash        Decimal? @db.Decimal(10, 2) // Preço à vista
+  salePriceInstallment Decimal  @default(0) @db.Decimal(10, 2) // Preço de venda a prazo
+  minPrice             Decimal? @db.Decimal(10, 2) // Preço mínimo (alias)
+  minSalePrice         Decimal  @default(0) @db.Decimal(10, 2) // Valor mínimo de venda
+  wholesalePrice       Decimal? @db.Decimal(10, 2) // Valor de atacado
+  minWholesaleQty      Int? // Quantidade mínima para atacado
+
   // Estoque
-  manageStock      Boolean  @default(true)  // Gerenciar estoque
-  currentStock     Decimal  @default(0) @db.Decimal(10, 3)  // Estoque atual
-  initialStock     Decimal  @default(0) @db.Decimal(10, 3)  // Estoque inicial
-  minStock         Decimal  @default(0) @db.Decimal(10, 3)  // Estoque mínimo
-  maxStock         Decimal? @db.Decimal(10, 3)              // Estoque máximo
-  
+  manageStock  Boolean  @default(true) // Gerenciar estoque
+  currentStock Decimal  @default(0) @db.Decimal(10, 3) // Estoque atual
+  initialStock Decimal  @default(0) @db.Decimal(10, 3) // Estoque inicial
+  minStock     Decimal  @default(0) @db.Decimal(10, 3) // Estoque mínimo
+  maxStock     Decimal? @db.Decimal(10, 3) // Estoque máximo
+
   // Unidade
-  unitId       String?
-  unit         ProductUnit? @relation(fields: [unitId], references: [id], onDelete: SetNull)
-  
+  unitId String?
+  unit   ProductUnit? @relation(fields: [unitId], references: [id], onDelete: SetNull)
+
   // Dimensões e peso
-  dimensionType String?  // UNITS, CM, M, IN, FT
-  width        Decimal? @db.Decimal(10, 2)  // Largura
-  height       Decimal? @db.Decimal(10, 2)  // Altura
-  length       Decimal? @db.Decimal(10, 2)  // Comprimento
-  weight       Decimal? @db.Decimal(10, 3)  // Peso líquido
-  grossWeight  Decimal? @db.Decimal(10, 3)  // Peso bruto
-  
+  dimensionType String? // UNITS, CM, M, IN, FT
+  width         Decimal? @db.Decimal(10, 2) // Largura
+  height        Decimal? @db.Decimal(10, 2) // Altura
+  length        Decimal? @db.Decimal(10, 2) // Comprimento
+  weight        Decimal? @db.Decimal(10, 3) // Peso líquido
+  grossWeight   Decimal? @db.Decimal(10, 3) // Peso bruto
+
   // Validade e garantia
-  expiryAlertDays Int?     // Alerta de validade (dias antes)
-  warrantyPeriod  Int?     // Prazo de garantia (dias)
-  
+  expiryAlertDays Int? // Alerta de validade (dias antes)
+  warrantyPeriod  Int? // Prazo de garantia (dias)
+
   // Tipo de produto
-  productType  String   @default("SIMPLE") // SIMPLE, COMPOSITE, VARIABLE, COMBO
-  isComposite  Boolean  @default(false)    // Se é composto por outros produtos
-  hasVariations Boolean @default(false)    // Se tem variações (tamanho, cor, etc)
-  isCombo      Boolean  @default(false)    // Se é um combo/kit
-  
+  productType   String  @default("SIMPLE") // SIMPLE, COMPOSITE, VARIABLE, COMBO
+  isComposite   Boolean @default(false) // Se é composto por outros produtos
+  hasVariations Boolean @default(false) // Se tem variações (tamanho, cor, etc)
+  isCombo       Boolean @default(false) // Se é um combo/kit
+
   // Status e disponibilidade
-  active       Boolean  @default(true)
-  availability String   @default("AVAILABLE") // AVAILABLE, OUT_OF_STOCK, PRE_ORDER, DISCONTINUED
-  
+  active       Boolean @default(true)
+  availability String  @default("AVAILABLE") // AVAILABLE, OUT_OF_STOCK, PRE_ORDER, DISCONTINUED
+
   // Observações
-  notes        String?  @db.Text
-  
+  notes String? @db.Text
+
   // Informações fiscais (NCM, CEST, CFOP, etc serão adicionados)
-  ncm          String?  // Nomenclatura Comum do Mercosul
-  cest         String?  // Código Especificador da Substituição Tributária
-  origin       String?  // Origem da mercadoria (0-8)
-  
+  ncm    String? // Nomenclatura Comum do Mercosul
+  cest   String? // Código Especificador da Substituição Tributária
+  origin String? // Origem da mercadoria (0-8)
+
   // ICMS
-  icmsCst      String?  // Código de Situação Tributária do ICMS
-  icmsRate     Decimal? @db.Decimal(5, 2)  // Alíquota do ICMS
-  icmsModBc    String?  // Modalidade de determinação da BC do ICMS
-  
+  icmsCst   String? // Código de Situação Tributária do ICMS
+  icmsRate  Decimal? @db.Decimal(5, 2) // Alíquota do ICMS
+  icmsModBc String? // Modalidade de determinação da BC do ICMS
+
   // IPI
-  ipiCst       String?  // CST do IPI
-  ipiRate      Decimal? @db.Decimal(5, 2)  // Alíquota do IPI
-  
+  ipiCst  String? // CST do IPI
+  ipiRate Decimal? @db.Decimal(5, 2) // Alíquota do IPI
+
   // PIS
-  pisCst       String?  // CST do PIS
-  pisRate      Decimal? @db.Decimal(5, 2)  // Alíquota do PIS
-  
+  pisCst  String? // CST do PIS
+  pisRate Decimal? @db.Decimal(5, 2) // Alíquota do PIS
+
   // COFINS
-  cofinsCst    String?  // CST do COFINS
-  cofinsRate   Decimal? @db.Decimal(5, 2)  // Alíquota do COFINS
-  
+  cofinsCst  String? // CST do COFINS
+  cofinsRate Decimal? @db.Decimal(5, 2) // Alíquota do COFINS
+
   // CFOP - Código Fiscal de Operações e Prestações
-  cfopEstadual             String?  // CFOP para vendas dentro do estado (ex: 5102)
-  cfopInterestadual        String?  // CFOP para vendas fora do estado (ex: 6102)
-  cfopEntradaEstadual      String?  // CFOP para compras dentro do estado (ex: 1102)
-  cfopEntradaInterestadual String?  // CFOP para compras fora do estado (ex: 2102)
-  
+  cfopEstadual             String? // CFOP para vendas dentro do estado (ex: 5102)
+  cfopInterestadual        String? // CFOP para vendas fora do estado (ex: 6102)
+  cfopEntradaEstadual      String? // CFOP para compras dentro do estado (ex: 1102)
+  cfopEntradaInterestadual String? // CFOP para compras fora do estado (ex: 2102)
+
   // Tipo do Item SPED (00-99)
-  tipoItemSped  String?  // Tipo do item para escrituração fiscal (EFD ICMS/IPI)
-  
+  tipoItemSped String? // Tipo do item para escrituração fiscal (EFD ICMS/IPI)
+
   // Tipo do Produto (PRODUTO ou SERVICO)
-  tipoProduto   String?  @default("PRODUTO")  // Define se é produto físico ou serviço
-  
+  tipoProduto String? @default("PRODUTO") // Define se é produto físico ou serviço
+
   // ISS - Imposto Sobre Serviços (usado quando tipoProduto = 'SERVICO')
-  codigoServico     String?  // Código do serviço municipal
-  issRate           Decimal? @db.Decimal(5, 2)  // Alíquota do ISS
-  itemListaServico  String?  // Item da lista de serviços LC 116/2003
-  
+  codigoServico    String? // Código do serviço municipal
+  issRate          Decimal? @db.Decimal(5, 2) // Alíquota do ISS
+  itemListaServico String? // Item da lista de serviços LC 116/2003
+
   // Auditoria
-  createdById  String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
   // Relações
-  photos       ProductPhoto[]
-  variations   ProductVariation[]
-  compositeItems ProductComposite[] @relation("CompositeProduct")
-  composedIn   ProductComposite[] @relation("ComponentProduct")
-  comboItems   ProductCombo[]     @relation("ComboProduct")
-  itemsInCombo ProductCombo[]     @relation("ComboItem")
-  stockMovements ProductStockMovement[]
+  photos           ProductPhoto[]
+  variations       ProductVariation[]
+  compositeItems   ProductComposite[]       @relation("CompositeProduct")
+  composedIn       ProductComposite[]       @relation("ComponentProduct")
+  comboItems       ProductCombo[]           @relation("ComboProduct")
+  itemsInCombo     ProductCombo[]           @relation("ComboItem")
+  stockMovements   ProductStockMovement[]
   stocksByLocation ProductStockByLocation[]
-  transferItems StockTransferItem[]
-  
+  transferItems    StockTransferItem[]
+  saleItems        SaleItem[]
+
   @@unique([companyId, barcode])
   @@unique([companyId, sku])
   @@index([companyId])
@@ -689,17 +694,17 @@ model Product {
 
 // Modelo de Fotos de Produto
 model ProductPhoto {
-  id         String   @id @default(uuid())
-  productId  String
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  
-  documentId String   // Referência ao documento no hub
+  id        String  @id @default(uuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  documentId String // Referência ao documento no hub
   document   Document @relation(fields: [documentId], references: [id], onDelete: Restrict)
-  isPrimary  Boolean  @default(false)  // Se é a foto principal
-  order      Int      @default(0)      // Ordem de exibição
-  
-  createdAt  DateTime @default(now())
-  
+  isPrimary  Boolean  @default(false) // Se é a foto principal
+  order      Int      @default(0) // Ordem de exibição
+
+  createdAt DateTime @default(now())
+
   @@index([productId])
   @@index([documentId])
   @@map("product_photos")
@@ -707,29 +712,29 @@ model ProductPhoto {
 
 // Modelo de Variações de Produto (ex: tamanho, cor)
 model ProductVariation {
-  id          String   @id @default(uuid())
-  productId   String
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  
-  name        String   // Nome da variação (ex: Tamanho P - Azul)
-  sku         String?  // SKU específico da variação
-  barcode     String?  // Código de barras específico
-  
+  id        String  @id @default(uuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  name    String // Nome da variação (ex: Tamanho P - Azul)
+  sku     String? // SKU específico da variação
+  barcode String? // Código de barras específico
+
   // Preços específicos (opcional, se diferente do produto pai)
-  costPrice        Decimal? @db.Decimal(10, 2)
-  salePrice        Decimal? @db.Decimal(10, 2)
+  costPrice            Decimal? @db.Decimal(10, 2)
+  salePrice            Decimal? @db.Decimal(10, 2)
   salePriceInstallment Decimal? @db.Decimal(10, 2)
-  
+
   // Estoque específico
-  currentStock Decimal  @default(0) @db.Decimal(10, 3)
-  
+  currentStock Decimal @default(0) @db.Decimal(10, 3)
+
   // Atributos da variação
-  attributes   Json     // { "size": "P", "color": "Azul" }
-  
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  
+  attributes Json // { "size": "P", "color": "Azul" }
+
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([productId, sku])
   @@index([productId])
   @@index([barcode])
@@ -738,16 +743,16 @@ model ProductVariation {
 
 // Modelo de Produto Composto (receita)
 model ProductComposite {
-  id            String   @id @default(uuid())
-  compositeId   String   // Produto composto (final)
-  composite     Product  @relation("CompositeProduct", fields: [compositeId], references: [id], onDelete: Cascade)
-  componentId   String   // Produto componente (ingrediente)
-  component     Product  @relation("ComponentProduct", fields: [componentId], references: [id], onDelete: Cascade)
-  
-  quantity      Decimal  @db.Decimal(10, 3)  // Quantidade necessária
-  
-  createdAt     DateTime @default(now())
-  
+  id          String  @id @default(uuid())
+  compositeId String // Produto composto (final)
+  composite   Product @relation("CompositeProduct", fields: [compositeId], references: [id], onDelete: Cascade)
+  componentId String // Produto componente (ingrediente)
+  component   Product @relation("ComponentProduct", fields: [componentId], references: [id], onDelete: Cascade)
+
+  quantity Decimal @db.Decimal(10, 3) // Quantidade necessária
+
+  createdAt DateTime @default(now())
+
   @@unique([compositeId, componentId])
   @@index([compositeId])
   @@index([componentId])
@@ -756,16 +761,16 @@ model ProductComposite {
 
 // Modelo de Combo (kit de produtos)
 model ProductCombo {
-  id        String   @id @default(uuid())
-  comboId   String   // Produto combo
-  combo     Product  @relation("ComboProduct", fields: [comboId], references: [id], onDelete: Cascade)
-  itemId    String   // Produto do combo
-  item      Product  @relation("ComboItem", fields: [itemId], references: [id], onDelete: Cascade)
-  
-  quantity  Decimal  @db.Decimal(10, 3)  // Quantidade no combo
-  
+  id      String  @id @default(uuid())
+  comboId String // Produto combo
+  combo   Product @relation("ComboProduct", fields: [comboId], references: [id], onDelete: Cascade)
+  itemId  String // Produto do combo
+  item    Product @relation("ComboItem", fields: [itemId], references: [id], onDelete: Cascade)
+
+  quantity Decimal @db.Decimal(10, 3) // Quantidade no combo
+
   createdAt DateTime @default(now())
-  
+
   @@unique([comboId, itemId])
   @@index([comboId])
   @@index([itemId])
@@ -774,36 +779,36 @@ model ProductCombo {
 
 // Modelo de Movimentação de Estoque
 model ProductStockMovement {
-  id          String   @id @default(uuid())
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  productId   String
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  
-  type        String   // ENTRY, EXIT, ADJUSTMENT, RETURN, LOSS, TRANSFER
-  quantity    Decimal  @db.Decimal(10, 3)  // Quantidade (positivo ou negativo)
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  type          String // ENTRY, EXIT, ADJUSTMENT, RETURN, LOSS, TRANSFER
+  quantity      Decimal @db.Decimal(10, 3) // Quantidade (positivo ou negativo)
   previousStock Decimal @db.Decimal(10, 3) // Estoque anterior
-  newStock    Decimal  @db.Decimal(10, 3)  // Novo estoque
-  
-  reason      String?  // Motivo da movimentação
-  notes       String?  // Observações
-  reference   String?  // Referência (ex: número da NF)
-  
+  newStock      Decimal @db.Decimal(10, 3) // Novo estoque
+
+  reason    String? // Motivo da movimentação
+  notes     String? // Observações
+  reference String? // Referência (ex: número da NF)
+
   // Relacionamento com local de estoque
-  locationId  String?
-  location    StockLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
-  
+  locationId String?
+  location   StockLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
   // Para transferências entre locais
-  transferId  String?
-  transfer    StockTransfer? @relation(fields: [transferId], references: [id], onDelete: SetNull)
-  
+  transferId String?
+  transfer   StockTransfer? @relation(fields: [transferId], references: [id], onDelete: SetNull)
+
   // Documento vinculado (nota fiscal, recibo, etc)
-  documentId  String?
-  document    Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
-  
-  userId      String?  // Usuário que fez a movimentação
-  createdAt   DateTime @default(now())
-  
+  documentId String?
+  document   Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  userId    String? // Usuário que fez a movimentação
+  createdAt DateTime @default(now())
+
   @@index([companyId])
   @@index([productId])
   @@index([locationId])
@@ -815,26 +820,27 @@ model ProductStockMovement {
 
 // Local de Estoque (Depósito, Loja, etc)
 model StockLocation {
-  id          String   @id @default(uuid())
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  name        String   // Nome do local (ex: "Depósito Central", "Loja Shopping")
-  code        String   // Código único do local (ex: "DEP-01", "LOJA-01")
-  description String?  // Descrição do local
-  address     String?  // Endereço do local
-  isDefault   Boolean  @default(false) // Local padrão para novas movimentações
-  active      Boolean  @default(true)
-  
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  name        String // Nome do local (ex: "Depósito Central", "Loja Shopping")
+  code        String // Código único do local (ex: "DEP-01", "LOJA-01")
+  description String? // Descrição do local
+  address     String? // Endereço do local
+  isDefault   Boolean @default(false) // Local padrão para novas movimentações
+  active      Boolean @default(true)
+
   // Relacionamentos
-  productStocks ProductStockByLocation[] // Estoque de produtos neste local
+  productStocks  ProductStockByLocation[] // Estoque de produtos neste local
   stockMovements ProductStockMovement[] // Movimentações neste local
-  transfersFrom StockTransfer[] @relation("TransferFrom") // Transferências saindo deste local
-  transfersTo   StockTransfer[] @relation("TransferTo")   // Transferências chegando neste local
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  transfersFrom  StockTransfer[]          @relation("TransferFrom") // Transferências saindo deste local
+  transfersTo    StockTransfer[]          @relation("TransferTo") // Transferências chegando neste local
+  saleItems      SaleItem[] // Itens de venda retirados deste local
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([companyId, code]) // Código único por empresa
   @@index([companyId])
   @@index([active])
@@ -843,19 +849,19 @@ model StockLocation {
 
 // Estoque de Produto por Local
 model ProductStockByLocation {
-  id         String   @id @default(uuid())
+  id         String        @id @default(uuid())
   companyId  String
-  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company    Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
   productId  String
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product    Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
   locationId String
   location   StockLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
-  
-  quantity   Decimal  @db.Decimal(10, 3) // Quantidade em estoque neste local
-  
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  
+
+  quantity Decimal @db.Decimal(10, 3) // Quantidade em estoque neste local
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([productId, locationId]) // Um produto só pode ter um registro por local
   @@index([companyId])
   @@index([productId])
@@ -865,40 +871,40 @@ model ProductStockByLocation {
 
 // Transferência de Estoque entre Locais
 model StockTransfer {
-  id              String   @id @default(uuid())
-  companyId       String
-  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  code            String   // Código da transferência (ex: "TRANS-001")
-  fromLocationId  String
-  fromLocation    StockLocation @relation("TransferFrom", fields: [fromLocationId], references: [id], onDelete: Restrict)
-  toLocationId    String
-  toLocation      StockLocation @relation("TransferTo", fields: [toLocationId], references: [id], onDelete: Restrict)
-  
-  status          String   // PENDING, IN_TRANSIT, COMPLETED, CANCELLED
-  
-  notes           String?  // Observações sobre a transferência
-  requestedBy     String?  // Usuário que solicitou
-  approvedBy      String?  // Usuário que aprovou
-  completedBy     String?  // Usuário que completou
-  
-  requestedAt     DateTime @default(now())
-  approvedAt      DateTime?
-  completedAt     DateTime?
-  
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  code           String // Código da transferência (ex: "TRANS-001")
+  fromLocationId String
+  fromLocation   StockLocation @relation("TransferFrom", fields: [fromLocationId], references: [id], onDelete: Restrict)
+  toLocationId   String
+  toLocation     StockLocation @relation("TransferTo", fields: [toLocationId], references: [id], onDelete: Restrict)
+
+  status String // PENDING, IN_TRANSIT, COMPLETED, CANCELLED
+
+  notes       String? // Observações sobre a transferência
+  requestedBy String? // Usuário que solicitou
+  approvedBy  String? // Usuário que aprovou
+  completedBy String? // Usuário que completou
+
+  requestedAt DateTime  @default(now())
+  approvedAt  DateTime?
+  completedAt DateTime?
+
   // Itens da transferência
-  items           StockTransferItem[]
-  
+  items StockTransferItem[]
+
   // Movimentações relacionadas
-  stockMovements  ProductStockMovement[]
-  
+  stockMovements ProductStockMovement[]
+
   // Documento vinculado (guia de transferência, etc)
-  documentId      String?
-  document        Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
+  documentId String?
+  document   Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([companyId, code]) // Código único por empresa
   @@index([companyId])
   @@index([status])
@@ -909,18 +915,18 @@ model StockTransfer {
 
 // Item da Transferência
 model StockTransferItem {
-  id          String   @id @default(uuid())
-  transferId  String
-  transfer    StockTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
-  productId   String
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
-  
-  quantity    Decimal  @db.Decimal(10, 3) // Quantidade a transferir
-  notes       String?  // Observações sobre este item
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  id         String        @id @default(uuid())
+  transferId String
+  transfer   StockTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  quantity Decimal @db.Decimal(10, 3) // Quantidade a transferir
+  notes    String? // Observações sobre este item
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([transferId])
   @@index([productId])
   @@map("stock_transfer_items")
@@ -930,66 +936,67 @@ model StockTransferItem {
 
 // Modelo de Cliente
 model Customer {
-  id          String   @id @default(uuid())
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
   // Tipo de pessoa
-  personType  String   // FISICA (CPF) ou JURIDICA (CNPJ)
-  
+  personType String // FISICA (CPF) ou JURIDICA (CNPJ)
+
   // ==================== PESSOA FÍSICA ====================
   // Dados básicos
-  name        String?  // Nome completo
-  cpf         String?  // CPF (somente números)
-  rg          String?  // RG
-  rgIssuer    String?  // Órgão emissor do RG (ex: SSP)
-  rgState     String?  // UF do órgão emissor
-  birthDate   DateTime? // Data de nascimento
-  gender      String?  // MALE (Masculino), FEMALE (Feminino), OTHER (Outro)
+  name          String? // Nome completo
+  cpf           String? // CPF (somente números)
+  rg            String? // RG
+  rgIssuer      String? // Órgão emissor do RG (ex: SSP)
+  rgState       String? // UF do órgão emissor
+  birthDate     DateTime? // Data de nascimento
+  gender        String? // MALE (Masculino), FEMALE (Feminino), OTHER (Outro)
   maritalStatus String? // SINGLE (Solteiro), MARRIED (Casado), DIVORCED (Divorciado), WIDOWED (Viúvo), OTHER (Outro)
-  motherName  String?  // Nome da mãe
-  profession  String?  // Profissão
-  nationality String?  // Nacionalidade (ex: Brasileiro, Estrangeiro)
-  
+  motherName    String? // Nome da mãe
+  profession    String? // Profissão
+  nationality   String? // Nacionalidade (ex: Brasileiro, Estrangeiro)
+
   // ==================== PESSOA JURÍDICA ====================
   // Dados básicos
-  companyName String?  // Razão Social
-  tradeName   String?  // Nome Fantasia
-  cnpj        String?  // CNPJ (somente números)
-  stateRegistration String? // Inscrição Estadual
+  companyName             String? // Razão Social
+  tradeName               String? // Nome Fantasia
+  cnpj                    String? // CNPJ (somente números)
+  stateRegistration       String? // Inscrição Estadual
   stateRegistrationExempt Boolean @default(false) // Isento de IE
-  municipalRegistration String? // Inscrição Municipal
-  cnae        String?  // CNAE principal
-  taxRegime   String?  // SIMPLES_NACIONAL, LUCRO_PRESUMIDO, LUCRO_REAL, MEI
-  
+  municipalRegistration   String? // Inscrição Municipal
+  cnae                    String? // CNAE principal
+  taxRegime               String? // SIMPLES_NACIONAL, LUCRO_PRESUMIDO, LUCRO_REAL, MEI
+
   // Dados do responsável (para PJ)
   responsibleName  String? // Nome do responsável/representante legal
   responsibleCpf   String? // CPF do responsável
   responsibleEmail String? // Email do responsável
   responsiblePhone String? // Telefone do responsável
-  
+
   // ==================== INFORMAÇÕES GERAIS ====================
-  email       String?  // Email principal
-  phone       String?  // Telefone principal
-  mobile      String?  // Celular/WhatsApp
-  website     String?  // Site da empresa
-  
+  email   String? // Email principal
+  phone   String? // Telefone principal
+  mobile  String? // Celular/WhatsApp
+  website String? // Site da empresa
+
   // Limite de crédito e condições comerciais
   creditLimit Decimal? @db.Decimal(10, 2) // Limite de crédito
-  
+
   // Status e observações
-  active      Boolean  @default(true)
-  notes       String?  @db.Text // Observações gerais
-  
+  active Boolean @default(true)
+  notes  String? @db.Text // Observações gerais
+
   // Auditoria
   createdById String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   // Relacionamentos
-  addresses   CustomerAddress[]
-  contacts    CustomerContact[]
-  
+  addresses CustomerAddress[]
+  contacts  CustomerContact[]
+  sales     Sale[]
+
   @@unique([companyId, cpf])
   @@unique([companyId, cnpj])
   @@index([companyId])
@@ -1005,34 +1012,34 @@ model Customer {
 
 // Endereços do Cliente
 model CustomerAddress {
-  id          String   @id @default(uuid())
-  customerId  String
-  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  
+  id         String   @id @default(uuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
   // Tipo de endereço
-  type        String   // BILLING (cobrança), SHIPPING (entrega), MAIN (principal), OTHER (outro)
-  label       String?  // Label personalizado (ex: "Filial SP", "Escritório Centro")
-  
+  type  String // BILLING (cobrança), SHIPPING (entrega), MAIN (principal), OTHER (outro)
+  label String? // Label personalizado (ex: "Filial SP", "Escritório Centro")
+
   // Endereço completo
-  zipCode     String   // CEP
-  street      String   // Logradouro
-  number      String   // Número
-  complement  String?  // Complemento
-  neighborhood String  // Bairro
-  city        String   // Cidade
-  state       String   // UF (2 letras)
-  country     String   @default("Brasil")
-  
+  zipCode      String // CEP
+  street       String // Logradouro
+  number       String // Número
+  complement   String? // Complemento
+  neighborhood String // Bairro
+  city         String // Cidade
+  state        String // UF (2 letras)
+  country      String  @default("Brasil")
+
   // Referência
-  reference   String?  // Ponto de referência
-  
+  reference String? // Ponto de referência
+
   // Status
-  isDefault   Boolean  @default(false) // Endereço padrão
-  active      Boolean  @default(true)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  isDefault Boolean @default(false) // Endereço padrão
+  active    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([customerId])
   @@index([type])
   @@index([zipCode])
@@ -1041,33 +1048,33 @@ model CustomerAddress {
 
 // Contatos do Cliente
 model CustomerContact {
-  id          String   @id @default(uuid())
-  customerId  String
-  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  
+  id         String   @id @default(uuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
   // Tipo de contato
-  type        String   // MAIN (principal), FINANCIAL (financeiro), COMMERCIAL (comercial), OTHER (outro)
-  
+  type String // MAIN (principal), FINANCIAL (financeiro), COMMERCIAL (comercial), OTHER (outro)
+
   // Dados do contato
-  name        String   // Nome do contato
-  position    String?  // Cargo/Função
-  department  String?  // Departamento
-  
+  name       String // Nome do contato
+  position   String? // Cargo/Função
+  department String? // Departamento
+
   // Comunicação
-  email       String?  // Email
-  phone       String?  // Telefone fixo
-  mobile      String?  // Celular/WhatsApp
-  
+  email  String? // Email
+  phone  String? // Telefone fixo
+  mobile String? // Celular/WhatsApp
+
   // Observações
-  notes       String?  @db.Text
-  
+  notes String? @db.Text
+
   // Status
-  isPrimary   Boolean  @default(false) // Contato principal deste tipo
-  active      Boolean  @default(true)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  isPrimary Boolean @default(false) // Contato principal deste tipo
+  active    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([customerId])
   @@index([type])
   @@index([email])
@@ -1078,28 +1085,28 @@ model CustomerContact {
 
 // Cargos
 model Position {
-  id          String   @id @default(uuid())
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  code        String   // Código do cargo (ex: "DEV-SR", "AN-JR")
-  name        String   // Nome do cargo (ex: "Desenvolvedor Sênior")
-  description String?  @db.Text
-  
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  code        String // Código do cargo (ex: "DEV-SR", "AN-JR")
+  name        String // Nome do cargo (ex: "Desenvolvedor Sênior")
+  description String? @db.Text
+
   // Faixa salarial
-  minSalary   Decimal? @db.Decimal(15, 2)
-  maxSalary   Decimal? @db.Decimal(15, 2)
-  
+  minSalary Decimal? @db.Decimal(15, 2)
+  maxSalary Decimal? @db.Decimal(15, 2)
+
   // CBO (Classificação Brasileira de Ocupações)
-  cbo         String?  // Código CBO
-  
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  cbo String? // Código CBO
+
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relacionamentos
-  employees   Employee[]
-  
+  employees Employee[]
+
   @@unique([companyId, code])
   @@index([companyId])
   @@index([active])
@@ -1108,29 +1115,29 @@ model Position {
 
 // Departamentos
 model Department {
-  id          String   @id @default(uuid())
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  code        String   // Código do departamento (ex: "TI", "FIN", "RH")
-  name        String   // Nome do departamento (ex: "Tecnologia da Informação")
-  description String?  @db.Text
-  
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  code        String // Código do departamento (ex: "TI", "FIN", "RH")
+  name        String // Nome do departamento (ex: "Tecnologia da Informação")
+  description String? @db.Text
+
   // Departamento pai (hierarquia)
-  parentId    String?
-  parent      Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
-  children    Department[] @relation("DepartmentHierarchy")
-  
+  parentId String?
+  parent   Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children Department[] @relation("DepartmentHierarchy")
+
   // Gestor do departamento
-  managerId   String?
-  
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  managerId String?
+
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relacionamentos
-  employees   Employee[]
-  
+  employees Employee[]
+
   @@unique([companyId, code])
   @@index([companyId])
   @@index([parentId])
@@ -1140,91 +1147,91 @@ model Department {
 
 // Colaboradores (Funcionários)
 model Employee {
-  id          String   @id @default(uuid())
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
   // Centro de Custo
   costCenterId String?
   costCenter   CentroCusto? @relation(fields: [costCenterId], references: [id])
-  
+
   // Cargo e Departamento
   positionId   String?
-  position     Position? @relation(fields: [positionId], references: [id])
+  position     Position?   @relation(fields: [positionId], references: [id])
   departmentId String?
   department   Department? @relation(fields: [departmentId], references: [id])
-  
+
   // Dados Pessoais
-  name        String   // Nome completo
-  cpf         String   // CPF
-  rg          String?  // RG
-  birthDate   DateTime? // Data de nascimento
-  gender      String?  // MALE, FEMALE, OTHER
+  name          String // Nome completo
+  cpf           String // CPF
+  rg            String? // RG
+  birthDate     DateTime? // Data de nascimento
+  gender        String? // MALE, FEMALE, OTHER
   maritalStatus String? // SINGLE, MARRIED, DIVORCED, WIDOWED, OTHER
-  
+
   // Dados de Contato
-  email       String?
-  phone       String?
-  mobile      String?
-  
+  email  String?
+  phone  String?
+  mobile String?
+
   // Endereço
-  zipCode     String?
-  street      String?
-  number      String?
-  complement  String?
+  zipCode      String?
+  street       String?
+  number       String?
+  complement   String?
   neighborhood String?
-  city        String?
-  state       String?
-  
+  city         String?
+  state        String?
+
   // Dados Profissionais
   admissionDate DateTime // Data de admissão
   dismissalDate DateTime? // Data de demissão
-  
+
   // Dados Contratuais
-  contractType String  // CLT, PJ, ESTAGIO, TEMPORARIO, AUTONOMO
-  workSchedule Json?   // Horário de trabalho estruturado por dia da semana
-  salary      Decimal  @db.Decimal(15, 2) // Salário base
-  
+  contractType String // CLT, PJ, ESTAGIO, TEMPORARIO, AUTONOMO
+  workSchedule Json? // Horário de trabalho estruturado por dia da semana
+  salary       Decimal @db.Decimal(15, 2) // Salário base
+
   // Dados de Empresa (para PJ)
-  companyDocument String? // CNPJ da empresa PJ
-  companyName     String? // Razão Social
-  companyTradeName String? // Nome Fantasia
-  companyStateRegistration String? // Inscrição Estadual
+  companyDocument              String? // CNPJ da empresa PJ
+  companyName                  String? // Razão Social
+  companyTradeName             String? // Nome Fantasia
+  companyStateRegistration     String? // Inscrição Estadual
   companyMunicipalRegistration String? // Inscrição Municipal
-  companyEmail    String? // Email da empresa
-  companyPhone    String? // Telefone da empresa
-  companyZipCode  String? // CEP da empresa
-  companyStreet   String? // Rua da empresa
-  companyNumber   String? // Número da empresa
-  companyComplement String? // Complemento da empresa
-  companyNeighborhood String? // Bairro da empresa
-  companyCity     String? // Cidade da empresa
-  companyState    String? // Estado da empresa
-  
+  companyEmail                 String? // Email da empresa
+  companyPhone                 String? // Telefone da empresa
+  companyZipCode               String? // CEP da empresa
+  companyStreet                String? // Rua da empresa
+  companyNumber                String? // Número da empresa
+  companyComplement            String? // Complemento da empresa
+  companyNeighborhood          String? // Bairro da empresa
+  companyCity                  String? // Cidade da empresa
+  companyState                 String? // Estado da empresa
+
   // Dados Bancários
-  bankCode    String?  // Código do banco
-  bankName    String?  // Nome do banco
-  agency      String?  // Agência
-  account     String?  // Conta
-  accountType String?  // CORRENTE, POUPANCA
-  pixKey      String?  // Chave PIX
-  
+  bankCode    String? // Código do banco
+  bankName    String? // Nome do banco
+  agency      String? // Agência
+  account     String? // Conta
+  accountType String? // CORRENTE, POUPANCA
+  pixKey      String? // Chave PIX
+
   // Status
-  active      Boolean  @default(true)
-  notes       String?  @db.Text
-  
+  active Boolean @default(true)
+  notes  String? @db.Text
+
   // Auditoria
   createdById String
   createdBy   User     @relation("EmployeeCreatedBy", fields: [createdById], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   // Relacionamentos
-  earnings    EmployeeEarning[] // Proventos do colaborador
-  deductions  EmployeeDeduction[] // Descontos do colaborador
-  payrollItems PayrollItem[]    // Itens de folha de pagamento
-  documents   EmployeeDocument[] // Documentos do colaborador
-  
+  earnings     EmployeeEarning[] // Proventos do colaborador
+  deductions   EmployeeDeduction[] // Descontos do colaborador
+  payrollItems PayrollItem[] // Itens de folha de pagamento
+  documents    EmployeeDocument[] // Documentos do colaborador
+
   @@unique([companyId, cpf])
   @@index([companyId])
   @@index([costCenterId])
@@ -1237,36 +1244,35 @@ model Employee {
 
 // Centro de Custos
 
-
 // Tipos de Proventos (ex: Salário, Hora Extra, Adicional Noturno, etc)
 model EarningType {
-  id          String   @id @default(uuid())
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  code        String   // Código do provento
-  name        String   // Nome do provento
-  description String?  @db.Text
-  
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  code        String // Código do provento
+  name        String // Nome do provento
+  description String? @db.Text
+
   // Configurações
-  isRecurrent Boolean  @default(false) // Se é recorrente (aparece todo mês)
-  isPercentage Boolean @default(false) // Se é percentual sobre o salário
-  baseValue   Decimal? @db.Decimal(15, 2) // Valor base (se não for percentual)
-  
+  isRecurrent  Boolean  @default(false) // Se é recorrente (aparece todo mês)
+  isPercentage Boolean  @default(false) // Se é percentual sobre o salário
+  baseValue    Decimal? @db.Decimal(15, 2) // Valor base (se não for percentual)
+
   // Incidências
-  hasINSS     Boolean  @default(true)  // Incide INSS
-  hasFGTS     Boolean  @default(true)  // Incide FGTS
-  hasIRRF     Boolean  @default(true)  // Incide IRRF
-  
+  hasINSS Boolean @default(true) // Incide INSS
+  hasFGTS Boolean @default(true) // Incide FGTS
+  hasIRRF Boolean @default(true) // Incide IRRF
+
   // Status
-  active      Boolean  @default(true)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relacionamentos
   employeeEarnings EmployeeEarning[] // Proventos dos colaboradores
-  
+
   @@unique([companyId, code])
   @@index([companyId])
   @@map("earning_types")
@@ -1274,28 +1280,28 @@ model EarningType {
 
 // Tipos de Descontos (ex: INSS, IRRF, Vale Transporte, etc)
 model DeductionType {
-  id          String   @id @default(uuid())
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  code        String   // Código do desconto
-  name        String   // Nome do desconto
-  description String?  @db.Text
-  
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  code        String // Código do desconto
+  name        String // Nome do desconto
+  description String? @db.Text
+
   // Configurações
-  isRecurrent Boolean  @default(false) // Se é recorrente (todo mês)
-  isPercentage Boolean @default(false) // Se é percentual
-  baseValue   Decimal? @db.Decimal(15, 2) // Valor fixo
-  
+  isRecurrent  Boolean  @default(false) // Se é recorrente (todo mês)
+  isPercentage Boolean  @default(false) // Se é percentual
+  baseValue    Decimal? @db.Decimal(15, 2) // Valor fixo
+
   // Status
-  active      Boolean  @default(true)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relacionamentos
   employeeDeductions EmployeeDeduction[] // Descontos dos colaboradores
-  
+
   @@unique([companyId, code])
   @@index([companyId])
   @@map("deduction_types")
@@ -1303,28 +1309,28 @@ model DeductionType {
 
 // Proventos atribuídos aos colaboradores
 model EmployeeEarning {
-  id            String   @id @default(uuid())
-  employeeId    String
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  
+  id         String   @id @default(uuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
   earningTypeId String
   earningType   EarningType @relation(fields: [earningTypeId], references: [id])
-  
+
   // Configuração específica do colaborador
-  isRecurrent   Boolean  @default(false) // Se repete todo mês
-  value         Decimal? @db.Decimal(15, 2) // Valor (se diferente do padrão)
-  percentage    Decimal? @db.Decimal(5, 2)  // Percentual (se aplicável)
-  
+  isRecurrent Boolean  @default(false) // Se repete todo mês
+  value       Decimal? @db.Decimal(15, 2) // Valor (se diferente do padrão)
+  percentage  Decimal? @db.Decimal(5, 2) // Percentual (se aplicável)
+
   // Período de validade
-  startDate     DateTime // Data de início
-  endDate       DateTime? // Data de fim (null = indeterminado)
-  
+  startDate DateTime // Data de início
+  endDate   DateTime? // Data de fim (null = indeterminado)
+
   // Status
-  active        Boolean  @default(true)
-  
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([employeeId])
   @@index([earningTypeId])
   @@map("employee_earnings")
@@ -1332,28 +1338,28 @@ model EmployeeEarning {
 
 // Descontos atribuídos aos colaboradores
 model EmployeeDeduction {
-  id              String   @id @default(uuid())
-  employeeId      String
-  employee        Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  
+  id         String   @id @default(uuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
   deductionTypeId String
   deductionType   DeductionType @relation(fields: [deductionTypeId], references: [id])
-  
+
   // Configuração específica do colaborador
-  isRecurrent     Boolean  @default(false) // Se repete todo mês
-  value           Decimal? @db.Decimal(15, 2) // Valor (se diferente do padrão)
-  percentage      Decimal? @db.Decimal(5, 2)  // Percentual (se aplicável)
-  
+  isRecurrent Boolean  @default(false) // Se repete todo mês
+  value       Decimal? @db.Decimal(15, 2) // Valor (se diferente do padrão)
+  percentage  Decimal? @db.Decimal(5, 2) // Percentual (se aplicável)
+
   // Período de validade
-  startDate       DateTime // Data de início
-  endDate         DateTime? // Data de fim (null = indeterminado)
-  
+  startDate DateTime // Data de início
+  endDate   DateTime? // Data de fim (null = indeterminado)
+
   // Status
-  active          Boolean  @default(true)
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([employeeId])
   @@index([deductionTypeId])
   @@map("employee_deductions")
@@ -1361,41 +1367,41 @@ model EmployeeDeduction {
 
 // Folha de Pagamento (mensal ou diária)
 model Payroll {
-  id          String   @id @default(uuid())
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
   // Período
-  referenceMonth Int    // Mês de referência (1-12)
-  referenceYear  Int    // Ano de referência
-  type        String   // MONTHLY (mensal), DAILY (diária), WEEKLY (semanal), ADVANCE (adiantamento)
-  
+  referenceMonth Int // Mês de referência (1-12)
+  referenceYear  Int // Ano de referência
+  type           String // MONTHLY (mensal), DAILY (diária), WEEKLY (semanal), ADVANCE (adiantamento)
+
   // Datas
   startDate   DateTime // Data de início do período
   endDate     DateTime // Data de fim do período
   paymentDate DateTime // Data de pagamento
-  
+
   // Status
-  status      String   @default("DRAFT") // DRAFT (rascunho), CALCULATED (calculada), APPROVED (aprovada), PAID (paga)
-  
+  status String @default("DRAFT") // DRAFT (rascunho), CALCULATED (calculada), APPROVED (aprovada), PAID (paga)
+
   // Totais
   totalEarnings   Decimal @default(0) @db.Decimal(15, 2) // Total de proventos
   totalDeductions Decimal @default(0) @db.Decimal(15, 2) // Total de descontos
   netAmount       Decimal @default(0) @db.Decimal(15, 2) // Líquido a pagar
-  
+
   // Auditoria
-  createdById String
-  createdBy   User     @relation("PayrollCreatedBy", fields: [createdById], references: [id])
+  createdById  String
+  createdBy    User      @relation("PayrollCreatedBy", fields: [createdById], references: [id])
   approvedById String?
-  approvedBy  User?    @relation("PayrollApprovedBy", fields: [approvedById], references: [id])
-  approvedAt  DateTime?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  approvedBy   User?     @relation("PayrollApprovedBy", fields: [approvedById], references: [id])
+  approvedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relacionamentos
-  items       PayrollItem[] // Itens da folha (por colaborador)
-  
+  items PayrollItem[] // Itens da folha (por colaborador)
+
   @@unique([companyId, referenceMonth, referenceYear, type])
   @@index([companyId])
   @@index([status])
@@ -1404,34 +1410,34 @@ model Payroll {
 
 // Itens da Folha de Pagamento (por colaborador)
 model PayrollItem {
-  id          String   @id @default(uuid())
-  payrollId   String
-  payroll     Payroll  @relation(fields: [payrollId], references: [id], onDelete: Cascade)
-  
-  employeeId  String
-  employee    Employee @relation(fields: [employeeId], references: [id])
-  
+  id        String  @id @default(uuid())
+  payrollId String
+  payroll   Payroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+
   // Valores Base
-  baseSalary  Decimal  @db.Decimal(15, 2) // Salário base
-  workDays    Int      @default(30) // Dias trabalhados
-  
+  baseSalary Decimal @db.Decimal(15, 2) // Salário base
+  workDays   Int     @default(30) // Dias trabalhados
+
   // Proventos
-  earnings    Json     // Array de proventos: [{ typeId, code, name, value }]
+  earnings      Json // Array de proventos: [{ typeId, code, name, value }]
   totalEarnings Decimal @db.Decimal(15, 2) // Total de proventos
-  
+
   // Descontos
-  deductions  Json     // Array de descontos: [{ typeId, code, name, value }]
+  deductions      Json // Array de descontos: [{ typeId, code, name, value }]
   totalDeductions Decimal @db.Decimal(15, 2) // Total de descontos
-  
+
   // Líquido
-  netAmount   Decimal  @db.Decimal(15, 2) // Líquido a pagar
-  
+  netAmount Decimal @db.Decimal(15, 2) // Líquido a pagar
+
   // Observações
-  notes       String?  @db.Text
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  notes String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([payrollId])
   @@index([employeeId])
   @@map("payroll_items")
@@ -1439,39 +1445,39 @@ model PayrollItem {
 
 // Documentos de Colaboradores
 model EmployeeDocument {
-  id          String   @id @default(uuid())
-  employeeId  String
-  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  
+  id         String   @id @default(uuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
   // Tipo de documento
-  documentType String  // RG, CPF, CNH, CTPS, TITULO_ELEITOR, CERTIFICADO_RESERVISTA, 
-                       // COMPROVANTE_RESIDENCIA, DIPLOMA, CERTIFICADO, CONTRATO, 
-                       // EXAME_ADMISSIONAL, ASO, ATESTADO, OUTROS
-  
+  documentType String // RG, CPF, CNH, CTPS, TITULO_ELEITOR, CERTIFICADO_RESERVISTA, 
+  // COMPROVANTE_RESIDENCIA, DIPLOMA, CERTIFICADO, CONTRATO, 
+  // EXAME_ADMISSIONAL, ASO, ATESTADO, OUTROS
+
   // Informações do documento
-  name        String   // Nome do arquivo/documento
-  description String?  @db.Text
+  name           String // Nome do arquivo/documento
+  description    String?   @db.Text
   documentNumber String? // Número do documento (se aplicável)
-  issueDate   DateTime? // Data de emissão
-  expiryDate  DateTime? // Data de validade
-  
+  issueDate      DateTime? // Data de emissão
+  expiryDate     DateTime? // Data de validade
+
   // Arquivo
-  fileUrl     String   // URL do arquivo no storage
-  fileName    String   // Nome original do arquivo
-  fileSize    Int      // Tamanho em bytes
-  mimeType    String   // Tipo MIME do arquivo
-  
+  fileUrl  String // URL do arquivo no storage
+  fileName String // Nome original do arquivo
+  fileSize Int // Tamanho em bytes
+  mimeType String // Tipo MIME do arquivo
+
   // Status
-  verified    Boolean  @default(false) // Se foi verificado/validado
-  active      Boolean  @default(true)
-  notes       String?  @db.Text
-  
+  verified Boolean @default(false) // Se foi verificado/validado
+  active   Boolean @default(true)
+  notes    String? @db.Text
+
   // Auditoria
   uploadedById String
   uploadedBy   User     @relation("DocumentUploadedByUser", fields: [uploadedById], references: [id])
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  
+
   @@index([employeeId])
   @@index([documentType])
   @@index([verified])
@@ -1480,20 +1486,20 @@ model EmployeeDocument {
 
 // Tabela INSS - Faixas progressivas de contribuição
 model InssTable {
-  id        String   @id @default(uuid())
+  id        String  @id @default(uuid())
   companyId String
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  year      Int      // Ano de referência
-  
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  year Int // Ano de referência
+
   // Faixas progressivas (JSON)
   // [{ minValue, maxValue, employeeRate, employerRate, deduction }]
-  ranges    Json
-  
+  ranges Json
+
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@unique([companyId, year, active])
   @@index([companyId])
   @@index([year])
@@ -1502,20 +1508,20 @@ model InssTable {
 
 // Tabela FGTS - Alíquotas por cargo
 model FgtsTable {
-  id        String   @id @default(uuid())
+  id        String  @id @default(uuid())
   companyId String
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  year      Int      // Ano de referência
-  
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  year Int // Ano de referência
+
   // Alíquotas por cargo (JSON)
   // [{ positionId, positionName, monthlyRate, terminationRate }]
-  rates     Json
-  
+  rates Json
+
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@unique([companyId, year, active])
   @@index([companyId])
   @@index([year])
@@ -1524,22 +1530,22 @@ model FgtsTable {
 
 // Tabela IRRF - Faixas de imposto de renda
 model IrrfTable {
-  id                 String   @id @default(uuid())
-  companyId          String
-  company            Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  year               Int      // Ano de referência
-  
-  dependentDeduction Decimal  @db.Decimal(10, 2) // Dedução por dependente
-  
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  year Int // Ano de referência
+
+  dependentDeduction Decimal @db.Decimal(10, 2) // Dedução por dependente
+
   // Faixas progressivas (JSON)
   // [{ minValue, maxValue, rate, deduction }]
-  ranges             Json
-  
-  active             Boolean  @default(true)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  
+  ranges Json
+
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([companyId, year, active])
   @@index([companyId])
   @@index([year])
@@ -1550,22 +1556,22 @@ model IrrfTable {
 
 // Categorias de documentos jurídicos
 model LegalDocumentCategory {
-  id          String   @id @default(uuid())
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  name        String   // Ex: Contratos, Processos Trabalhistas, Processos Cíveis, etc.
-  description String?  @db.Text
-  color       String?  // Cor para identificação visual (hex code)
-  icon        String?  // Ícone opcional
-  
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  name        String // Ex: Contratos, Processos Trabalhistas, Processos Cíveis, etc.
+  description String? @db.Text
+  color       String? // Cor para identificação visual (hex code)
+  icon        String? // Ícone opcional
+
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relacionamentos
   legalDocuments LegalDocument[]
-  
+
   @@unique([companyId, name])
   @@index([companyId])
   @@map("legal_document_categories")
@@ -1573,55 +1579,55 @@ model LegalDocumentCategory {
 
 // Documentos jurídicos (contratos e processos)
 model LegalDocument {
-  id          String   @id @default(uuid())
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  categoryId  String?
-  category    LegalDocumentCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  categoryId String?
+  category   LegalDocumentCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
   // Referência ao hub de documentos
-  documentId  String   @unique
-  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  
+  documentId String   @unique
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
   // Tipo do documento
-  type        String   // CONTRATO, PROCESSO_TRABALHISTA, PROCESSO_CIVIL, PROCESSO_CRIMINAL, OUTROS
-  
+  type String // CONTRATO, PROCESSO_TRABALHISTA, PROCESSO_CIVIL, PROCESSO_CRIMINAL, OUTROS
+
   // Informações básicas
-  title       String   // Título do documento
-  description String?  @db.Text
-  reference   String?  // Número do processo ou contrato
-  
+  title       String // Título do documento
+  description String? @db.Text
+  reference   String? // Número do processo ou contrato
+
   // Partes envolvidas
-  parties     Json?    // Array de objetos com {name, role, document, contact}
-  
+  parties Json? // Array de objetos com {name, role, document, contact}
+
   // Datas importantes
-  startDate   DateTime? // Data de início/assinatura do contrato ou data de abertura do processo
-  endDate     DateTime? // Data de término do contrato ou conclusão do processo
-  dueDate     DateTime? // Data de vencimento/renovação
-  
+  startDate DateTime? // Data de início/assinatura do contrato ou data de abertura do processo
+  endDate   DateTime? // Data de término do contrato ou conclusão do processo
+  dueDate   DateTime? // Data de vencimento/renovação
+
   // Status
-  status      String   @default("ATIVO") // ATIVO, CONCLUÍDO, SUSPENSO, CANCELADO, ARQUIVADO
-  
+  status String @default("ATIVO") // ATIVO, CONCLUÍDO, SUSPENSO, CANCELADO, ARQUIVADO
+
   // Valores (se aplicável)
-  value       Decimal? @db.Decimal(15, 2) // Valor do contrato ou causa
-  currency    String   @default("BRL")
-  
+  value    Decimal? @db.Decimal(15, 2) // Valor do contrato ou causa
+  currency String   @default("BRL")
+
   // Observações e acompanhamento
-  notes       String?  @db.Text
-  tags        String[] // Tags para organização
-  
+  notes String?  @db.Text
+  tags  String[] // Tags para organização
+
   // Alertas
-  alertDays   Int?     @default(30) // Dias de antecedência para alertas de vencimento
-  
+  alertDays Int? @default(30) // Dias de antecedência para alertas de vencimento
+
   // Auditoria
   createdById String
-  createdBy   User     @relation("LegalDocumentCreatedBy", fields: [createdById], references: [id])
-  
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  createdBy   User   @relation("LegalDocumentCreatedBy", fields: [createdById], references: [id])
+
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([companyId])
   @@index([categoryId])
   @@index([documentId])
@@ -1638,44 +1644,44 @@ model LegalDocument {
 
 // Contas Bancárias
 model BankAccount {
-  id              String   @id @default(uuid())
-  companyId       String
-  
+  id        String @id @default(uuid())
+  companyId String
+
   // Informações do banco
-  bankName        String   // Nome do banco (ex: Banco do Brasil, Itaú)
-  bankCode        String   // Código do banco (ex: 001, 341)
-  agencyNumber    String   // Número da agência
-  agencyDigit     String?  // Dígito verificador da agência
-  accountNumber   String   // Número da conta
-  accountDigit    String?  // Dígito verificador da conta
-  accountType     String   // Tipo de conta: CORRENTE, POUPANCA, SALARIO
-  
+  bankName      String // Nome do banco (ex: Banco do Brasil, Itaú)
+  bankCode      String // Código do banco (ex: 001, 341)
+  agencyNumber  String // Número da agência
+  agencyDigit   String? // Dígito verificador da agência
+  accountNumber String // Número da conta
+  accountDigit  String? // Dígito verificador da conta
+  accountType   String // Tipo de conta: CORRENTE, POUPANCA, SALARIO
+
   // Identificação e controle
-  accountName     String   // Nome de identificação da conta (ex: "Conta Principal", "Conta Folha")
-  pixKey          String?  // Chave PIX (se houver)
-  
+  accountName String // Nome de identificação da conta (ex: "Conta Principal", "Conta Folha")
+  pixKey      String? // Chave PIX (se houver)
+
   // Saldos
-  initialBalance  Float    @default(0) // Saldo inicial ao criar a conta
-  currentBalance  Float    @default(0) // Saldo atual (atualizado automaticamente)
-  
+  initialBalance Float @default(0) // Saldo inicial ao criar a conta
+  currentBalance Float @default(0) // Saldo atual (atualizado automaticamente)
+
   // Status
-  active          Boolean  @default(true)
-  isMainAccount   Boolean  @default(false) // Indica se é a conta principal
-  
+  active        Boolean @default(true)
+  isMainAccount Boolean @default(false) // Indica se é a conta principal
+
   // Observações
-  notes           String?
-  
+  notes String?
+
   // Datas
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relacionamentos
-  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  transactions    FinancialTransaction[]
-  ofxImports      OFXImport[]
-  investments     Investment[]
-  distributions   Distribution[]
-  
+  company       Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  transactions  FinancialTransaction[]
+  ofxImports    OFXImport[]
+  investments   Investment[]
+  distributions Distribution[]
+
   @@index([companyId])
   @@index([active])
   @@map("bank_accounts")
@@ -1683,34 +1689,34 @@ model BankAccount {
 
 // Categorias Financeiras (para organizar receitas e despesas)
 model FinancialCategory {
-  id              String   @id @default(uuid())
-  companyId       String
-  
+  id        String @id @default(uuid())
+  companyId String
+
   // Informações da categoria
-  name            String   // Nome da categoria (ex: "Fornecedores", "Vendas", "Salários")
-  description     String?
-  type            String   // RECEITA ou DESPESA
-  color           String?  // Cor para identificação visual (hex)
-  icon            String?  // Ícone para identificação visual
-  
+  name        String // Nome da categoria (ex: "Fornecedores", "Vendas", "Salários")
+  description String?
+  type        String // RECEITA ou DESPESA
+  color       String? // Cor para identificação visual (hex)
+  icon        String? // Ícone para identificação visual
+
   // Hierarquia (categorias podem ter subcategorias)
-  parentId        String?
-  
+  parentId String?
+
   // Status
-  active          Boolean  @default(true)
-  
+  active Boolean @default(true)
+
   // Datas
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relacionamentos
-  company         Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  parent          FinancialCategory? @relation("CategoryHierarchy", fields: [parentId], references: [id])
-  children        FinancialCategory[] @relation("CategoryHierarchy")
-  transactions    FinancialTransaction[]
-  accountsPayable AccountPayable[]
+  company            Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  parent             FinancialCategory?     @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children           FinancialCategory[]    @relation("CategoryHierarchy")
+  transactions       FinancialTransaction[]
+  accountsPayable    AccountPayable[]
   accountsReceivable AccountReceivable[]
-  
+
   @@index([companyId])
   @@index([type])
   @@index([active])
@@ -1720,58 +1726,58 @@ model FinancialCategory {
 
 // Transações Financeiras (movimentações realizadas)
 model FinancialTransaction {
-  id                String   @id @default(uuid())
-  companyId         String
-  bankAccountId     String?
-  categoryId        String?
-  centroCustoId     String?
-  contaContabilId   String?
-  
+  id              String  @id @default(uuid())
+  companyId       String
+  bankAccountId   String?
+  categoryId      String?
+  centroCustoId   String?
+  contaContabilId String?
+
   // Tipo e natureza
-  type              String   // RECEITA ou DESPESA
-  transactionType   String   // DINHEIRO, TRANSFERENCIA, BOLETO, CARTAO_CREDITO, CARTAO_DEBITO, PIX, CHEQUE, OUTROS
-  
+  type            String // RECEITA ou DESPESA
+  transactionType String // DINHEIRO, TRANSFERENCIA, BOLETO, CARTAO_CREDITO, CARTAO_DEBITO, PIX, CHEQUE, OUTROS
+
   // Valores
-  amount            Float    // Valor da transação
-  fees              Float    @default(0) // Taxas bancárias ou de transação
-  netAmount         Float    // Valor líquido (amount - fees)
-  
+  amount    Float // Valor da transação
+  fees      Float @default(0) // Taxas bancárias ou de transação
+  netAmount Float // Valor líquido (amount - fees)
+
   // Informações
-  description       String   // Descrição da transação
-  referenceNumber   String?  // Número de referência (número do documento, comprovante, etc.)
-  documentNumber    String?  // Número do documento fiscal (NF, recibo, etc.)
-  
+  description     String // Descrição da transação
+  referenceNumber String? // Número de referência (número do documento, comprovante, etc.)
+  documentNumber  String? // Número do documento fiscal (NF, recibo, etc.)
+
   // Datas
-  transactionDate   DateTime // Data em que a transação ocorreu
-  competenceDate    DateTime // Data de competência (para relatórios contábeis)
-  
+  transactionDate DateTime // Data em que a transação ocorreu
+  competenceDate  DateTime // Data de competência (para relatórios contábeis)
+
   // Relacionamento com contas a pagar/receber
-  accountPayableId  String?  @unique
+  accountPayableId    String? @unique
   accountReceivableId String? @unique
-  
+
   // Conciliação bancária
-  reconciled        Boolean  @default(false)
-  reconciledAt      DateTime?
-  
+  reconciled   Boolean   @default(false)
+  reconciledAt DateTime?
+
   // Observações
-  notes             String?
-  attachments       String[] // URLs de anexos (comprovantes, notas fiscais, etc.)
-  
+  notes       String?
+  attachments String[] // URLs de anexos (comprovantes, notas fiscais, etc.)
+
   // Datas de controle
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relacionamentos
-  company           Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  bankAccount       BankAccount? @relation(fields: [bankAccountId], references: [id])
+  company           Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  bankAccount       BankAccount?       @relation(fields: [bankAccountId], references: [id])
   category          FinancialCategory? @relation(fields: [categoryId], references: [id])
-  centroCusto       CentroCusto? @relation(fields: [centroCustoId], references: [id])
-  contaContabil     ContaContabil? @relation(fields: [contaContabilId], references: [id])
-  accountPayable    AccountPayable? @relation(fields: [accountPayableId], references: [id])
+  centroCusto       CentroCusto?       @relation(fields: [centroCustoId], references: [id])
+  contaContabil     ContaContabil?     @relation(fields: [contaContabilId], references: [id])
+  accountPayable    AccountPayable?    @relation(fields: [accountPayableId], references: [id])
   accountReceivable AccountReceivable? @relation(fields: [accountReceivableId], references: [id])
   investment        Investment?
   distribution      Distribution?
-  
+
   @@index([companyId])
   @@index([bankAccountId])
   @@index([categoryId])
@@ -1786,67 +1792,67 @@ model FinancialTransaction {
 
 // Contas a Pagar
 model AccountPayable {
-  id                String   @id @default(uuid())
-  companyId         String
-  categoryId        String?
-  centroCustoId     String?
-  contaContabilId   String?
-  
+  id              String  @id @default(uuid())
+  companyId       String
+  categoryId      String?
+  centroCustoId   String?
+  contaContabilId String?
+
   // Fornecedor/Credor
-  supplierName      String   // Nome do fornecedor ou credor
-  supplierDocument  String?  // CPF/CNPJ do fornecedor
-  
+  supplierName     String // Nome do fornecedor ou credor
+  supplierDocument String? // CPF/CNPJ do fornecedor
+
   // Informações da conta
-  description       String   // Descrição da despesa
-  documentNumber    String?  // Número da nota fiscal, fatura, etc.
-  
+  description    String // Descrição da despesa
+  documentNumber String? // Número da nota fiscal, fatura, etc.
+
   // Valores
-  originalAmount    Float    // Valor original da conta
-  paidAmount        Float    @default(0) // Valor já pago
-  remainingAmount   Float    // Valor restante a pagar
-  discountAmount    Float    @default(0) // Descontos aplicados
-  interestAmount    Float    @default(0) // Juros por atraso
-  fineAmount        Float    @default(0) // Multa por atraso
-  
+  originalAmount  Float // Valor original da conta
+  paidAmount      Float @default(0) // Valor já pago
+  remainingAmount Float // Valor restante a pagar
+  discountAmount  Float @default(0) // Descontos aplicados
+  interestAmount  Float @default(0) // Juros por atraso
+  fineAmount      Float @default(0) // Multa por atraso
+
   // Datas
-  issueDate         DateTime // Data de emissão
-  dueDate           DateTime // Data de vencimento
-  competenceDate    DateTime // Data de competência
-  paymentDate       DateTime? // Data do pagamento efetivo
-  
+  issueDate      DateTime // Data de emissão
+  dueDate        DateTime // Data de vencimento
+  competenceDate DateTime // Data de competência
+  paymentDate    DateTime? // Data do pagamento efetivo
+
   // Parcelamento
-  installmentNumber Int?     // Número da parcela (se parcelado)
-  totalInstallments Int?     // Total de parcelas
-  parentId          String?  // ID da conta pai (se for parcela)
-  
+  installmentNumber Int? // Número da parcela (se parcelado)
+  totalInstallments Int? // Total de parcelas
+  parentId          String? // ID da conta pai (se for parcela)
+
   // Status
-  status            String   // PENDENTE, PAGO, VENCIDO, PARCIAL, CANCELADO
-  
+  status String // PENDENTE, PAGO, VENCIDO, PARCIAL, CANCELADO
+
   // Forma de pagamento
-  paymentMethod     String?  // DINHEIRO, BOLETO, TRANSFERENCIA, PIX, CARTAO, etc.
-  bankAccountId     String?  // Conta bancária usada no pagamento
-  
+  paymentMethod String? // DINHEIRO, BOLETO, TRANSFERENCIA, PIX, CARTAO, etc.
+  bankAccountId String? // Conta bancária usada no pagamento
+
   // Observações
-  notes             String?
-  attachments       String[] // URLs de anexos
-  
+  notes       String?
+  attachments String[] // URLs de anexos
+
   // Recorrência
-  isRecurring       Boolean  @default(false)
-  recurringPattern  String?  // MENSAL, TRIMESTRAL, SEMESTRAL, ANUAL
-  
+  isRecurring      Boolean @default(false)
+  recurringPattern String? // MENSAL, TRIMESTRAL, SEMESTRAL, ANUAL
+
   // Datas de controle
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relacionamentos
-  company           Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  category          FinancialCategory? @relation(fields: [categoryId], references: [id])
-  centroCusto       CentroCusto? @relation(fields: [centroCustoId], references: [id])
-  contaContabil     ContaContabil? @relation("AccountPayableContaContabil", fields: [contaContabilId], references: [id])
-  parent            AccountPayable? @relation("PayableInstallments", fields: [parentId], references: [id])
-  installments      AccountPayable[] @relation("PayableInstallments")
-  transaction       FinancialTransaction?
-  
+  company       Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category      FinancialCategory?    @relation(fields: [categoryId], references: [id])
+  centroCusto   CentroCusto?          @relation(fields: [centroCustoId], references: [id])
+  contaContabil ContaContabil?        @relation("AccountPayableContaContabil", fields: [contaContabilId], references: [id])
+  parent        AccountPayable?       @relation("PayableInstallments", fields: [parentId], references: [id])
+  installments  AccountPayable[]      @relation("PayableInstallments")
+  transaction   FinancialTransaction?
+
   @@index([companyId])
   @@index([categoryId])
   @@index([status])
@@ -1859,68 +1865,68 @@ model AccountPayable {
 
 // Contas a Receber
 model AccountReceivable {
-  id                String   @id @default(uuid())
-  companyId         String
-  categoryId        String?
-  centroCustoId     String?
-  contaContabilId   String?
-  
+  id              String  @id @default(uuid())
+  companyId       String
+  categoryId      String?
+  centroCustoId   String?
+  contaContabilId String?
+
   // Cliente/Devedor
-  customerName      String   // Nome do cliente ou devedor
-  customerDocument  String?  // CPF/CNPJ do cliente
-  customerId        String?  // ID do cliente (se cadastrado)
-  
+  customerName     String // Nome do cliente ou devedor
+  customerDocument String? // CPF/CNPJ do cliente
+  customerId       String? // ID do cliente (se cadastrado)
+
   // Informações da conta
-  description       String   // Descrição da receita
-  documentNumber    String?  // Número da nota fiscal, recibo, etc.
-  
+  description    String // Descrição da receita
+  documentNumber String? // Número da nota fiscal, recibo, etc.
+
   // Valores
-  originalAmount    Float    // Valor original da conta
-  receivedAmount    Float    @default(0) // Valor já recebido
-  remainingAmount   Float    // Valor restante a receber
-  discountAmount    Float    @default(0) // Descontos concedidos
-  interestAmount    Float    @default(0) // Juros por atraso
-  fineAmount        Float    @default(0) // Multa por atraso
-  
+  originalAmount  Float // Valor original da conta
+  receivedAmount  Float @default(0) // Valor já recebido
+  remainingAmount Float // Valor restante a receber
+  discountAmount  Float @default(0) // Descontos concedidos
+  interestAmount  Float @default(0) // Juros por atraso
+  fineAmount      Float @default(0) // Multa por atraso
+
   // Datas
-  issueDate         DateTime // Data de emissão
-  dueDate           DateTime // Data de vencimento
-  competenceDate    DateTime // Data de competência
-  receiptDate       DateTime? // Data do recebimento efetivo
-  
+  issueDate      DateTime // Data de emissão
+  dueDate        DateTime // Data de vencimento
+  competenceDate DateTime // Data de competência
+  receiptDate    DateTime? // Data do recebimento efetivo
+
   // Parcelamento
-  installmentNumber Int?     // Número da parcela (se parcelado)
-  totalInstallments Int?     // Total de parcelas
-  parentId          String?  // ID da conta pai (se for parcela)
-  
+  installmentNumber Int? // Número da parcela (se parcelado)
+  totalInstallments Int? // Total de parcelas
+  parentId          String? // ID da conta pai (se for parcela)
+
   // Status
-  status            String   // PENDENTE, RECEBIDO, VENCIDO, PARCIAL, CANCELADO
-  
+  status String // PENDENTE, RECEBIDO, VENCIDO, PARCIAL, CANCELADO
+
   // Forma de recebimento
-  paymentMethod     String?  // DINHEIRO, BOLETO, TRANSFERENCIA, PIX, CARTAO, etc.
-  bankAccountId     String?  // Conta bancária do recebimento
-  
+  paymentMethod String? // DINHEIRO, BOLETO, TRANSFERENCIA, PIX, CARTAO, etc.
+  bankAccountId String? // Conta bancária do recebimento
+
   // Observações
-  notes             String?
-  attachments       String[] // URLs de anexos
-  
+  notes       String?
+  attachments String[] // URLs de anexos
+
   // Recorrência
-  isRecurring       Boolean  @default(false)
-  recurringPattern  String?  // MENSAL, TRIMESTRAL, SEMESTRAL, ANUAL
-  
+  isRecurring      Boolean @default(false)
+  recurringPattern String? // MENSAL, TRIMESTRAL, SEMESTRAL, ANUAL
+
   // Datas de controle
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relacionamentos
-  company           Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  category          FinancialCategory? @relation(fields: [categoryId], references: [id])
-  centroCusto       CentroCusto? @relation(fields: [centroCustoId], references: [id])
-  contaContabil     ContaContabil? @relation("AccountReceivableContaContabil", fields: [contaContabilId], references: [id])
-  parent            AccountReceivable? @relation("ReceivableInstallments", fields: [parentId], references: [id])
-  installments      AccountReceivable[] @relation("ReceivableInstallments")
-  transaction       FinancialTransaction?
-  
+  company       Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category      FinancialCategory?    @relation(fields: [categoryId], references: [id])
+  centroCusto   CentroCusto?          @relation(fields: [centroCustoId], references: [id])
+  contaContabil ContaContabil?        @relation("AccountReceivableContaContabil", fields: [contaContabilId], references: [id])
+  parent        AccountReceivable?    @relation("ReceivableInstallments", fields: [parentId], references: [id])
+  installments  AccountReceivable[]   @relation("ReceivableInstallments")
+  transaction   FinancialTransaction?
+
   @@index([companyId])
   @@index([categoryId])
   @@index([customerId])
@@ -1934,48 +1940,48 @@ model AccountReceivable {
 
 // Extratos OFX Importados
 model OFXImport {
-  id                String   @id @default(uuid())
-  companyId         String
-  bankAccountId     String
-  
+  id            String @id @default(uuid())
+  companyId     String
+  bankAccountId String
+
   // Informações do extrato
-  fileName          String   // Nome do arquivo importado
-  fileSize          Int      // Tamanho do arquivo em bytes
-  
+  fileName String // Nome do arquivo importado
+  fileSize Int // Tamanho do arquivo em bytes
+
   // Dados do extrato
-  bankId            String   // Código do banco
-  accountId         String   // Número da conta
-  accountType       String   // Tipo da conta
-  
+  bankId      String // Código do banco
+  accountId   String // Número da conta
+  accountType String // Tipo da conta
+
   // Período do extrato
-  startDate         DateTime // Data inicial
-  endDate           DateTime // Data final
-  
+  startDate DateTime // Data inicial
+  endDate   DateTime // Data final
+
   // Saldo
-  balance           Float    // Saldo final do extrato
-  balanceDate       DateTime // Data do saldo
-  
+  balance     Float // Saldo final do extrato
+  balanceDate DateTime // Data do saldo
+
   // Estatísticas da importação
-  totalTransactions Int      // Total de transações no arquivo
-  importedCount     Int      // Transações novas importadas
-  duplicateCount    Int      // Transações duplicadas (já existiam)
-  reconciledCount   Int      @default(0) // Transações conciliadas
-  
+  totalTransactions Int // Total de transações no arquivo
+  importedCount     Int // Transações novas importadas
+  duplicateCount    Int // Transações duplicadas (já existiam)
+  reconciledCount   Int @default(0) // Transações conciliadas
+
   // Transações (armazenadas como JSON)
-  transactions      Json     // Array de transações OFX
-  
+  transactions Json // Array de transações OFX
+
   // Status
-  status            String   @default("COMPLETED") // COMPLETED, PROCESSING, ERROR
-  errorMessage      String?  // Mensagem de erro, se houver
-  
+  status       String  @default("COMPLETED") // COMPLETED, PROCESSING, ERROR
+  errorMessage String? // Mensagem de erro, se houver
+
   // Datas de controle
-  importedAt        DateTime @default(now())
-  importedBy        String?  // ID do usuário que importou
-  
+  importedAt DateTime @default(now())
+  importedBy String? // ID do usuário que importou
+
   // Relacionamentos
-  company           Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  bankAccount       BankAccount  @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
-  
+  company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  bankAccount BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+
   @@index([companyId])
   @@index([bankAccountId])
   @@index([startDate])
@@ -1988,120 +1994,120 @@ model OFXImport {
 
 // Investidores
 model Investor {
-  id                String   @id @default(uuid())
-  companyId         String
-  
+  id        String @id @default(uuid())
+  companyId String
+
   // Tipo
-  type              String   // PESSOA_FISICA ou PESSOA_JURIDICA
-  
+  type String // PESSOA_FISICA ou PESSOA_JURIDICA
+
   // Dados Pessoa Física
-  fullName          String?  // Nome completo (PF)
-  cpf               String?  // CPF (PF)
-  rg                String?  // RG (PF)
-  rgIssuer          String?  // Órgão emissor do RG
-  birthDate         DateTime? // Data de nascimento
-  gender            String?  // MASCULINO, FEMININO, OUTRO
-  maritalStatus     String?  // SOLTEIRO, CASADO, DIVORCIADO, VIUVO, UNIAO_ESTAVEL
-  nationality       String?  // Nacionalidade
-  profession        String?  // Profissão
-  motherName        String?  // Nome da mãe
-  fatherName        String?  // Nome do pai
-  
+  fullName      String? // Nome completo (PF)
+  cpf           String? // CPF (PF)
+  rg            String? // RG (PF)
+  rgIssuer      String? // Órgão emissor do RG
+  birthDate     DateTime? // Data de nascimento
+  gender        String? // MASCULINO, FEMININO, OUTRO
+  maritalStatus String? // SOLTEIRO, CASADO, DIVORCIADO, VIUVO, UNIAO_ESTAVEL
+  nationality   String? // Nacionalidade
+  profession    String? // Profissão
+  motherName    String? // Nome da mãe
+  fatherName    String? // Nome do pai
+
   // Dados Pessoa Jurídica
-  companyName       String?  // Razão social (PJ)
-  tradeName         String?  // Nome fantasia (PJ)
-  cnpj              String?  // CNPJ (PJ)
-  stateRegistration String?  // Inscrição Estadual
+  companyName           String? // Razão social (PJ)
+  tradeName             String? // Nome fantasia (PJ)
+  cnpj                  String? // CNPJ (PJ)
+  stateRegistration     String? // Inscrição Estadual
   municipalRegistration String? // Inscrição Municipal
-  foundedDate       DateTime? // Data de fundação
-  legalNature       String?  // Natureza jurídica
-  mainActivity      String?  // Atividade principal
-  
+  foundedDate           DateTime? // Data de fundação
+  legalNature           String? // Natureza jurídica
+  mainActivity          String? // Atividade principal
+
   // Representante Legal (para PJ)
-  legalRepName      String?  // Nome do representante
-  legalRepDocument  String?  // CPF do representante
-  legalRepRole      String?  // Cargo do representante
-  
+  legalRepName     String? // Nome do representante
+  legalRepDocument String? // CPF do representante
+  legalRepRole     String? // Cargo do representante
+
   // Contatos
-  email             String?
-  alternativeEmail  String?
-  phone             String?
-  mobilePhone       String?
-  whatsapp          String?
-  
+  email            String?
+  alternativeEmail String?
+  phone            String?
+  mobilePhone      String?
+  whatsapp         String?
+
   // Endereço Residencial/Comercial
-  addressType       String?  // RESIDENCIAL, COMERCIAL
-  street            String?  // Logradouro
-  number            String?  // Número
-  complement        String?  // Complemento
-  neighborhood      String?  // Bairro
-  city              String?  // Cidade
-  state             String?  // Estado (UF)
-  zipCode           String?  // CEP
-  country           String   @default("Brasil") // País
-  
+  addressType  String? // RESIDENCIAL, COMERCIAL
+  street       String? // Logradouro
+  number       String? // Número
+  complement   String? // Complemento
+  neighborhood String? // Bairro
+  city         String? // Cidade
+  state        String? // Estado (UF)
+  zipCode      String? // CEP
+  country      String  @default("Brasil") // País
+
   // Endereço de Correspondência (se diferente)
-  mailingAddressSame Boolean @default(true) // Se é o mesmo do principal
-  mailingStreet     String?
-  mailingNumber     String?
-  mailingComplement String?
+  mailingAddressSame  Boolean @default(true) // Se é o mesmo do principal
+  mailingStreet       String?
+  mailingNumber       String?
+  mailingComplement   String?
   mailingNeighborhood String?
-  mailingCity       String?
-  mailingState      String?
-  mailingZipCode    String?
-  mailingCountry    String?
-  
+  mailingCity         String?
+  mailingState        String?
+  mailingZipCode      String?
+  mailingCountry      String?
+
   // Dados Bancários
-  bankName          String?
-  bankCode          String?
-  agencyNumber      String?
-  agencyDigit       String?
-  accountNumber     String?
-  accountDigit      String?
-  accountType       String?  // CORRENTE, POUPANCA, SALARIO
-  pixKeyType        String?  // CPF, CNPJ, EMAIL, PHONE, RANDOM
-  pixKey            String?
-  
+  bankName      String?
+  bankCode      String?
+  agencyNumber  String?
+  agencyDigit   String?
+  accountNumber String?
+  accountDigit  String?
+  accountType   String? // CORRENTE, POUPANCA, SALARIO
+  pixKeyType    String? // CPF, CNPJ, EMAIL, PHONE, RANDOM
+  pixKey        String?
+
   // Informações Financeiras
-  monthlyIncome     Float?   // Renda mensal (PF)
-  patrimony         Float?   // Patrimônio total
-  investorProfile   String?  // CONSERVADOR, MODERADO, ARROJADO
-  investmentGoal    String?  // Objetivo do investimento
-  
+  monthlyIncome   Float? // Renda mensal (PF)
+  patrimony       Float? // Patrimônio total
+  investorProfile String? // CONSERVADOR, MODERADO, ARROJADO
+  investmentGoal  String? // Objetivo do investimento
+
   // Documentos
-  identityDocUrl    String?  // URL do RG/CNH
-  cpfDocUrl         String?  // URL do CPF
-  addressProofUrl   String?  // Comprovante de residência
-  incomeProofUrl    String?  // Comprovante de renda
-  socialContractUrl String?  // Contrato social (PJ)
-  cnpjDocUrl        String?  // Cartão CNPJ
+  identityDocUrl    String? // URL do RG/CNH
+  cpfDocUrl         String? // URL do CPF
+  addressProofUrl   String? // Comprovante de residência
+  incomeProofUrl    String? // Comprovante de renda
+  socialContractUrl String? // Contrato social (PJ)
+  cnpjDocUrl        String? // Cartão CNPJ
   attachments       String[] // Outros documentos
-  
+
   // Informações Adicionais
-  investorCode      String?  // Código interno do investidor
-  category          String?  // Categoria: QUALIFICADO, PROFISSIONAL, etc
-  isAccreditedInvestor Boolean @default(false) // Investidor qualificado
-  termsAcceptedAt   DateTime? // Data de aceite dos termos
+  investorCode            String? // Código interno do investidor
+  category                String? // Categoria: QUALIFICADO, PROFISSIONAL, etc
+  isAccreditedInvestor    Boolean   @default(false) // Investidor qualificado
+  termsAcceptedAt         DateTime? // Data de aceite dos termos
   privacyPolicyAcceptedAt DateTime? // Data de aceite da política de privacidade
-  
+
   // Status e Observações
-  active            Boolean  @default(true)
-  status            String   @default("ATIVO") // ATIVO, INATIVO, SUSPENSO, BLOQUEADO
-  statusReason      String?  // Motivo do status
-  notes             String?  // Observações gerais
-  internalNotes     String?  // Notas internas (não visíveis para o investidor)
-  
+  active        Boolean @default(true)
+  status        String  @default("ATIVO") // ATIVO, INATIVO, SUSPENSO, BLOQUEADO
+  statusReason  String? // Motivo do status
+  notes         String? // Observações gerais
+  internalNotes String? // Notas internas (não visíveis para o investidor)
+
   // Datas
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  lastContactDate   DateTime? // Data do último contato
-  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  lastContactDate DateTime? // Data do último contato
+
   // Relacionamentos
-  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  investments       Investment[]
-  distributions     Distribution[]
+  company              Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  investments          Investment[]
+  distributions        Distribution[]
   distributionPolicies DistributionPolicy[]
-  
+
   @@index([companyId])
   @@index([cpf])
   @@index([cnpj])
@@ -2114,41 +2120,41 @@ model Investor {
 
 // Projetos SCP
 model ScpProject {
-  id                String   @id @default(uuid())
-  companyId         String
-  
+  id        String @id @default(uuid())
+  companyId String
+
   // Informações do projeto
-  name              String
-  description       String?
-  code              String   // Código único do projeto
-  
+  name        String
+  description String?
+  code        String // Código único do projeto
+
   // Valores
-  totalValue        Float    // Valor total do projeto
-  investedValue     Float    @default(0) // Valor já investido
-  distributedValue  Float    @default(0) // Valor já distribuído
-  
+  totalValue       Float // Valor total do projeto
+  investedValue    Float @default(0) // Valor já investido
+  distributedValue Float @default(0) // Valor já distribuído
+
   // Datas
-  startDate         DateTime
-  endDate           DateTime?
-  
+  startDate DateTime
+  endDate   DateTime?
+
   // Status
-  status            String   @default("ATIVO") // ATIVO, CONCLUIDO, CANCELADO, SUSPENSO
-  active            Boolean  @default(true)
-  
+  status String  @default("ATIVO") // ATIVO, CONCLUIDO, CANCELADO, SUSPENSO
+  active Boolean @default(true)
+
   // Informações adicionais
-  notes             String?
-  attachments       String[] // URLs de documentos
-  
+  notes       String?
+  attachments String[] // URLs de documentos
+
   // Datas de controle
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relacionamentos
-  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  investments       Investment[]
+  company              Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  investments          Investment[]
   distributionPolicies DistributionPolicy[]
-  distributions     Distribution[]
-  
+  distributions        Distribution[]
+
   @@unique([companyId, code])
   @@index([companyId])
   @@index([status])
@@ -2158,44 +2164,44 @@ model ScpProject {
 
 // Aportes/Investimentos
 model Investment {
-  id                String   @id @default(uuid())
-  companyId         String
-  projectId         String
-  investorId        String
-  
+  id         String @id @default(uuid())
+  companyId  String
+  projectId  String
+  investorId String
+
   // Dados do aporte
-  amount            Float    // Valor do aporte
-  investmentDate    DateTime // Data do aporte
-  
+  amount         Float // Valor do aporte
+  investmentDate DateTime // Data do aporte
+
   // Referências
-  referenceNumber   String?  // Número de referência/recibo
-  documentNumber    String?  // Número do documento
-  
+  referenceNumber String? // Número de referência/recibo
+  documentNumber  String? // Número do documento
+
   // Forma de pagamento
-  paymentMethod     String?  // DINHEIRO, TRANSFERENCIA, PIX, TED, DOC, BOLETO
-  
+  paymentMethod String? // DINHEIRO, TRANSFERENCIA, PIX, TED, DOC, BOLETO
+
   // Conta bancária (se vinculado ao financeiro)
-  bankAccountId     String?
+  bankAccountId          String?
   financialTransactionId String? @unique
-  
+
   // Status
-  status            String   @default("CONFIRMADO") // PENDENTE, CONFIRMADO, CANCELADO
-  
+  status String @default("CONFIRMADO") // PENDENTE, CONFIRMADO, CANCELADO
+
   // Observações
-  notes             String?
-  attachments       String[] // Comprovantes
-  
+  notes       String?
+  attachments String[] // Comprovantes
+
   // Datas de controle
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relacionamentos
-  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  project           ScpProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  investor          Investor @relation(fields: [investorId], references: [id], onDelete: Cascade)
-  bankAccount       BankAccount? @relation(fields: [bankAccountId], references: [id])
+  company              Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  project              ScpProject            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  investor             Investor              @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  bankAccount          BankAccount?          @relation(fields: [bankAccountId], references: [id])
   financialTransaction FinancialTransaction? @relation(fields: [financialTransactionId], references: [id])
-  
+
   @@index([companyId])
   @@index([projectId])
   @@index([investorId])
@@ -2206,36 +2212,36 @@ model Investment {
 
 // Políticas de Distribuição
 model DistributionPolicy {
-  id                String   @id @default(uuid())
-  companyId         String
-  projectId         String
-  investorId        String
-  
+  id         String @id @default(uuid())
+  companyId  String
+  projectId  String
+  investorId String
+
   // Percentual de participação
-  percentage        Float    // Percentual de 0 a 100
-  
+  percentage Float // Percentual de 0 a 100
+
   // Tipo de política
-  type              String   @default("PROPORCIONAL") // PROPORCIONAL, FIXO, PERSONALIZADO
-  
+  type String @default("PROPORCIONAL") // PROPORCIONAL, FIXO, PERSONALIZADO
+
   // Status
-  active            Boolean  @default(true)
-  
+  active Boolean @default(true)
+
   // Datas de vigência
-  startDate         DateTime
-  endDate           DateTime?
-  
+  startDate DateTime
+  endDate   DateTime?
+
   // Observações
-  notes             String?
-  
+  notes String?
+
   // Datas de controle
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relacionamentos
-  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  project           ScpProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  investor          Investor @relation(fields: [investorId], references: [id])
-  
+  company  Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  project  ScpProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  investor Investor   @relation(fields: [investorId], references: [id])
+
   @@index([companyId])
   @@index([projectId])
   @@index([investorId])
@@ -2245,53 +2251,53 @@ model DistributionPolicy {
 
 // Distribuições
 model Distribution {
-  id                String   @id @default(uuid())
-  companyId         String
-  projectId         String
-  investorId        String
-  
+  id         String @id @default(uuid())
+  companyId  String
+  projectId  String
+  investorId String
+
   // Dados da distribuição
-  amount            Float    // Valor a distribuir
-  percentage        Float    // Percentual aplicado
-  baseValue         Float    // Valor base do cálculo
-  
+  amount     Float // Valor a distribuir
+  percentage Float // Percentual aplicado
+  baseValue  Float // Valor base do cálculo
+
   // Referências
-  referenceNumber   String?  // Número de referência
-  distributionDate  DateTime // Data da distribuição
-  competenceDate    DateTime // Data de competência (período)
-  
+  referenceNumber  String? // Número de referência
+  distributionDate DateTime // Data da distribuição
+  competenceDate   DateTime // Data de competência (período)
+
   // Pagamento
-  paymentMethod     String?  // DINHEIRO, TRANSFERENCIA, PIX, TED, DOC
-  paymentDate       DateTime? // Data do pagamento efetivo
-  
+  paymentMethod String? // DINHEIRO, TRANSFERENCIA, PIX, TED, DOC
+  paymentDate   DateTime? // Data do pagamento efetivo
+
   // Conta bancária (se vinculado ao financeiro)
-  bankAccountId     String?
+  bankAccountId          String?
   financialTransactionId String? @unique
-  
+
   // Status
-  status            String   @default("PENDENTE") // PENDENTE, PAGO, CANCELADO
-  
+  status String @default("PENDENTE") // PENDENTE, PAGO, CANCELADO
+
   // Impostos e deduções
-  irrf              Float    @default(0) // Imposto de Renda Retido na Fonte
-  otherDeductions   Float    @default(0) // Outras deduções
-  netAmount         Float    // Valor líquido (amount - irrf - otherDeductions)
-  
+  irrf            Float @default(0) // Imposto de Renda Retido na Fonte
+  otherDeductions Float @default(0) // Outras deduções
+  netAmount       Float // Valor líquido (amount - irrf - otherDeductions)
+
   // Observações
-  notes             String?
-  attachments       String[] // Comprovantes
-  
+  notes       String?
+  attachments String[] // Comprovantes
+
   // Datas de controle
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  paidAt            DateTime?
-  
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  paidAt    DateTime?
+
   // Relacionamentos
-  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  project           ScpProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  investor          Investor @relation(fields: [investorId], references: [id], onDelete: Cascade)
-  bankAccount       BankAccount? @relation(fields: [bankAccountId], references: [id])
+  company              Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  project              ScpProject            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  investor             Investor              @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  bankAccount          BankAccount?          @relation(fields: [bankAccountId], references: [id])
   financialTransaction FinancialTransaction? @relation(fields: [financialTransactionId], references: [id])
-  
+
   @@index([companyId])
   @@index([projectId])
   @@index([investorId])
@@ -2301,3 +2307,224 @@ model Distribution {
   @@map("distributions")
 }
 
+// ============================================
+// MÓDULO DE VENDAS
+// ============================================
+
+// Métodos de Pagamento
+model PaymentMethod {
+  id        String            @id @default(uuid())
+  companyId String
+  name      String // Ex: "Cartão de Crédito", "PIX", "Boleto"
+  code      String // Ex: "CREDIT_CARD", "PIX", "BOLETO"
+  type      PaymentMethodType // CASH, CARD, TRANSFER, etc
+  active    Boolean           @default(true)
+
+  // Configurações de parcelamento
+  allowInstallments Boolean @default(false)
+  maxInstallments   Int     @default(1)
+  installmentFee    Float   @default(0) // Taxa por parcela (%)
+
+  // Análise de crédito
+  requiresCreditAnalysis Boolean @default(false)
+  minCreditScore         Float? // Score mínimo para aprovação
+
+  // Configurações adicionais
+  daysToReceive  Int   @default(0) // Dias para receber (D+X)
+  transactionFee Float @default(0) // Taxa da transação (%)
+
+  // Datas
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  company              Company                      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  sales                Sale[]
+  installmentTemplates PaymentInstallmentTemplate[] // Templates de parcelas customizadas
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@map("payment_methods")
+}
+
+// Templates de Parcelamento Customizado
+// Ex: Boleto 7/21 = primeira parcela em 7 dias (50%), segunda em 21 dias (50%)
+model PaymentInstallmentTemplate {
+  id                String @id @default(uuid())
+  paymentMethodId   String
+  installmentNumber Int // Número da parcela (1, 2, 3...)
+  daysToPayment     Int // Dias após a venda para vencimento
+  percentageOfTotal Float // Porcentagem do total (ex: 50 para 50%)
+  fixedAmount       Float? // Ou valor fixo (opcional)
+
+  // Relacionamento
+  paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id], onDelete: Cascade)
+
+  // Controle
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([paymentMethodId, installmentNumber])
+  @@index([paymentMethodId])
+  @@map("payment_installment_templates")
+}
+
+enum PaymentMethodType {
+  CASH // Dinheiro
+  CREDIT_CARD // Cartão de Crédito
+  DEBIT_CARD // Cartão de Débito
+  PIX // PIX
+  BANK_SLIP // Boleto
+  BANK_TRANSFER // Transferência
+  CHECK // Cheque
+  OTHER // Outro
+}
+
+// Orçamento/Venda
+model Sale {
+  id         String @id @default(uuid())
+  companyId  String
+  customerId String
+  code       String // Código único da venda/orçamento
+
+  // Status
+  status SaleStatus @default(QUOTE)
+
+  // Valores
+  subtotal         Float // Soma dos produtos
+  discountAmount   Float   @default(0)
+  discountPercent  Float   @default(0)
+  shippingCost     Float   @default(0)
+  otherCharges     Float   @default(0)
+  otherChargesDesc String? // Descrição dos encargos
+  totalAmount      Float // Total final
+
+  // Método de pagamento
+  paymentMethodId  String?
+  installments     Int     @default(1)
+  installmentValue Float?
+
+  // Análise de crédito
+  creditAnalysisRequired Boolean               @default(false)
+  creditAnalysisStatus   CreditAnalysisStatus?
+  creditAnalysisDate     DateTime?
+  creditAnalysisNotes    String?
+  creditScore            Float?
+
+  // Endereço de entrega
+  useCustomerAddress Boolean @default(true)
+  deliveryAddress    Json? // { street, number, complement, neighborhood, city, state, zipCode }
+
+  // Observações
+  notes         String?
+  internalNotes String? // Notas internas (não visível para cliente)
+
+  // Datas importantes
+  quoteDate          DateTime  @default(now())
+  validUntil         DateTime? // Validade do orçamento
+  confirmedAt        DateTime? // Data de confirmação da venda
+  canceledAt         DateTime?
+  cancellationReason String?
+
+  // Datas de controle
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  company            Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer           Customer          @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  paymentMethod      PaymentMethod?    @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  items              SaleItem[]
+  installmentDetails SaleInstallment[] // Detalhes das parcelas (datas e valores)
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([customerId])
+  @@index([status])
+  @@index([quoteDate])
+  @@map("sales")
+}
+
+enum SaleStatus {
+  QUOTE // Orçamento
+  PENDING_APPROVAL // Aguardando aprovação
+  APPROVED // Aprovado
+  CONFIRMED // Venda confirmada
+  IN_PRODUCTION // Em produção/separação
+  READY_TO_SHIP // Pronto para envio
+  SHIPPED // Enviado
+  DELIVERED // Entregue
+  COMPLETED // Concluída
+  CANCELED // Cancelada
+  REJECTED // Rejeitada
+}
+
+enum CreditAnalysisStatus {
+  PENDING // Pendente
+  APPROVED // Aprovada
+  REJECTED // Rejeitada
+  MANUAL // Análise manual necessária
+}
+
+// Itens da Venda
+model SaleItem {
+  id              String  @id @default(uuid())
+  saleId          String
+  productId       String
+  stockLocationId String? // Local do estoque de onde será retirado
+
+  // Dados do produto (snapshot)
+  productCode String
+  productName String
+  productUnit String?
+
+  // Quantidades e valores
+  quantity  Float
+  unitPrice Float
+  discount  Float @default(0)
+  subtotal  Float // quantity * unitPrice
+  total     Float // subtotal - discount
+
+  // Observações
+  notes String?
+
+  // Controle
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  sale          Sale           @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product       Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  stockLocation StockLocation? @relation(fields: [stockLocationId], references: [id], onDelete: SetNull)
+
+  @@index([saleId])
+  @@index([productId])
+  @@map("sale_items")
+}
+
+// Parcelas da Venda
+model SaleInstallment {
+  id     String @id @default(uuid())
+  saleId String
+
+  installmentNumber Int // Número da parcela (1, 2, 3...)
+  amount            Float // Valor da parcela
+  dueDate           DateTime // Data de vencimento
+  paidDate          DateTime? // Data de pagamento (se paga)
+  status            String    @default("PENDING") // PENDING, PAID, OVERDUE, CANCELED
+
+  // Observações
+  notes String?
+
+  // Controle
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamento
+  sale Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@index([saleId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("sale_installments")
+}

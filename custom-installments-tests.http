@@ -1,0 +1,258 @@
+# ============================================
+# SALES MODULE - TESTES DE PARCELAS CUSTOMIZADAS
+# ============================================
+# Teste dos novos recursos de parcelamento personalizado
+
+@baseUrl = http://localhost:3000
+@token = SEU_TOKEN_JWT_AQUI
+@companyId = SEU_COMPANY_ID_AQUI
+
+# ============================================
+# MÉTODOS DE PAGAMENTO COM PARCELAS CUSTOMIZADAS
+# ============================================
+
+### 1. Criar Método Boleto 7/21 (50% em 7 dias, 50% em 21 dias)
+POST {{baseUrl}}/sales/payment-methods
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Boleto 7/21",
+  "code": "BOLETO_7_21",
+  "type": "BANK_SLIP",
+  "allowInstallments": true,
+  "maxInstallments": 2,
+  "installmentTemplates": [
+    {
+      "installmentNumber": 1,
+      "daysToPayment": 7,
+      "percentageOfTotal": 50
+    },
+    {
+      "installmentNumber": 2,
+      "daysToPayment": 21,
+      "percentageOfTotal": 50
+    }
+  ]
+}
+
+### 2. Criar Método Boleto 10/20/30 (3 parcelas iguais)
+POST {{baseUrl}}/sales/payment-methods
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Boleto 10/20/30",
+  "code": "BOLETO_10_20_30",
+  "type": "BANK_SLIP",
+  "allowInstallments": true,
+  "maxInstallments": 3,
+  "installmentTemplates": [
+    {
+      "installmentNumber": 1,
+      "daysToPayment": 10,
+      "percentageOfTotal": 33.33
+    },
+    {
+      "installmentNumber": 2,
+      "daysToPayment": 20,
+      "percentageOfTotal": 33.33
+    },
+    {
+      "installmentNumber": 3,
+      "daysToPayment": 30,
+      "percentageOfTotal": 33.34
+    }
+  ]
+}
+
+### 3. Criar Método com Entrada + 2 Parcelas (30% entrada, 35% + 35%)
+POST {{baseUrl}}/sales/payment-methods
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Entrada + 2x",
+  "code": "ENTRADA_2X",
+  "type": "BANK_SLIP",
+  "allowInstallments": true,
+  "maxInstallments": 3,
+  "installmentTemplates": [
+    {
+      "installmentNumber": 1,
+      "daysToPayment": 0,
+      "percentageOfTotal": 30
+    },
+    {
+      "installmentNumber": 2,
+      "daysToPayment": 30,
+      "percentageOfTotal": 35
+    },
+    {
+      "installmentNumber": 3,
+      "daysToPayment": 60,
+      "percentageOfTotal": 35
+    }
+  ]
+}
+
+### 4. Criar Método com Valores Fixos por Parcela
+POST {{baseUrl}}/sales/payment-methods
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Parcelas Fixas",
+  "code": "PARCELAS_FIXAS",
+  "type": "BANK_SLIP",
+  "allowInstallments": true,
+  "maxInstallments": 2,
+  "installmentTemplates": [
+    {
+      "installmentNumber": 1,
+      "daysToPayment": 15,
+      "fixedAmount": 500.00
+    },
+    {
+      "installmentNumber": 2,
+      "daysToPayment": 45,
+      "fixedAmount": 800.00
+    }
+  ]
+}
+
+# ============================================
+# GERENCIAR TEMPLATES DE PARCELAS
+# ============================================
+
+### 5. Listar templates de um método de pagamento
+GET {{baseUrl}}/sales/payment-methods/ID_DO_METODO/installment-templates
+Authorization: Bearer {{token}}
+
+### 6. Adicionar novo template a um método existente
+POST {{baseUrl}}/sales/payment-methods/ID_DO_METODO/installment-templates
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "installmentNumber": 4,
+  "daysToPayment": 40,
+  "percentageOfTotal": 25
+}
+
+### 7. Atualizar um template específico
+PATCH {{baseUrl}}/sales/payment-methods/ID_DO_METODO/installment-templates/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "daysToPayment": 15,
+  "percentageOfTotal": 40
+}
+
+### 8. Substituir todos os templates de uma vez
+PUT {{baseUrl}}/sales/payment-methods/ID_DO_METODO/installment-templates
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "templates": [
+    {
+      "installmentNumber": 1,
+      "daysToPayment": 5,
+      "percentageOfTotal": 25
+    },
+    {
+      "installmentNumber": 2,
+      "daysToPayment": 15,
+      "percentageOfTotal": 25
+    },
+    {
+      "installmentNumber": 3,
+      "daysToPayment": 25,
+      "percentageOfTotal": 25
+    },
+    {
+      "installmentNumber": 4,
+      "daysToPayment": 35,
+      "percentageOfTotal": 25
+    }
+  ]
+}
+
+### 9. Excluir um template específico
+DELETE {{baseUrl}}/sales/payment-methods/ID_DO_METODO/installment-templates/3
+Authorization: Bearer {{token}}
+
+# ============================================
+# CRIAR VENDAS COM PARCELAS CUSTOMIZADAS
+# ============================================
+
+### 10. Criar Venda com Boleto 7/21
+# As parcelas serão calculadas automaticamente baseadas no template
+POST {{baseUrl}}/sales
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "customerId": "ID_DO_CLIENTE",
+  "status": "QUOTE",
+  "paymentMethodId": "ID_DO_BOLETO_7_21",
+  "items": [
+    {
+      "productId": "ID_DO_PRODUTO",
+      "quantity": 2,
+      "unitPrice": 1000.00
+    }
+  ],
+  "shippingCost": 50.00
+}
+
+### 11. Buscar venda com detalhes das parcelas
+GET {{baseUrl}}/sales/ID_DA_VENDA
+Authorization: Bearer {{token}}
+
+# ============================================
+# CENÁRIOS DE TESTE
+# ============================================
+
+### Cenário 1: Boleto 7/21 (Venda de R$ 1.000)
+# 1. Criar método Boleto 7/21 (50% em 7 dias, 50% em 21 dias)
+# 2. Criar venda de R$ 1.000
+# 3. Verificar que foram criadas 2 parcelas:
+#    - Parcela 1: R$ 500,00 vencimento em 7 dias
+#    - Parcela 2: R$ 500,00 vencimento em 21 dias
+
+### Cenário 2: Boleto 10/20/30 (Venda de R$ 3.000)
+# 1. Criar método Boleto 10/20/30 (3 parcelas iguais)
+# 2. Criar venda de R$ 3.000
+# 3. Verificar que foram criadas 3 parcelas:
+#    - Parcela 1: R$ 999,90 vencimento em 10 dias
+#    - Parcela 2: R$ 999,90 vencimento em 20 dias
+#    - Parcela 3: R$ 1.000,20 vencimento em 30 dias
+
+### Cenário 3: Entrada + 2x (Venda de R$ 5.000)
+# 1. Criar método Entrada + 2x (30% entrada, 35% + 35%)
+# 2. Criar venda de R$ 5.000
+# 3. Verificar que foram criadas 3 parcelas:
+#    - Parcela 1: R$ 1.500,00 vencimento imediato (0 dias)
+#    - Parcela 2: R$ 1.750,00 vencimento em 30 dias
+#    - Parcela 3: R$ 1.750,00 vencimento em 60 dias
+
+### Cenário 4: Parcelas Fixas
+# 1. Criar método com valores fixos (R$ 500 + R$ 800)
+# 2. Criar venda de qualquer valor
+# 3. Verificar que foram criadas 2 parcelas:
+#    - Parcela 1: R$ 500,00 (independente do valor total)
+#    - Parcela 2: R$ 800,00 (independente do valor total)
+
+# ============================================
+# VALIDAÇÕES IMPORTANTES
+# ============================================
+# - A soma das porcentagens deve ser exatamente 100%
+# - Números de parcelas não podem ser duplicados
+# - Templates com percentageOfTotal calculam baseado no total da venda
+# - Templates com fixedAmount usam o valor fixo independente do total
+# - Se uma venda usar método com templates, as parcelas são criadas automaticamente
+# - As datas de vencimento são calculadas a partir da data da venda
+# - Parcelas criadas automaticamente ficam com status PENDING

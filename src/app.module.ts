@@ -22,6 +22,7 @@ import { DepartmentsModule } from './departments/departments.module';
 import { LegalModule } from './legal/legal.module';
 import { FinancialModule } from './financial/financial.module';
 import { ScpModule } from './scp/scp.module';
+import { SalesModule } from './sales/sales.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { ScpModule } from './scp/scp.module';
     LegalModule,
     FinancialModule,
     ScpModule,
+    SalesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

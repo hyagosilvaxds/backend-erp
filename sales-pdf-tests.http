@@ -1,0 +1,69 @@
+# API de Vendas - Export PDF
+# Endpoints para exportar orçamentos e vendas em PDF
+
+@baseUrl = http://localhost:3000
+@token = seu_token_jwt_aqui
+@saleId = id_da_venda_aqui
+
+###
+# 1. Download PDF de Orçamento (QUOTE)
+GET {{baseUrl}}/sales/{{saleId}}/pdf
+Authorization: Bearer {{token}}
+
+###
+# 2. Download PDF de Venda Confirmada
+GET {{baseUrl}}/sales/{{saleId}}/pdf
+Authorization: Bearer {{token}}
+
+###
+# Exemplo completo: Criar orçamento e baixar PDF
+
+# 2.1. Criar orçamento
+POST {{baseUrl}}/sales
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "customerId": "cliente-uuid-aqui",
+  "paymentMethodId": "metodo-pagamento-uuid-aqui",
+  "installments": 1,
+  "discountAmount": 50.00,
+  "shippingCost": 25.00,
+  "notes": "Orçamento para teste de PDF",
+  "items": [
+    {
+      "productId": "produto-uuid-aqui",
+      "quantity": 2,
+      "unitPrice": 150.00,
+      "discount": 0
+    }
+  ]
+}
+
+# Copie o ID retornado e use no próximo request
+
+###
+# 2.2. Download do PDF do orçamento criado
+GET {{baseUrl}}/sales/ID_COPIADO_ACIMA/pdf
+Authorization: Bearer {{token}}
+
+###
+# Exemplo: Confirmar venda e baixar PDF
+
+# 3.1. Confirmar/Aprovar venda
+POST {{baseUrl}}/sales/{{saleId}}/confirm
+Authorization: Bearer {{token}}
+
+###
+# 3.2. Download do PDF da venda confirmada
+GET {{baseUrl}}/sales/{{saleId}}/pdf
+Authorization: Bearer {{token}}
+
+###
+# Notas:
+# - O PDF será gerado com a logo da empresa (se configurada)
+# - Orçamentos terão marca d'água "ORÇAMENTO"
+# - O nome do arquivo será: orcamento-CODIGO.pdf ou venda-CODIGO.pdf
+# - O PDF inclui todos os dados: cliente, produtos, valores, observações
+# - Status de análise de crédito é incluído quando aplicável
+# - Motivo de cancelamento é incluído se a venda foi cancelada
