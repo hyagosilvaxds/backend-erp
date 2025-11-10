@@ -10,6 +10,7 @@ import { DistributionPoliciesService } from './services/distribution-policies.se
 import { DistributionsService } from './services/distributions.service';
 import { ProjectDocumentsService } from './services/project-documents.service';
 import { InvestmentDocumentsService } from './services/investment-documents.service';
+import { ReportsService } from './services/reports.service';
 
 // Controllers
 import { InvestorsController } from './controllers/investors.controller';
@@ -19,6 +20,7 @@ import { DistributionPoliciesController } from './controllers/distribution-polic
 import { DistributionsController } from './controllers/distributions.controller';
 import { ProjectDocumentsController } from './controllers/project-documents.controller';
 import { InvestmentDocumentsController } from './controllers/investment-documents.controller';
+import { ReportsController } from './controllers/reports.controller';
 
 @Module({
   imports: [PrismaModule, DocumentsModule],
@@ -30,6 +32,7 @@ import { InvestmentDocumentsController } from './controllers/investment-document
     DistributionsController,
     ProjectDocumentsController,
     InvestmentDocumentsController,
+    ReportsController,
   ],
   providers: [
     InvestorsService,
@@ -39,6 +42,7 @@ import { InvestmentDocumentsController } from './controllers/investment-document
     DistributionsService,
     ProjectDocumentsService,
     InvestmentDocumentsService,
+    ReportsService,
   ],
   exports: [
     InvestorsService,
@@ -48,6 +52,7 @@ import { InvestmentDocumentsController } from './controllers/investment-document
     DistributionsService,
     ProjectDocumentsService,
     InvestmentDocumentsService,
+    ReportsService,
   ],
 })
 export class ScpModule {}

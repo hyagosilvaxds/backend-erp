@@ -1,0 +1,125 @@
+### Exportar Relatório de Aportes (Todos)
+GET http://localhost:3000/scp/reports/investments/export
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+###
+
+### Exportar Relatório de Aportes com Filtros
+GET http://localhost:3000/scp/reports/investments/export?projectId=PROJECT_ID&startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+###
+
+### Exportar Relatório de Aportes por Investidor
+GET http://localhost:3000/scp/reports/investments/by-investor/export
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+###
+
+### Exportar Relatório de Aportes por Investidor com Filtros
+GET http://localhost:3000/scp/reports/investments/by-investor/export?investorId=INVESTOR_ID&status=CONFIRMADO
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+###
+
+### Exportar Relatório de Aportes por Projeto
+GET http://localhost:3000/scp/reports/investments/by-project/export
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+###
+
+### Exportar Relatório de Aportes por Projeto com Filtros
+GET http://localhost:3000/scp/reports/investments/by-project/export?projectId=PROJECT_ID&startDate=2024-01-01
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+###
+
+### Exportar Relatório de Distribuições
+GET http://localhost:3000/scp/reports/distributions/export
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+###
+
+### Exportar Relatório de Distribuições com Filtros
+GET http://localhost:3000/scp/reports/distributions/export?projectId=PROJECT_ID&status=PAGO&startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+###
+
+### Exportar Relatório de Distribuições por Investidor
+GET http://localhost:3000/scp/reports/distributions/export?investorId=INVESTOR_ID&status=PAGO
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+###
+
+### Exportar Relatório de ROI (Retorno sobre Investimento)
+GET http://localhost:3000/scp/reports/roi/export
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+###
+
+### Exportar Relatório de ROI com Filtros
+GET http://localhost:3000/scp/reports/roi/export?projectId=PROJECT_ID&startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+###
+
+### Exportar Relatório de ROI por Investidor
+GET http://localhost:3000/scp/reports/roi/export?investorId=INVESTOR_ID
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+###
+
+### Exportar Resumo de Investidores
+GET http://localhost:3000/scp/reports/investors/export
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+###
+
+### Exportar Resumo de Investidores com Filtros
+GET http://localhost:3000/scp/reports/investors/export?type=PESSOA_FISICA&status=ATIVO
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+###
+
+### Exportar Resumo de Investidores por Categoria
+GET http://localhost:3000/scp/reports/investors/export?category=VIP
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+###
+
+### Exportar Resumo de Projetos
+GET http://localhost:3000/scp/reports/projects/export
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+###
+
+### Exportar Resumo de Projetos com Filtros
+GET http://localhost:3000/scp/reports/projects/export?status=ATIVO&startDate=2024-01-01
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+###
+
+### Exportar Resumo de Projetos Concluídos
+GET http://localhost:3000/scp/reports/projects/export?status=CONCLUIDO
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+###

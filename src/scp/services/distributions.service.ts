@@ -469,7 +469,15 @@ export class DistributionsService {
     baseValue: number,
     competenceDate: string,
     distributionDate: string,
+    irrfOverride?: number,
+    otherDeductionsOverride?: number,
   ) {
+    // Convert dates to Date objects
+    const parsedDistributionDate = new Date(distributionDate);
+    const parsedCompetenceDate = competenceDate.match(/^\d{4}-\d{2}$/)
+      ? new Date(`${competenceDate}-01T00:00:00.000Z`)
+      : new Date(competenceDate);
+
     // Verify project exists
     const project = await this.prisma.scpProject.findFirst({
       where: {
@@ -510,6 +518,13 @@ export class DistributionsService {
     const distributions = await Promise.all(
       policies.map((policy) => {
         const amount = (baseValue * policy.percentage) / 100;
+        
+        // Calculate IRRF and deductions
+        // If user provided override values, use them; otherwise default to 0
+        const irrf = irrfOverride !== undefined ? (amount * irrfOverride) / 100 : 0;
+        const otherDeductions = otherDeductionsOverride !== undefined ? otherDeductionsOverride : 0;
+        const netAmount = amount - irrf - otherDeductions;
+        
         return this.prisma.distribution.create({
           data: {
             companyId,
@@ -518,12 +533,12 @@ export class DistributionsService {
             amount,
             percentage: policy.percentage,
             baseValue,
-            distributionDate,
-            competenceDate,
+            distributionDate: parsedDistributionDate,
+            competenceDate: parsedCompetenceDate,
             status: 'PENDENTE',
-            irrf: 0,
-            otherDeductions: 0,
-            netAmount: amount,
+            irrf,
+            otherDeductions,
+            netAmount,
           },
           include: {
             project: true,

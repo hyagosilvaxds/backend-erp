@@ -154,3 +154,154 @@ x-company-id: {{companyId}}
 }
 
 ###
+
+### ============================================
+### DISTRIBUIÇÃO AUTOMÁTICA (COM ALÍQUOTAS)
+### ============================================
+
+### 1. Distribuição Automática SEM Deduções (Básico)
+POST http://localhost:3000/scp/distributions/bulk-create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "814d8205-e6e5-4d15-8f71-bfc2db4019c5",
+  "baseValue": 10000,
+  "competenceDate": "2025-11",
+  "distributionDate": "2025-11-10"
+}
+
+###
+
+### 2. Distribuição Automática COM IRRF de 15%
+POST http://localhost:3000/scp/distributions/bulk-create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "814d8205-e6e5-4d15-8f71-bfc2db4019c5",
+  "baseValue": 10000,
+  "competenceDate": "2025-11",
+  "distributionDate": "2025-11-10",
+  "irrf": 15
+}
+
+###
+
+### 3. Distribuição Automática COM IRRF 22.5% (Investimentos)
+POST http://localhost:3000/scp/distributions/bulk-create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "814d8205-e6e5-4d15-8f71-bfc2db4019c5",
+  "baseValue": 50000,
+  "competenceDate": "2025-11",
+  "distributionDate": "2025-11-10",
+  "irrf": 22.5
+}
+
+###
+
+### 4. Distribuição Automática COM IRRF 27.5% (Rendimento Trabalho)
+POST http://localhost:3000/scp/distributions/bulk-create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "814d8205-e6e5-4d15-8f71-bfc2db4019c5",
+  "baseValue": 100000,
+  "competenceDate": "2025-11",
+  "distributionDate": "2025-11-10",
+  "irrf": 27.5
+}
+
+###
+
+### 5. Distribuição Automática COM Outras Deduções (R$ 50 fixo)
+POST http://localhost:3000/scp/distributions/bulk-create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "814d8205-e6e5-4d15-8f71-bfc2db4019c5",
+  "baseValue": 10000,
+  "competenceDate": "2025-11",
+  "distributionDate": "2025-11-10",
+  "otherDeductions": 50
+}
+
+###
+
+### 6. Distribuição Automática COM IRRF 15% + Deduções R$ 100
+POST http://localhost:3000/scp/distributions/bulk-create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "814d8205-e6e5-4d15-8f71-bfc2db4019c5",
+  "baseValue": 20000,
+  "competenceDate": "2025-11",
+  "distributionDate": "2025-11-10",
+  "irrf": 15,
+  "otherDeductions": 100
+}
+
+###
+
+### 7. Distribuição Automática - Competência Mensal (YYYY-MM)
+POST http://localhost:3000/scp/distributions/bulk-create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "814d8205-e6e5-4d15-8f71-bfc2db4019c5",
+  "baseValue": 15000,
+  "competenceDate": "2025-09",
+  "distributionDate": "2025-09-15",
+  "irrf": 15,
+  "otherDeductions": 75
+}
+
+###
+
+### 8. Distribuição Automática - Grande Valor com Taxas Administrativas
+POST http://localhost:3000/scp/distributions/bulk-create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "814d8205-e6e5-4d15-8f71-bfc2db4019c5",
+  "baseValue": 500000,
+  "competenceDate": "2025-12",
+  "distributionDate": "2025-12-31",
+  "irrf": 15,
+  "otherDeductions": 500
+}
+
+###
+
+### 9. Distribuição Automática - Sem IRRF mas com Taxa de Administração
+POST http://localhost:3000/scp/distributions/bulk-create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "814d8205-e6e5-4d15-8f71-bfc2db4019c5",
+  "baseValue": 30000,
+  "competenceDate": "2025-11",
+  "distributionDate": "2025-11-20",
+  "irrf": 0,
+  "otherDeductions": 300
+}
+
+###

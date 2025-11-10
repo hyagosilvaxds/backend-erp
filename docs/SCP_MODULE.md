@@ -3016,5 +3016,7 @@ Todos os modelos possuem índices para:
 - **[SCP_INVESTOR_EXPANSION.md](./SCP_INVESTOR_EXPANSION.md)**: Detalhes da expansão do modelo de investidor
 - **[SCP_BULK_DISTRIBUTIONS.md](./SCP_BULK_DISTRIBUTIONS.md)**: Guia completo de distribuições em lote
 - **[SCP_INVESTMENT_DOCUMENTS.md](./SCP_INVESTMENT_DOCUMENTS.md)**: Sistema de documentos para aportes
+- **[SCP_REPORTS_EXCEL.md](./SCP_REPORTS_EXCEL.md)**: Relatórios em Excel com filtros avançados
 - **[scp-api-tests.http](../scp-api-tests.http)**: Exemplos de requisições HTTP para testes
 - **[bulk-distributions-tests.http](../bulk-distributions-tests.http)**: Exemplos de distribuições em lote
+- **[scp-reports-tests.http](../scp-reports-tests.http)**: Exemplos de exportação de relatórios

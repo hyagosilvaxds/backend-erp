@@ -1,6 +1,66 @@
-# Fix: Date Transformer - Suporte para Formato YYYY-MM
+# Fix: Date Transformer - Retorna Objeto Date
 
-## Problema
+## Problema v2 (10/11/2025)
+
+Mesmo após adicionar suporte para `YYYY-MM`, o Prisma continuava retornando erro:
+
+```
+Invalid value for argument `distributionDate`: premature end of input. 
+Expected ISO-8601 DateTime.
+```
+
+**Causa**: O método `bulkCreateFromPolicies()` recebia strings de datas mas as passava **diretamente** para o Prisma sem conversão.
+
+### Erro Completo
+```typescript
+async bulkCreateFromPolicies(
+  companyId: string,
+  projectId: string,
+  baseValue: number,
+  competenceDate: string,  // ❌ String
+  distributionDate: string, // ❌ String
+) {
+  // ...
+  return this.prisma.distribution.create({
+    data: {
+      distributionDate,  // ❌ Passa string direto para Prisma
+      competenceDate,    // ❌ Passa string direto para Prisma
+    }
+  });
+}
+```
+
+**Problema**: O `@Transform` do DTO só funciona quando os dados passam pelo **ValidationPipe**. No `bulkCreateFromPolicies`, as datas vêm como parâmetros diretos da função, não de um DTO validado.
+
+### Solução v2
+
+Converter as strings para `Date` **dentro do service**:
+
+```typescript
+async bulkCreateFromPolicies(
+  companyId: string,
+  projectId: string,
+  baseValue: number,
+  competenceDate: string,
+  distributionDate: string,
+) {
+  // Convert dates to Date objects
+  const parsedDistributionDate = new Date(distributionDate);
+  const parsedCompetenceDate = competenceDate.match(/^\d{4}-\d{2}$/)
+    ? new Date(`${competenceDate}-01T00:00:00.000Z`)
+    : new Date(competenceDate);
+
+  // Use parsed dates
+  return this.prisma.distribution.create({
+    data: {
+      distributionDate: parsedDistributionDate,
+      competenceDate: parsedCompetenceDate,
+    }
+  });
+}
+```
+
+## Problema v1 (Original)
 
 Ao criar uma distribuição com `competenceDate` no formato `"2025-09"` (apenas ano-mês), o Prisma retornava erro:
 
@@ -9,49 +69,66 @@ Invalid value for argument `competenceDate`: premature end of input.
 Expected ISO-8601 DateTime.
 ```
 
-### Erro Completo
-```typescript
-PrismaClientValidationError: 
-Invalid `this.prisma.distribution.create()` invocation
-
-data: {
-  competenceDate: "2025-09",  // ❌ Formato inválido
-                  ~~~~~~~~~
-  // ... outros campos
-}
-
-Invalid value for argument `competenceDate`: premature end of input. 
-Expected ISO-8601 DateTime.
-```
-
 ## Causa Raiz
 
-O transformer `transformToISODate` não estava tratando o formato `YYYY-MM` (ano-mês), apenas:
-- ✅ `YYYY-MM-DD` → `YYYY-MM-DDT00:00:00.000Z`
-- ✅ `YYYY-MM-DDTHH:mm:ss.sssZ` → (mantém como está)
-- ❌ `YYYY-MM` → (não tratado, passava direto)
+1. **Problema v1**: Transformer não tratava formato `YYYY-MM`
+2. **Problema v2**: Transformer retornava **string** em vez de **objeto Date**
 
-## Solução
+## Solução Final
 
-Adicionada validação e transformação para formato `YYYY-MM`:
+Alterado o transformer para retornar **objeto Date** em vez de string ISO:
 
 ```typescript
-// Se está em formato YYYY-MM (apenas ano e mês), adiciona dia 01 e hora
+// Se está em formato YYYY-MM (apenas ano e mês), adiciona dia 01 e converte
 if (typeof value === 'string' && /^\d{4}-\d{2}$/.test(value)) {
-  return `${value}-01T00:00:00.000Z`;
+  return new Date(`${value}-01T00:00:00.000Z`);
 }
 ```
 
 ### Transformações Suportadas
 
-| Entrada | Saída | Uso |
-|---------|-------|-----|
-| `"2024-11-10"` | `"2024-11-10T00:00:00.000Z"` | Data completa |
-| `"2024-11"` | `"2024-11-01T00:00:00.000Z"` | Competência mensal |
-| `"2024-11-10T10:30:00.000Z"` | `"2024-11-10T10:30:00.000Z"` | ISO completo (mantém) |
-| `null` / `undefined` | `null` / `undefined` | Campos opcionais |
+| Entrada | Saída | Tipo | Uso |
+|---------|-------|------|-----|
+| `"2024-11-10"` | `Date("2024-11-10T00:00:00.000Z")` | Date object | Data completa |
+| `"2024-11"` | `Date("2024-11-01T00:00:00.000Z")` | Date object | Competência mensal |
+| `"2024-11-10T10:30:00.000Z"` | `Date(...)` | Date object | ISO completo |
+| `Date(...)` | `Date(...)` | Date object | Já é Date (mantém) |
+| `null` / `undefined` | `null` / `undefined` | - | Campos opcionais |
 
-## Arquivo Modificado
+---
+
+## ⚠️ Importante: Quando o Transformer NÃO Funciona
+
+O `@Transform` do DTO **só é aplicado** quando os dados passam pelo **ValidationPipe** do NestJS (requisições HTTP).
+
+### ✅ Funciona (HTTP Request → DTO)
+```typescript
+// Controller
+@Post()
+async create(@Body() dto: CreateDistributionDto) {
+  // dto.distributionDate já é Date (transformer aplicado)
+  return this.service.create(dto);
+}
+```
+
+### ❌ NÃO Funciona (Chamada direta com parâmetros)
+```typescript
+// Service method com parâmetros diretos
+async bulkCreateFromPolicies(
+  companyId: string,
+  projectId: string,
+  distributionDate: string,  // ❌ Permanece string
+) {
+  // distributionDate é string, precisa converter manualmente
+  const parsed = new Date(distributionDate);
+}
+```
+
+**Solução**: Converter manualmente dentro do service quando os dados não vêm de um DTO validado.
+
+---
+
+## Arquivos Modificados
 
 **Caminho**: `/src/common/transformers/date.transformer.ts`
 

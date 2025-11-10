@@ -16,6 +16,7 @@ import { CreateDistributionDto } from '../dto/create-distribution.dto';
 import { UpdateDistributionDto } from '../dto/update-distribution.dto';
 import { ListDistributionsDto } from '../dto/list-distributions.dto';
 import { CreateBulkDistributionDto } from '../dto/create-bulk-distribution.dto';
+import { BulkCreateFromPoliciesDto } from '../dto/bulk-create-from-policies.dto';
 
 @Controller('scp/distributions')
 @UseGuards(JwtAuthGuard)
@@ -50,20 +51,16 @@ export class DistributionsController {
   @Post('bulk-create')
   bulkCreateFromPolicies(
     @CompanyId() companyId: string,
-    @Body()
-    body: {
-      projectId: string;
-      baseValue: number;
-      competenceDate: string;
-      distributionDate: string;
-    },
+    @Body() dto: BulkCreateFromPoliciesDto,
   ) {
     return this.distributionsService.bulkCreateFromPolicies(
       companyId,
-      body.projectId,
-      body.baseValue,
-      body.competenceDate,
-      body.distributionDate,
+      dto.projectId,
+      dto.baseValue,
+      dto.competenceDate,
+      dto.distributionDate,
+      dto.irrf,
+      dto.otherDeductions,
     );
   }
 
