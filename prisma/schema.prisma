@@ -36,6 +36,9 @@ model User {
   payrollsCreated Payroll[] @relation("PayrollCreatedBy")
   payrollsApproved Payroll[] @relation("PayrollApprovedBy")
   employeeDocumentsUploaded EmployeeDocument[] @relation("DocumentUploadedByUser")
+  
+  // Módulo Jurídico
+  legalDocumentsCreated LegalDocument[] @relation("LegalDocumentCreatedBy")
 
   @@map("users")
 }
@@ -152,6 +155,10 @@ model Company {
   inssTables InssTable[]
   fgtsTables FgtsTable[]
   irrfTables IrrfTable[]
+  
+  // Módulo Jurídico
+  legalDocumentCategories LegalDocumentCategory[]
+  legalDocuments LegalDocument[]
 
   @@map("companies")
 }
@@ -437,6 +444,9 @@ model Document {
   productPhotos ProductPhoto[]
   stockMovements ProductStockMovement[]
   stockTransfers StockTransfer[]
+  
+  // Módulo Jurídico
+  legalDocument LegalDocument?
   
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -1452,7 +1462,6 @@ model InssTable {
   company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   
   year      Int      // Ano de referência
-  month     Int      // Mês de referência
   
   // Faixas progressivas (JSON)
   // [{ minValue, maxValue, employeeRate, employerRate, deduction }]
@@ -1462,32 +1471,31 @@ model InssTable {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
-  @@unique([companyId, year, month, active])
+  @@unique([companyId, year, active])
   @@index([companyId])
-  @@index([year, month])
+  @@index([year])
   @@map("inss_tables")
 }
 
-// Tabela FGTS - Alíquotas por categoria
+// Tabela FGTS - Alíquotas por cargo
 model FgtsTable {
   id        String   @id @default(uuid())
   companyId String
   company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   
   year      Int      // Ano de referência
-  month     Int      // Mês de referência
   
-  // Alíquotas por categoria (JSON)
-  // [{ category, monthlyRate, terminationRate, description }]
+  // Alíquotas por cargo (JSON)
+  // [{ positionId, positionName, monthlyRate, terminationRate }]
   rates     Json
   
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
-  @@unique([companyId, year, month, active])
+  @@unique([companyId, year, active])
   @@index([companyId])
-  @@index([year, month])
+  @@index([year])
   @@map("fgts_tables")
 }
 
@@ -1498,7 +1506,6 @@ model IrrfTable {
   company            Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   
   year               Int      // Ano de referência
-  month              Int      // Mês de referência
   
   dependentDeduction Decimal  @db.Decimal(10, 2) // Dedução por dependente
   
@@ -1510,8 +1517,94 @@ model IrrfTable {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   
-  @@unique([companyId, year, month, active])
+  @@unique([companyId, year, active])
   @@index([companyId])
-  @@index([year, month])
+  @@index([year])
   @@map("irrf_tables")
+}
+
+// ==================== MÓDULO JURÍDICO ====================
+
+// Categorias de documentos jurídicos
+model LegalDocumentCategory {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  name        String   // Ex: Contratos, Processos Trabalhistas, Processos Cíveis, etc.
+  description String?  @db.Text
+  color       String?  // Cor para identificação visual (hex code)
+  icon        String?  // Ícone opcional
+  
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relacionamentos
+  legalDocuments LegalDocument[]
+  
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@map("legal_document_categories")
+}
+
+// Documentos jurídicos (contratos e processos)
+model LegalDocument {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  categoryId  String?
+  category    LegalDocumentCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  
+  // Referência ao hub de documentos
+  documentId  String   @unique
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  
+  // Tipo do documento
+  type        String   // CONTRATO, PROCESSO_TRABALHISTA, PROCESSO_CIVIL, PROCESSO_CRIMINAL, OUTROS
+  
+  // Informações básicas
+  title       String   // Título do documento
+  description String?  @db.Text
+  reference   String?  // Número do processo ou contrato
+  
+  // Partes envolvidas
+  parties     Json?    // Array de objetos com {name, role, document, contact}
+  
+  // Datas importantes
+  startDate   DateTime? // Data de início/assinatura do contrato ou data de abertura do processo
+  endDate     DateTime? // Data de término do contrato ou conclusão do processo
+  dueDate     DateTime? // Data de vencimento/renovação
+  
+  // Status
+  status      String   @default("ATIVO") // ATIVO, CONCLUÍDO, SUSPENSO, CANCELADO, ARQUIVADO
+  
+  // Valores (se aplicável)
+  value       Decimal? @db.Decimal(15, 2) // Valor do contrato ou causa
+  currency    String   @default("BRL")
+  
+  // Observações e acompanhamento
+  notes       String?  @db.Text
+  tags        String[] // Tags para organização
+  
+  // Alertas
+  alertDays   Int?     @default(30) // Dias de antecedência para alertas de vencimento
+  
+  // Auditoria
+  createdById String
+  createdBy   User     @relation("LegalDocumentCreatedBy", fields: [createdById], references: [id])
+  
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([companyId])
+  @@index([categoryId])
+  @@index([documentId])
+  @@index([type])
+  @@index([status])
+  @@index([reference])
+  @@index([dueDate])
+  @@map("legal_documents")
 }

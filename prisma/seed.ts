@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { seedPlanoContas } from './seedPlanoContas';
 import { seedCentrosCusto } from './seedCentrosCusto';
+import { seedTaxTables } from './seedTaxTables';
 
 const prisma = new PrismaClient();
 
@@ -232,6 +233,48 @@ async function main() {
         name: 'accounting.delete',
         description: 'Deletar plano de contas e contas contábeis',
         resource: 'accounting',
+        action: 'delete',
+      },
+    }),
+
+    // Permissões de Tabelas Fiscais (INSS, FGTS, IRRF)
+    prisma.permission.upsert({
+      where: { name: 'tax_tables.create' },
+      update: {},
+      create: {
+        name: 'tax_tables.create',
+        description: 'Criar tabelas fiscais (INSS, FGTS, IRRF)',
+        resource: 'tax_tables',
+        action: 'create',
+      },
+    }),
+    prisma.permission.upsert({
+      where: { name: 'tax_tables.read' },
+      update: {},
+      create: {
+        name: 'tax_tables.read',
+        description: 'Visualizar tabelas fiscais',
+        resource: 'tax_tables',
+        action: 'read',
+      },
+    }),
+    prisma.permission.upsert({
+      where: { name: 'tax_tables.update' },
+      update: {},
+      create: {
+        name: 'tax_tables.update',
+        description: 'Atualizar tabelas fiscais',
+        resource: 'tax_tables',
+        action: 'update',
+      },
+    }),
+    prisma.permission.upsert({
+      where: { name: 'tax_tables.delete' },
+      update: {},
+      create: {
+        name: 'tax_tables.delete',
+        description: 'Deletar tabelas fiscais',
+        resource: 'tax_tables',
         action: 'delete',
       },
     }),
@@ -510,8 +553,15 @@ async function main() {
 
   console.log('✅ 3 empresas criadas');
 
+  // Criar Tabelas Fiscais para cada empresa
+  console.log('\n📊 Criando tabelas fiscais (INSS, FGTS, IRRF)...');
+  await seedTaxTables(prisma, company1.id);
+  await seedTaxTables(prisma, company2.id);
+  await seedTaxTables(prisma, company3.id);
+  console.log('✅ Tabelas fiscais criadas para todas as empresas');
+
   // Criar Usuários
-  console.log('👤 Criando usuários...');
+  console.log('\n👤 Criando usuários...');
   const hashedPassword = await bcrypt.hash('senha123', 10);
 
   const user1 = await prisma.user.upsert({
@@ -679,9 +729,10 @@ async function main() {
 
   console.log('\n🎉 Seed concluído com sucesso!');
   console.log('\n📊 Resumo:');
-  console.log(`- ${permissions.length} permissões`);
+  console.log(`- ${permissions.length} permissões (incluindo tax_tables)`);
   console.log('- 4 roles (admin, manager, sales, viewer)');
   console.log('- 3 empresas');
+  console.log('- 3 tabelas fiscais por empresa (INSS, FGTS, IRRF) = 9 tabelas totais');
   console.log('- 4 usuários');
   console.log(`- ${centros1 + centros2 + centros3} centros de custo (${centros1} por empresa)`);
   console.log('\n👤 Usuários de teste (senha: senha123):');
@@ -689,6 +740,10 @@ async function main() {
   console.log('- gerente@example.com (Gerente em 2 empresas)');
   console.log('- vendedor@example.com (Vendedor em 1 empresa)');
   console.log('- viewer@example.com (Visualizador em 1 empresa)');
+  console.log('\n📊 Tabelas Fiscais 2025:');
+  console.log('- INSS: 4 faixas progressivas (7,5% a 14% funcionário + 20% empresa)');
+  console.log('- FGTS: CLT 8%, Aprendiz 2%, Estágio 0%');
+  console.log('- IRRF: 5 faixas progressivas (0% a 27,5% + dedução R$ 189,59/dep)');
 }
 
 main()

@@ -1,6 +1,32 @@
 import { IsNotEmpty, IsNumber, IsBoolean, IsOptional, IsArray, ValidateNested, Min, Max } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 
+// DTO para a estrutura enviada pelo frontend (brackets com upTo)
+export class InssBracketDto {
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  upTo?: number; // Valor máximo da faixa (null = sem limite superior)
+
+  @IsNotEmpty()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  employeeRate: number; // Alíquota do empregado
+
+  @IsNotEmpty()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  employerRate: number; // Alíquota patronal
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  deduction?: number; // Dedução da faixa (para cálculo progressivo)
+}
+
+// DTO interno usado pelo backend (ranges com minValue/maxValue)
 export class InssRangeDto {
   @IsNotEmpty()
   @IsNumber()
@@ -31,22 +57,32 @@ export class InssRangeDto {
 }
 
 export class CreateInssTableDto {
-  @IsNotEmpty()
+  // Aceita tanto referenceYear quanto year
+  @IsOptional()
   @IsNumber()
   @Min(2000)
   @Max(2100)
-  year: number;
+  @Transform(({ obj }) => obj.referenceYear || obj.year)
+  year?: number;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsNumber()
-  @Min(1)
-  @Max(12)
-  month: number;
+  @Min(2000)
+  @Max(2100)
+  referenceYear?: number;
 
+  // Aceita tanto brackets quanto ranges
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => InssBracketDto)
+  brackets?: InssBracketDto[];
+
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => InssRangeDto)
-  ranges: InssRangeDto[];
+  ranges?: InssRangeDto[];
 
   @IsOptional()
   @IsBoolean()

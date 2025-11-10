@@ -1,19 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
-
-async function main() {
-  console.log('📊 Criando tabelas fiscais padrão para 2025...');
-
-  // Buscar primeira empresa como exemplo (você pode adaptar isso)
-  const company = await prisma.company.findFirst();
-
-  if (!company) {
-    console.log('⚠️  Nenhuma empresa encontrada. Crie uma empresa primeiro.');
-    return;
-  }
-
-  console.log(`📝 Criando tabelas para empresa: ${company.razaoSocial}`);
+export async function seedTaxTables(prisma: PrismaClient, companyId: string) {
+  console.log('📊 Criando tabelas fiscais (INSS, FGTS, IRRF) para 2025...');
 
   // ==================== TABELA INSS 2025 ====================
   // Tabela progressiva válida para 2025
@@ -50,7 +38,7 @@ async function main() {
 
   const existingInss = await prisma.inssTable.findFirst({
     where: {
-      companyId: company.id,
+      companyId,
       year: 2025,
     },
   });
@@ -58,15 +46,15 @@ async function main() {
   if (!existingInss) {
     await prisma.inssTable.create({
       data: {
-        companyId: company.id,
+        companyId,
         year: 2025,
         ranges: inssRanges,
         active: true,
       },
     });
-    console.log('✅ Tabela INSS 2025 criada');
+    console.log('  ✅ Tabela INSS 2025 criada (4 faixas progressivas)');
   } else {
-    console.log('⏭️  Tabela INSS 2025 já existe');
+    console.log('  ⏭️  Tabela INSS 2025 já existe');
   }
 
   // ==================== TABELA FGTS 2025 ====================
@@ -81,7 +69,7 @@ async function main() {
   //   },
   // ];
 
-  console.log('⏭️  Tabela FGTS deve ser criada manualmente via API com base nos cargos da empresa');
+  console.log('  ⏭️  Tabela FGTS deve ser criada manualmente via API com base nos cargos da empresa');
 
   // ==================== TABELA IRRF 2025 ====================
   const irrfRanges = [
@@ -119,7 +107,7 @@ async function main() {
 
   const existingIrrf = await prisma.irrfTable.findFirst({
     where: {
-      companyId: company.id,
+      companyId,
       year: 2025,
     },
   });
@@ -127,26 +115,17 @@ async function main() {
   if (!existingIrrf) {
     await prisma.irrfTable.create({
       data: {
-        companyId: company.id,
+        companyId,
         year: 2025,
         dependentDeduction: 189.59, // Dedução por dependente em 2025
         ranges: irrfRanges,
         active: true,
       },
     });
-    console.log('✅ Tabela IRRF 2025 criada');
+    console.log('  ✅ Tabela IRRF 2025 criada (5 faixas progressivas + dedução R$ 189,59/dep)');
   } else {
-    console.log('⏭️  Tabela IRRF 2025 já existe');
+    console.log('  ⏭️  Tabela IRRF 2025 já existe');
   }
 
-  console.log('✅ Tabelas fiscais padrão criadas com sucesso!');
+  return { inss: true, fgts: true, irrf: true };
 }
-
-main()
-  .catch((e) => {
-    console.error('❌ Erro ao criar tabelas fiscais:', e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });

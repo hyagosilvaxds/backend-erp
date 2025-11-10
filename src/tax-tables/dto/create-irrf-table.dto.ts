@@ -33,12 +33,6 @@ export class CreateIrrfTableDto {
 
   @IsNotEmpty()
   @IsNumber()
-  @Min(1)
-  @Max(12)
-  month: number;
-
-  @IsNotEmpty()
-  @IsNumber()
   @Min(0)
   dependentDeduction: number; // Dedução por dependente
 

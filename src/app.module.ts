@@ -19,6 +19,7 @@ import { PayrollModule } from './payroll/payroll.module';
 import { TaxTablesModule } from './tax-tables/tax-tables.module';
 import { PositionsModule } from './positions/positions.module';
 import { DepartmentsModule } from './departments/departments.module';
+import { LegalModule } from './legal/legal.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { DepartmentsModule } from './departments/departments.module';
     TaxTablesModule,
     PositionsModule,
     DepartmentsModule,
+    LegalModule,
   ],
   controllers: [AppController],
   providers: [AppService],

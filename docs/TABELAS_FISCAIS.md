@@ -86,24 +86,28 @@ curl -X POST http://localhost:4000/tax-tables/fgts \
   -H "Content-Type: application/json" \
   -d '{
     "year": 2025,
-    "month": 1,
     "rates": [
       {
-        "category": "CLT",
+        "positionId": "cm3pos123456",
         "monthlyRate": 8.0,
-        "terminationRate": 40.0,
-        "description": "Alíquota padrão para CLT"
+        "terminationRate": 40.0
       },
       {
-        "category": "MENOR_APRENDIZ",
+        "positionId": "cm3pos789012",
         "monthlyRate": 2.0,
-        "terminationRate": 40.0,
-        "description": "Alíquota reduzida para menor aprendiz"
+        "terminationRate": 40.0
+      },
+      {
+        "positionId": "cm3pos345678",
+        "monthlyRate": 0.0,
+        "terminationRate": 0.0
       }
     ],
     "active": true
   }'
 ```
+
+**⚠️ Nota**: A tabela FGTS agora é baseada em cargos (positions) da empresa. Você deve primeiro criar os cargos através de `/positions` antes de configurar as alíquotas do FGTS.
 
 ### 3. Criar Tabela IRRF
 
@@ -207,9 +211,12 @@ O sistema já vem com tabelas padrão de 2025 cadastradas:
 - Faixa 4: R$ 4.000,04 a R$ 7.786,02 - 14% / 20%
 
 ### FGTS 2025
-- CLT: 8% mensal / 40% rescisão
-- Menor Aprendiz: 2% mensal / 40% rescisão
-- Estágio: 0% (sem FGTS)
+- **Configurável por cargo**: Cada empresa deve configurar as alíquotas baseadas nos cargos criados
+- Alíquotas típicas:
+  - CLT: 8% mensal / 40% rescisão
+  - Menor Aprendiz: 2% mensal / 40% rescisão
+  - Estágio: 0% (sem FGTS)
+- **Padrão**: Se um cargo não estiver configurado, usa-se 8% mensal / 40% rescisão
 
 ### IRRF 2025
 - Dedução por dependente: R$ 189,59
@@ -249,9 +256,11 @@ npx ts-node prisma/seeds/create-default-tax-tables.ts
 
 3. **Histórico**: Mantenha as tabelas antigas (inativas) para referência histórica e recálculos.
 
-4. **Validação**: O sistema valida que não pode ter duas tabelas ativas para o mesmo período (ano/mês).
+4. **Validação**: O sistema valida que não pode ter duas tabelas ativas para o mesmo período (ano).
 
-5. **Busca Automática**: Se não houver tabela para o mês específico, o sistema busca a mais recente automaticamente.
+5. **Busca Automática**: Se não houver tabela para o ano específico, o sistema busca a mais recente automaticamente.
+
+6. **FGTS por cargo**: Crie os cargos da empresa antes de configurar as alíquotas do FGTS. Isso permite taxas personalizadas por tipo de contrato.
 
 ## 🚀 Próximos Passos
 

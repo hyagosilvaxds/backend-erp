@@ -1787,24 +1787,23 @@ As tabelas fiscais permitem configurar as alíquotas e faixas de INSS, FGTS e IR
 
 ```json
 {
-  "referenceYear": 2025,
-  "referenceMonth": 1,
+  "year": 2025,
   "active": true,
   "rates": [
     {
-      "category": "CLT",
+      "positionId": "cm3pos123456",
       "monthlyRate": 8.0,
-      "rescissionRate": 0.0
+      "terminationRate": 40.0
     },
     {
-      "category": "APRENDIZ",
+      "positionId": "cm3pos789012",
       "monthlyRate": 2.0,
-      "rescissionRate": 0.0
+      "terminationRate": 40.0
     },
     {
-      "category": "DOMESTICO",
-      "monthlyRate": 8.0,
-      "rescissionRate": 3.2
+      "positionId": "cm3pos345678",
+      "monthlyRate": 0.0,
+      "terminationRate": 0.0
     }
   ]
 }
@@ -1814,13 +1813,14 @@ As tabelas fiscais permitem configurar as alíquotas e faixas de INSS, FGTS e IR
 
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
-| referenceYear | number | Ano de referência |
-| referenceMonth | number | Mês de referência (1-12) |
+| year | number | Ano de referência |
 | active | boolean | Se está ativa |
-| rates | array | Alíquotas por categoria |
-| rates[].category | string | Categoria (CLT, APRENDIZ, DOMESTICO) |
+| rates | array | Alíquotas por cargo |
+| rates[].positionId | string | ID do cargo cadastrado |
 | rates[].monthlyRate | number | Alíquota mensal (%) |
-| rates[].rescissionRate | number | Alíquota de rescisão (%) |
+| rates[].terminationRate | number | Alíquota de rescisão (%) |
+
+**⚠️ Nota**: A tabela FGTS agora é baseada em **cargos** da empresa. Você deve primeiro criar os cargos através de `/positions` antes de configurar as alíquotas do FGTS.
 
 #### Response (201 Created)
 
@@ -1828,10 +1828,17 @@ As tabelas fiscais permitem configurar as alíquotas e faixas de INSS, FGTS e IR
 {
   "id": "fgts-table-uuid",
   "companyId": "company-uuid",
-  "referenceYear": 2025,
-  "referenceMonth": 1,
+  "year": 2025,
   "active": true,
-  "rates": [...],
+  "rates": [
+    {
+      "positionId": "cm3pos123456",
+      "positionName": "Desenvolvedor Sênior",
+      "positionCode": "DEV-SR",
+      "monthlyRate": 8.0,
+      "terminationRate": 40.0
+    }
+  ],
   "createdAt": "2025-11-08T10:00:00.000Z"
 }
 ```
@@ -2837,11 +2844,11 @@ async function addEarningToEmployee(
 3. **Deletar**: Só permite se não houver colaboradores usando
 
 #### Tabelas Fiscais (INSS, FGTS, IRRF)
-1. **Período único ativo**: Apenas uma tabela ativa por tipo/ano/mês
+1. **Período único ativo**: Apenas uma tabela ativa por tipo/ano
 2. **Faixas INSS**: Devem estar em ordem crescente
 3. **Faixas IRRF**: Devem estar em ordem crescente
 4. **Alíquotas**: Devem ser maiores ou iguais a zero
-5. **Categorias FGTS**: CLT, APRENDIZ, DOMESTICO
+5. **FGTS por cargo**: Configurar alíquotas específicas para cada cargo da empresa
 
 #### Folha de Pagamento
 1. **Período único**: Não permite duas folhas do mesmo tipo/mês/ano
@@ -3003,10 +3010,11 @@ async function addEarningToEmployee(
 
 ### Cálculos da Folha de Pagamento
 - **INSS**: Calculado de forma progressiva por faixas (conforme legislação)
-- **FGTS**: Calculado sobre salário bruto por categoria (CLT, Aprendiz, Doméstico)
+- **FGTS**: Calculado sobre salário bruto por **cargo do empregado** (taxas configuráveis por cargo)
 - **IRRF**: Calculado progressivamente após dedução de INSS e dependentes
 - **Encargos**: Dashboard mostra breakdown detalhado de todos encargos
 - **Tabelas**: Sistema usa automaticamente a tabela fiscal ativa do período
+- **FGTS padrão**: Se um cargo não tiver taxa configurada, usa-se 8% mensal e 40% rescisão
 
 ### Hierarquia Organizacional
 - **Departamentos**: Suportam estrutura hierárquica ilimitada (pai → filho → neto)

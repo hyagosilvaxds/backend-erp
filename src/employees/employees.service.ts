@@ -545,6 +545,7 @@ export class EmployeesService {
         salary: true,
         admissionDate: true,
         costCenterId: true,
+        positionId: true,
         costCenter: {
           select: {
             id: true,
@@ -562,9 +563,9 @@ export class EmployeesService {
 
     // 4. Buscar tabelas fiscais ativas
     const [inssTable, fgtsTable, irrfTable] = await Promise.all([
-      this.taxTablesService.getActiveInssTable(companyId, year, month),
-      this.taxTablesService.getActiveFgtsTable(companyId, year, month),
-      this.taxTablesService.getActiveIrrfTable(companyId, year, month),
+      this.taxTablesService.getActiveInssTable(companyId, year),
+      this.taxTablesService.getActiveFgtsTable(companyId, year),
+      this.taxTablesService.getActiveIrrfTable(companyId, year),
     ]);
 
     // 5. Calcular encargos reais usando tabelas fiscais
@@ -581,11 +582,11 @@ export class EmployeesService {
         totalInssEmployer = totalInssEmployer.add(inssCalc.employerInss);
       }
 
-      // FGTS (8% normalmente para CLT)
-      if (fgtsTable) {
+      // FGTS baseado no cargo do empregado
+      if (fgtsTable && emp.positionId) {
         const fgtsCalc = this.taxTablesService.calculateFgts(
           salary,
-          'CLT', // Pode ser adaptado para usar emp.contractType
+          emp.positionId,
           fgtsTable,
         );
         totalFgts = totalFgts.add(fgtsCalc.monthlyFgts);
@@ -697,8 +698,8 @@ export class EmployeesService {
         empCharges = empCharges.add(inssCalc.employerInss);
       }
 
-      if (fgtsTable) {
-        const fgtsCalc = this.taxTablesService.calculateFgts(empSalary, 'CLT', fgtsTable);
+      if (fgtsTable && emp.positionId) {
+        const fgtsCalc = this.taxTablesService.calculateFgts(empSalary, emp.positionId, fgtsTable);
         empCharges = empCharges.add(fgtsCalc.monthlyFgts);
       }
 

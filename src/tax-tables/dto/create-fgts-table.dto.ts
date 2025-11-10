@@ -4,7 +4,7 @@ import { Type } from 'class-transformer';
 export class FgtsRateDto {
   @IsNotEmpty()
   @IsString()
-  category: string; // CLT, MENOR_APRENDIZ, etc
+  positionId: string; // ID do cargo
 
   @IsNotEmpty()
   @IsNumber()
@@ -17,10 +17,6 @@ export class FgtsRateDto {
   @Min(0)
   @Max(100)
   terminationRate: number; // Alíquota rescisão (normalmente 40% ou 50%)
-
-  @IsOptional()
-  @IsString()
-  description?: string;
 }
 
 export class CreateFgtsTableDto {
@@ -29,12 +25,6 @@ export class CreateFgtsTableDto {
   @Min(2000)
   @Max(2100)
   year: number;
-
-  @IsNotEmpty()
-  @IsNumber()
-  @Min(1)
-  @Max(12)
-  month: number;
 
   @IsArray()
   @ValidateNested({ each: true })

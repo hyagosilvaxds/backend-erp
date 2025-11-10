@@ -1,0 +1,120 @@
+### Variáveis
+@baseUrl = http://localhost:3000
+@token = SEU_TOKEN_AQUI
+@payrollId = SEU_PAYROLL_ID_AQUI
+@itemId = SEU_ITEM_ID_AQUI
+
+###############################################
+# TESTES DE GERAÇÃO DE PDF - PAYROLL
+###############################################
+
+### 1. Gerar PDF do holerite individual
+# Retorna um PDF com o recibo de pagamento de um colaborador específico
+GET {{baseUrl}}/payroll/{{payrollId}}/items/{{itemId}}/payslip
+Authorization: Bearer {{token}}
+
+### 2. Gerar PDF da folha de pagamento consolidada (paisagem)
+# Retorna um PDF com todos os colaboradores e totalizadores
+GET {{baseUrl}}/payroll/{{payrollId}}/pdf
+Authorization: Bearer {{token}}
+
+###############################################
+# PREPARAÇÃO PARA TESTE DE PDF
+###############################################
+
+### 3. Criar uma nova folha de pagamento
+POST {{baseUrl}}/payroll
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "referenceMonth": 12,
+  "referenceYear": 2024,
+  "type": "MONTHLY",
+  "startDate": "2024-12-01",
+  "endDate": "2024-12-31",
+  "paymentDate": "2024-12-05"
+}
+
+### 4. Calcular a folha (gera itens para todos os colaboradores)
+POST {{baseUrl}}/payroll/{{payrollId}}/calculate
+Authorization: Bearer {{token}}
+
+### 5. Listar itens da folha para pegar o itemId
+GET {{baseUrl}}/payroll/{{payrollId}}
+Authorization: Bearer {{token}}
+
+### 6. Aprovar a folha (opcional, mas recomendado antes de gerar PDFs)
+POST {{baseUrl}}/payroll/{{payrollId}}/approve
+Authorization: Bearer {{token}}
+
+###############################################
+# WORKFLOW COMPLETO DE TESTE
+###############################################
+
+### PASSO 1: Criar folha
+# @name createPayroll
+POST {{baseUrl}}/payroll
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "referenceMonth": 12,
+  "referenceYear": 2024,
+  "type": "MONTHLY",
+  "startDate": "2024-12-01",
+  "endDate": "2024-12-31",
+  "paymentDate": "2024-12-05"
+}
+
+### PASSO 2: Extrair payrollId e calcular
+# Use o ID retornado no passo anterior
+@newPayrollId = {{createPayroll.response.body.id}}
+
+POST {{baseUrl}}/payroll/{{newPayrollId}}/calculate
+Authorization: Bearer {{token}}
+
+### PASSO 3: Buscar detalhes e pegar o primeiro itemId
+# @name getPayrollDetails
+GET {{baseUrl}}/payroll/{{newPayrollId}}
+Authorization: Bearer {{token}}
+
+### PASSO 4: Gerar PDF do primeiro holerite
+# Use o primeiro item retornado
+@firstItemId = {{getPayrollDetails.response.body.items[0].id}}
+
+GET {{baseUrl}}/payroll/{{newPayrollId}}/items/{{firstItemId}}/payslip
+Authorization: Bearer {{token}}
+
+### PASSO 5: Gerar PDF da folha consolidada
+GET {{baseUrl}}/payroll/{{newPayrollId}}/pdf
+Authorization: Bearer {{token}}
+
+###############################################
+# TESTES DE VALIDAÇÃO
+###############################################
+
+### Teste: PDF de holerite com folha inexistente (deve retornar 404)
+GET {{baseUrl}}/payroll/00000000-0000-0000-0000-000000000000/items/{{itemId}}/payslip
+Authorization: Bearer {{token}}
+
+### Teste: PDF de item inexistente (deve retornar 404)
+GET {{baseUrl}}/payroll/{{payrollId}}/items/00000000-0000-0000-0000-000000000000/payslip
+Authorization: Bearer {{token}}
+
+### Teste: PDF sem autenticação (deve retornar 401)
+GET {{baseUrl}}/payroll/{{payrollId}}/pdf
+
+###############################################
+# EXEMPLO DE DOWNLOAD VIA CURL
+###############################################
+
+### Baixar holerite para arquivo local
+# curl -X GET "http://localhost:3000/payroll/{payrollId}/items/{itemId}/payslip" \
+#   -H "Authorization: Bearer {token}" \
+#   -o holerite-colaborador.pdf
+
+### Baixar folha consolidada para arquivo local
+# curl -X GET "http://localhost:3000/payroll/{payrollId}/pdf" \
+#   -H "Authorization: Bearer {token}" \
+#   -o folha-pagamento.pdf

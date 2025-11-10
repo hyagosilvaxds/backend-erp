@@ -8,7 +8,10 @@ import {
   Delete,
   UseGuards,
   Query,
+  Res,
+  StreamableFile,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { PayrollService } from './payroll.service';
 import { CreatePayrollDto } from './dto/create-payroll.dto';
 import { UpdatePayrollDto } from './dto/update-payroll.dto';
@@ -110,5 +113,68 @@ export class PayrollController {
   @RequirePermissions('payroll.approve')
   pay(@Param('id') id: string, @CurrentCompany() companyId: string) {
     return this.payrollService.pay(id, companyId);
+  }
+
+  @Get(':id/pdf')
+  @RequirePermissions('payroll.read')
+  async downloadPayrollPdf(
+    @Param('id') id: string,
+    @CurrentCompany() companyId: string,
+    @Res() res: Response,
+  ) {
+    const pdfBuffer = await this.payrollService.generatePayrollPdf(
+      id,
+      companyId,
+    );
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="folha-pagamento-${id}.pdf"`,
+      'Content-Length': pdfBuffer.length,
+    });
+
+    res.end(pdfBuffer);
+  }
+
+  @Get(':id/items/:itemId/payslip')
+  @RequirePermissions('payroll.read')
+  async downloadPayslip(
+    @Param('id') payrollId: string,
+    @Param('itemId') itemId: string,
+    @CurrentCompany() companyId: string,
+    @Res() res: Response,
+  ) {
+    const pdfBuffer = await this.payrollService.generatePayslipPdf(
+      payrollId,
+      itemId,
+      companyId,
+    );
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="holerite-${itemId}.pdf"`,
+      'Content-Length': pdfBuffer.length,
+    });
+
+    res.end(pdfBuffer);
+  }
+
+  @Get(':id/export/excel')
+  @RequirePermissions('payroll.read')
+  async exportToExcel(
+    @Param('id') id: string,
+    @CurrentCompany() companyId: string,
+    @Res() res: Response,
+  ) {
+    const excelBuffer = await this.payrollService.exportToExcel(id, companyId);
+
+    const date = new Date().toISOString().slice(0, 10);
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="folha-pagamento-${date}.xlsx"`,
+      'Content-Length': excelBuffer.length,
+    });
+
+    res.end(excelBuffer);
   }
 }

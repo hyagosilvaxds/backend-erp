@@ -1,0 +1,244 @@
+### ==================== MÓDULO JURÍDICO - TESTES ====================
+### Variáveis
+@baseUrl = http://localhost:4000
+@token = SEU_TOKEN_AQUI
+@companyId = SEU_COMPANY_ID_AQUI
+
+### ==================== CATEGORIAS ====================
+
+### 1. Criar Categoria
+POST {{baseUrl}}/legal/categories
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: application/json
+
+{
+  "name": "Contratos Comerciais",
+  "description": "Contratos com fornecedores e clientes",
+  "color": "#3B82F6",
+  "icon": "FileContract",
+  "active": true
+}
+
+### 2. Listar Categorias
+GET {{baseUrl}}/legal/categories
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### 3. Buscar Categoria por ID
+GET {{baseUrl}}/legal/categories/CATEGORY_ID_AQUI
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### 4. Atualizar Categoria
+PATCH {{baseUrl}}/legal/categories/CATEGORY_ID_AQUI
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: application/json
+
+{
+  "name": "Contratos Comerciais Atualizados",
+  "description": "Nova descrição"
+}
+
+### 5. Deletar Categoria
+DELETE {{baseUrl}}/legal/categories/CATEGORY_ID_AQUI
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ==================== DOCUMENTOS JURÍDICOS ====================
+
+### 6. Criar Documento (Contrato)
+# Nota: Use um cliente que suporte multipart/form-data como Postman ou Insomnia
+# Ou use cURL:
+# curl -X POST http://localhost:4000/legal/documents \
+#   -H "Authorization: Bearer $TOKEN" \
+#   -H "x-company-id: $COMPANY_ID" \
+#   -F "file=@contrato.pdf" \
+#   -F "type=CONTRATO" \
+#   -F "title=Contrato de Prestação de Serviços" \
+#   -F "description=Contrato anual de prestação de serviços" \
+#   -F "reference=CONT-2025-001" \
+#   -F "startDate=2025-01-01" \
+#   -F "endDate=2025-12-31" \
+#   -F "dueDate=2025-12-31" \
+#   -F "value=50000.00" \
+#   -F "tags=fornecedor,servicos,2025"
+
+### 7. Listar Documentos
+GET {{baseUrl}}/legal/documents
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### 8. Listar Documentos com Filtros
+GET {{baseUrl}}/legal/documents?type=CONTRATO&status=ATIVO&page=1&limit=10
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### 9. Buscar por Texto
+GET {{baseUrl}}/legal/documents?search=fornecedor
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### 10. Filtrar por Data de Vencimento
+GET {{baseUrl}}/legal/documents?dueDateFrom=2025-11-01&dueDateTo=2025-12-31
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### 11. Buscar Documento por ID
+GET {{baseUrl}}/legal/documents/DOCUMENT_ID_AQUI
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### 12. Atualizar Documento
+PATCH {{baseUrl}}/legal/documents/DOCUMENT_ID_AQUI
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: application/json
+
+{
+  "title": "Contrato Atualizado",
+  "status": "CONCLUIDO",
+  "notes": "Contrato finalizado com sucesso"
+}
+
+### 13. Deletar Documento
+DELETE {{baseUrl}}/legal/documents/DOCUMENT_ID_AQUI
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### 14. Download do Documento
+GET {{baseUrl}}/legal/documents/DOCUMENT_ID_AQUI/download
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ==================== DASHBOARD ====================
+
+### 15. Dashboard Completa
+GET {{baseUrl}}/legal/dashboard
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### 16. Estatísticas Básicas
+GET {{baseUrl}}/legal/documents/statistics
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### 17. Documentos Vencendo em 30 dias
+GET {{baseUrl}}/legal/documents/expiring?days=30
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### 18. Documentos Vencendo em 60 dias
+GET {{baseUrl}}/legal/documents/expiring?days=60
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### 19. Documentos Vencendo em 7 dias (Urgente)
+GET {{baseUrl}}/legal/documents/expiring?days=7
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### 20. Documentos Vencidos
+GET {{baseUrl}}/legal/documents/expired
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### 21. Documentos por Valor (mínimo)
+GET {{baseUrl}}/legal/documents/by-value?minValue=50000
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### 22. Documentos por Valor (faixa)
+GET {{baseUrl}}/legal/documents/by-value?minValue=10000&maxValue=100000
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### 23. Timeline do Ano Atual
+GET {{baseUrl}}/legal/documents/timeline
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### 24. Timeline de 2024
+GET {{baseUrl}}/legal/documents/timeline?year=2024
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ==================== EXEMPLOS COM DADOS REAIS ====================
+
+### Criar Categoria - Processos Trabalhistas
+POST {{baseUrl}}/legal/categories
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: application/json
+
+{
+  "name": "Processos Trabalhistas",
+  "description": "Processos relacionados a questões trabalhistas",
+  "color": "#EF4444",
+  "icon": "Scale"
+}
+
+### Criar Categoria - Processos Cíveis
+POST {{baseUrl}}/legal/categories
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: application/json
+
+{
+  "name": "Processos Cíveis",
+  "description": "Processos cíveis diversos",
+  "color": "#8B5CF6",
+  "icon": "Gavel"
+}
+
+### Criar Categoria - Contratos de Locação
+POST {{baseUrl}}/legal/categories
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: application/json
+
+{
+  "name": "Contratos de Locação",
+  "description": "Contratos de aluguel de imóveis e equipamentos",
+  "color": "#10B981",
+  "icon": "Building"
+}
+
+### Listar Documentos Ativos
+GET {{baseUrl}}/legal/documents?status=ATIVO&sortBy=dueDate&sortOrder=asc
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### Listar Contratos
+GET {{baseUrl}}/legal/documents?type=CONTRATO
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### Listar Processos Trabalhistas
+GET {{baseUrl}}/legal/documents?type=PROCESSO_TRABALHISTA
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### Atualizar Status para Concluído
+PATCH {{baseUrl}}/legal/documents/DOCUMENT_ID_AQUI
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: application/json
+
+{
+  "status": "CONCLUIDO",
+  "endDate": "2025-11-09",
+  "notes": "Processo concluído com acordo entre as partes"
+}
+
+### Atualizar Status para Suspenso
+PATCH {{baseUrl}}/legal/documents/DOCUMENT_ID_AQUI
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: application/json
+
+{
+  "status": "SUSPENSO",
+  "notes": "Aguardando documentação adicional"
+}
