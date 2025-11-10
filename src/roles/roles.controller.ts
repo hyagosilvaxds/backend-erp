@@ -78,11 +78,11 @@ export class RolesController {
   @RequirePermissions('users.create')
   async create(
     @Body() createRoleDto: CreateRoleDto,
-    @CurrentCompany() company: any,
+    @CurrentCompany() companyId: string,
     @CurrentUser() user: any,
     @Req() req: Request,
   ) {
-    return this.rolesService.create(createRoleDto, company.id, user.userId, {
+    return this.rolesService.create(createRoleDto, companyId, user.userId, {
       ipAddress: req['ip'],
       userAgent: req.headers['user-agent'],
     });
@@ -97,11 +97,11 @@ export class RolesController {
   async update(
     @Param('id') id: string,
     @Body() updateRoleDto: UpdateRoleDto,
-    @CurrentCompany() company: any,
+    @CurrentCompany() companyId: string,
     @CurrentUser() user: any,
     @Req() req: Request,
   ) {
-    return this.rolesService.update(id, updateRoleDto, company.id, user.userId, {
+    return this.rolesService.update(id, updateRoleDto, companyId, user.userId, {
       ipAddress: req['ip'],
       userAgent: req.headers['user-agent'],
     });
@@ -116,11 +116,11 @@ export class RolesController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(
     @Param('id') id: string,
-    @CurrentCompany() company: any,
+    @CurrentCompany() companyId: string,
     @CurrentUser() user: any,
     @Req() req: Request,
   ) {
-    await this.rolesService.remove(id, company.id, user.userId, {
+    await this.rolesService.remove(id, companyId, user.userId, {
       ipAddress: req['ip'],
       userAgent: req.headers['user-agent'],
     });
@@ -141,14 +141,14 @@ export class RolesController {
   async addPermissions(
     @Param('id') id: string,
     @Body() addPermissionsDto: AddPermissionsDto,
-    @CurrentCompany() company: any,
+    @CurrentCompany() companyId: string,
     @CurrentUser() user: any,
     @Req() req: Request,
   ) {
     return this.rolesService.addPermissions(
       id,
       addPermissionsDto.permissionIds,
-      company.id,
+      companyId,
       user.userId,
       {
         ipAddress: req['ip'],
@@ -166,14 +166,14 @@ export class RolesController {
   async removePermissions(
     @Param('id') id: string,
     @Body() removePermissionsDto: RemovePermissionsDto,
-    @CurrentCompany() company: any,
+    @CurrentCompany() companyId: string,
     @CurrentUser() user: any,
     @Req() req: Request,
   ) {
     return this.rolesService.removePermissions(
       id,
       removePermissionsDto.permissionIds,
-      company.id,
+      companyId,
       user.userId,
       {
         ipAddress: req['ip'],

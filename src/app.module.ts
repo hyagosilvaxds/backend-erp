@@ -12,6 +12,13 @@ import { RolesModule } from './roles/roles.module';
 import { DocumentsModule } from './documents/documents.module';
 import { ProductsModule } from './products/products.module';
 import { CustomersModule } from './customers/customers.module';
+import { EmployeesModule } from './employees/employees.module';
+import { EarningTypesModule } from './earning-types/earning-types.module';
+import { DeductionTypesModule } from './deduction-types/deduction-types.module';
+import { PayrollModule } from './payroll/payroll.module';
+import { TaxTablesModule } from './tax-tables/tax-tables.module';
+import { PositionsModule } from './positions/positions.module';
+import { DepartmentsModule } from './departments/departments.module';
 
 @Module({
   imports: [
@@ -26,6 +33,13 @@ import { CustomersModule } from './customers/customers.module';
     DocumentsModule,
     ProductsModule,
     CustomersModule,
+    EmployeesModule,
+    EarningTypesModule,
+    DeductionTypesModule,
+    PayrollModule,
+    TaxTablesModule,
+    PositionsModule,
+    DepartmentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

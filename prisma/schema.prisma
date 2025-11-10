@@ -30,6 +30,12 @@ model User {
   // Documentos
   foldersCreated DocumentFolder[] @relation("FolderCreatedBy")
   documentsUploaded Document[] @relation("DocumentUploadedBy")
+  
+  // RH
+  employeesCreated Employee[] @relation("EmployeeCreatedBy")
+  payrollsCreated Payroll[] @relation("PayrollCreatedBy")
+  payrollsApproved Payroll[] @relation("PayrollApprovedBy")
+  employeeDocumentsUploaded EmployeeDocument[] @relation("DocumentUploadedByUser")
 
   @@map("users")
 }
@@ -133,6 +139,19 @@ model Company {
   
   // Clientes
   customers Customer[]
+  
+  // RH
+  employees Employee[]
+  positions Position[]
+  departments Department[]
+  earningTypes EarningType[]
+  deductionTypes DeductionType[]
+  payrolls Payroll[]
+  
+  // Tabelas fiscais
+  inssTables InssTable[]
+  fgtsTables FgtsTable[]
+  irrfTables IrrfTable[]
 
   @@map("companies")
 }
@@ -312,6 +331,9 @@ model CentroCusto {
   
   // Status
   ativo       Boolean  @default(true)
+  
+  // Relacionamentos
+  employees   Employee[] // Colaboradores vinculados
   
   // Timestamps
   createdAt   DateTime @default(now())
@@ -1017,4 +1039,479 @@ model CustomerContact {
   @@index([type])
   @@index([email])
   @@map("customer_contacts")
+}
+
+// ==================== MÓDULO DE RH ====================
+
+// Cargos
+model Position {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  code        String   // Código do cargo (ex: "DEV-SR", "AN-JR")
+  name        String   // Nome do cargo (ex: "Desenvolvedor Sênior")
+  description String?  @db.Text
+  
+  // Faixa salarial
+  minSalary   Decimal? @db.Decimal(15, 2)
+  maxSalary   Decimal? @db.Decimal(15, 2)
+  
+  // CBO (Classificação Brasileira de Ocupações)
+  cbo         String?  // Código CBO
+  
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relacionamentos
+  employees   Employee[]
+  
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([active])
+  @@map("positions")
+}
+
+// Departamentos
+model Department {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  code        String   // Código do departamento (ex: "TI", "FIN", "RH")
+  name        String   // Nome do departamento (ex: "Tecnologia da Informação")
+  description String?  @db.Text
+  
+  // Departamento pai (hierarquia)
+  parentId    String?
+  parent      Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children    Department[] @relation("DepartmentHierarchy")
+  
+  // Gestor do departamento
+  managerId   String?
+  
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relacionamentos
+  employees   Employee[]
+  
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([parentId])
+  @@index([active])
+  @@map("departments")
+}
+
+// Colaboradores (Funcionários)
+model Employee {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  // Centro de Custo
+  costCenterId String?
+  costCenter   CentroCusto? @relation(fields: [costCenterId], references: [id])
+  
+  // Cargo e Departamento
+  positionId   String?
+  position     Position? @relation(fields: [positionId], references: [id])
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  
+  // Dados Pessoais
+  name        String   // Nome completo
+  cpf         String   // CPF
+  rg          String?  // RG
+  birthDate   DateTime? // Data de nascimento
+  gender      String?  // MALE, FEMALE, OTHER
+  maritalStatus String? // SINGLE, MARRIED, DIVORCED, WIDOWED, OTHER
+  
+  // Dados de Contato
+  email       String?
+  phone       String?
+  mobile      String?
+  
+  // Endereço
+  zipCode     String?
+  street      String?
+  number      String?
+  complement  String?
+  neighborhood String?
+  city        String?
+  state       String?
+  
+  // Dados Profissionais
+  admissionDate DateTime // Data de admissão
+  dismissalDate DateTime? // Data de demissão
+  
+  // Dados Contratuais
+  contractType String  // CLT, PJ, ESTAGIO, TEMPORARIO, AUTONOMO
+  workSchedule Json?   // Horário de trabalho estruturado por dia da semana
+  salary      Decimal  @db.Decimal(15, 2) // Salário base
+  
+  // Dados de Empresa (para PJ)
+  companyDocument String? // CNPJ da empresa PJ
+  companyName     String? // Razão Social
+  companyTradeName String? // Nome Fantasia
+  companyStateRegistration String? // Inscrição Estadual
+  companyMunicipalRegistration String? // Inscrição Municipal
+  companyEmail    String? // Email da empresa
+  companyPhone    String? // Telefone da empresa
+  companyZipCode  String? // CEP da empresa
+  companyStreet   String? // Rua da empresa
+  companyNumber   String? // Número da empresa
+  companyComplement String? // Complemento da empresa
+  companyNeighborhood String? // Bairro da empresa
+  companyCity     String? // Cidade da empresa
+  companyState    String? // Estado da empresa
+  
+  // Dados Bancários
+  bankCode    String?  // Código do banco
+  bankName    String?  // Nome do banco
+  agency      String?  // Agência
+  account     String?  // Conta
+  accountType String?  // CORRENTE, POUPANCA
+  pixKey      String?  // Chave PIX
+  
+  // Status
+  active      Boolean  @default(true)
+  notes       String?  @db.Text
+  
+  // Auditoria
+  createdById String
+  createdBy   User     @relation("EmployeeCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relacionamentos
+  earnings    EmployeeEarning[] // Proventos do colaborador
+  deductions  EmployeeDeduction[] // Descontos do colaborador
+  payrollItems PayrollItem[]    // Itens de folha de pagamento
+  documents   EmployeeDocument[] // Documentos do colaborador
+  
+  @@unique([companyId, cpf])
+  @@index([companyId])
+  @@index([costCenterId])
+  @@index([positionId])
+  @@index([departmentId])
+  @@index([active])
+  @@index([cpf])
+  @@map("employees")
+}
+
+// Centro de Custos
+
+
+// Tipos de Proventos (ex: Salário, Hora Extra, Adicional Noturno, etc)
+model EarningType {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  code        String   // Código do provento
+  name        String   // Nome do provento
+  description String?  @db.Text
+  
+  // Configurações
+  isRecurrent Boolean  @default(false) // Se é recorrente (aparece todo mês)
+  isPercentage Boolean @default(false) // Se é percentual sobre o salário
+  baseValue   Decimal? @db.Decimal(15, 2) // Valor base (se não for percentual)
+  
+  // Incidências
+  hasINSS     Boolean  @default(true)  // Incide INSS
+  hasFGTS     Boolean  @default(true)  // Incide FGTS
+  hasIRRF     Boolean  @default(true)  // Incide IRRF
+  
+  // Status
+  active      Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relacionamentos
+  employeeEarnings EmployeeEarning[] // Proventos dos colaboradores
+  
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@map("earning_types")
+}
+
+// Tipos de Descontos (ex: INSS, IRRF, Vale Transporte, etc)
+model DeductionType {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  code        String   // Código do desconto
+  name        String   // Nome do desconto
+  description String?  @db.Text
+  
+  // Configurações
+  isRecurrent Boolean  @default(false) // Se é recorrente (todo mês)
+  isPercentage Boolean @default(false) // Se é percentual
+  baseValue   Decimal? @db.Decimal(15, 2) // Valor fixo
+  
+  // Status
+  active      Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relacionamentos
+  employeeDeductions EmployeeDeduction[] // Descontos dos colaboradores
+  
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@map("deduction_types")
+}
+
+// Proventos atribuídos aos colaboradores
+model EmployeeEarning {
+  id            String   @id @default(uuid())
+  employeeId    String
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  earningTypeId String
+  earningType   EarningType @relation(fields: [earningTypeId], references: [id])
+  
+  // Configuração específica do colaborador
+  isRecurrent   Boolean  @default(false) // Se repete todo mês
+  value         Decimal? @db.Decimal(15, 2) // Valor (se diferente do padrão)
+  percentage    Decimal? @db.Decimal(5, 2)  // Percentual (se aplicável)
+  
+  // Período de validade
+  startDate     DateTime // Data de início
+  endDate       DateTime? // Data de fim (null = indeterminado)
+  
+  // Status
+  active        Boolean  @default(true)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([employeeId])
+  @@index([earningTypeId])
+  @@map("employee_earnings")
+}
+
+// Descontos atribuídos aos colaboradores
+model EmployeeDeduction {
+  id              String   @id @default(uuid())
+  employeeId      String
+  employee        Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  deductionTypeId String
+  deductionType   DeductionType @relation(fields: [deductionTypeId], references: [id])
+  
+  // Configuração específica do colaborador
+  isRecurrent     Boolean  @default(false) // Se repete todo mês
+  value           Decimal? @db.Decimal(15, 2) // Valor (se diferente do padrão)
+  percentage      Decimal? @db.Decimal(5, 2)  // Percentual (se aplicável)
+  
+  // Período de validade
+  startDate       DateTime // Data de início
+  endDate         DateTime? // Data de fim (null = indeterminado)
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([employeeId])
+  @@index([deductionTypeId])
+  @@map("employee_deductions")
+}
+
+// Folha de Pagamento (mensal ou diária)
+model Payroll {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  // Período
+  referenceMonth Int    // Mês de referência (1-12)
+  referenceYear  Int    // Ano de referência
+  type        String   // MONTHLY (mensal), DAILY (diária), WEEKLY (semanal), ADVANCE (adiantamento)
+  
+  // Datas
+  startDate   DateTime // Data de início do período
+  endDate     DateTime // Data de fim do período
+  paymentDate DateTime // Data de pagamento
+  
+  // Status
+  status      String   @default("DRAFT") // DRAFT (rascunho), CALCULATED (calculada), APPROVED (aprovada), PAID (paga)
+  
+  // Totais
+  totalEarnings   Decimal @default(0) @db.Decimal(15, 2) // Total de proventos
+  totalDeductions Decimal @default(0) @db.Decimal(15, 2) // Total de descontos
+  netAmount       Decimal @default(0) @db.Decimal(15, 2) // Líquido a pagar
+  
+  // Auditoria
+  createdById String
+  createdBy   User     @relation("PayrollCreatedBy", fields: [createdById], references: [id])
+  approvedById String?
+  approvedBy  User?    @relation("PayrollApprovedBy", fields: [approvedById], references: [id])
+  approvedAt  DateTime?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relacionamentos
+  items       PayrollItem[] // Itens da folha (por colaborador)
+  
+  @@unique([companyId, referenceMonth, referenceYear, type])
+  @@index([companyId])
+  @@index([status])
+  @@map("payrolls")
+}
+
+// Itens da Folha de Pagamento (por colaborador)
+model PayrollItem {
+  id          String   @id @default(uuid())
+  payrollId   String
+  payroll     Payroll  @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  
+  // Valores Base
+  baseSalary  Decimal  @db.Decimal(15, 2) // Salário base
+  workDays    Int      @default(30) // Dias trabalhados
+  
+  // Proventos
+  earnings    Json     // Array de proventos: [{ typeId, code, name, value }]
+  totalEarnings Decimal @db.Decimal(15, 2) // Total de proventos
+  
+  // Descontos
+  deductions  Json     // Array de descontos: [{ typeId, code, name, value }]
+  totalDeductions Decimal @db.Decimal(15, 2) // Total de descontos
+  
+  // Líquido
+  netAmount   Decimal  @db.Decimal(15, 2) // Líquido a pagar
+  
+  // Observações
+  notes       String?  @db.Text
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([payrollId])
+  @@index([employeeId])
+  @@map("payroll_items")
+}
+
+// Documentos de Colaboradores
+model EmployeeDocument {
+  id          String   @id @default(uuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  // Tipo de documento
+  documentType String  // RG, CPF, CNH, CTPS, TITULO_ELEITOR, CERTIFICADO_RESERVISTA, 
+                       // COMPROVANTE_RESIDENCIA, DIPLOMA, CERTIFICADO, CONTRATO, 
+                       // EXAME_ADMISSIONAL, ASO, ATESTADO, OUTROS
+  
+  // Informações do documento
+  name        String   // Nome do arquivo/documento
+  description String?  @db.Text
+  documentNumber String? // Número do documento (se aplicável)
+  issueDate   DateTime? // Data de emissão
+  expiryDate  DateTime? // Data de validade
+  
+  // Arquivo
+  fileUrl     String   // URL do arquivo no storage
+  fileName    String   // Nome original do arquivo
+  fileSize    Int      // Tamanho em bytes
+  mimeType    String   // Tipo MIME do arquivo
+  
+  // Status
+  verified    Boolean  @default(false) // Se foi verificado/validado
+  active      Boolean  @default(true)
+  notes       String?  @db.Text
+  
+  // Auditoria
+  uploadedById String
+  uploadedBy   User     @relation("DocumentUploadedByUser", fields: [uploadedById], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@index([employeeId])
+  @@index([documentType])
+  @@index([verified])
+  @@map("employee_documents")
+}
+
+// Tabela INSS - Faixas progressivas de contribuição
+model InssTable {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  year      Int      // Ano de referência
+  month     Int      // Mês de referência
+  
+  // Faixas progressivas (JSON)
+  // [{ minValue, maxValue, employeeRate, employerRate, deduction }]
+  ranges    Json
+  
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([companyId, year, month, active])
+  @@index([companyId])
+  @@index([year, month])
+  @@map("inss_tables")
+}
+
+// Tabela FGTS - Alíquotas por categoria
+model FgtsTable {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  year      Int      // Ano de referência
+  month     Int      // Mês de referência
+  
+  // Alíquotas por categoria (JSON)
+  // [{ category, monthlyRate, terminationRate, description }]
+  rates     Json
+  
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([companyId, year, month, active])
+  @@index([companyId])
+  @@index([year, month])
+  @@map("fgts_tables")
+}
+
+// Tabela IRRF - Faixas de imposto de renda
+model IrrfTable {
+  id                 String   @id @default(uuid())
+  companyId          String
+  company            Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  year               Int      // Ano de referência
+  month              Int      // Mês de referência
+  
+  dependentDeduction Decimal  @db.Decimal(10, 2) // Dedução por dependente
+  
+  // Faixas progressivas (JSON)
+  // [{ minValue, maxValue, rate, deduction }]
+  ranges             Json
+  
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  
+  @@unique([companyId, year, month, active])
+  @@index([companyId])
+  @@index([year, month])
+  @@map("irrf_tables")
 }

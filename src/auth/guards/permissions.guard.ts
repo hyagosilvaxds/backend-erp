@@ -81,7 +81,7 @@ export class PermissionsGuard implements CanActivate {
     }
 
     const userPermissions = userCompany.role.rolePermissions.map(
-      (rp) => rp.permission.name,
+      (rp) => `${rp.permission.resource}.${rp.permission.action}`,
     );
 
     const hasPermission = requiredPermissions.some((permission) =>
@@ -142,7 +142,7 @@ export class PermissionsGuard implements CanActivate {
     for (const userCompany of userCompanies) {
       // Verificar se a role tem a permissão
       const userPermissions = userCompany.role.rolePermissions.map(
-        (rp) => rp.permission.name,
+        (rp) => `${rp.permission.resource}.${rp.permission.action}`,
       );
 
       const hasPermission = requiredPermissions.some((permission) =>
