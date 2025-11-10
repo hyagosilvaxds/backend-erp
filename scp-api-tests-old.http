@@ -1,0 +1,401 @@
+### SCP Module API Tests
+### Módulo de Investidores SCP (Sociedade em Conta de Participação)
+
+@baseUrl = http://localhost:3000
+@token = YOUR_JWT_TOKEN_HERE
+
+### ========================
+### INVESTIDORES
+### ========================
+
+### Criar novo investidor (Pessoa Física)
+POST {{baseUrl}}/scp/investors
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "type": "PESSOA_FISICA",
+  "name": "João Silva",
+  "document": "123.456.789-00",
+  "email": "joao.silva@email.com",
+  "phone": "(11) 98765-4321",
+  "address": "Rua das Flores, 123",
+  "city": "São Paulo",
+  "state": "SP",
+  "zipCode": "01234-567",
+  "bankName": "Banco do Brasil",
+  "bankCode": "001",
+  "agencyNumber": "1234",
+  "accountNumber": "56789-0",
+  "accountType": "CORRENTE",
+  "pixKey": "joao.silva@email.com",
+  "active": true,
+  "notes": "Investidor desde 2024"
+}
+
+### Criar investidor (Pessoa Jurídica)
+POST {{baseUrl}}/scp/investors
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "type": "PESSOA_JURIDICA",
+  "name": "Empresa XYZ Ltda",
+  "document": "12.345.678/0001-90",
+  "email": "contato@empresaxyz.com.br",
+  "phone": "(11) 3333-4444",
+  "address": "Av. Paulista, 1000",
+  "city": "São Paulo",
+  "state": "SP",
+  "zipCode": "01310-100",
+  "bankName": "Itaú",
+  "bankCode": "341",
+  "agencyNumber": "5678",
+  "accountNumber": "12345-6",
+  "accountType": "CORRENTE",
+  "pixKey": "12345678000190",
+  "active": true
+}
+
+### Listar todos os investidores
+GET {{baseUrl}}/scp/investors?page=1&limit=10
+Authorization: Bearer {{token}}
+
+### Listar investidores ativos apenas
+GET {{baseUrl}}/scp/investors?active=true
+Authorization: Bearer {{token}}
+
+### Buscar investidores por nome
+GET {{baseUrl}}/scp/investors?search=João
+Authorization: Bearer {{token}}
+
+### Filtrar por tipo
+GET {{baseUrl}}/scp/investors?type=PESSOA_FISICA
+Authorization: Bearer {{token}}
+
+### Buscar investidor por ID
+GET {{baseUrl}}/scp/investors/INVESTOR_ID
+Authorization: Bearer {{token}}
+
+### Atualizar investidor
+PUT {{baseUrl}}/scp/investors/INVESTOR_ID
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "phone": "(11) 99999-8888",
+  "email": "novo.email@email.com"
+}
+
+### Desativar investidor
+PUT {{baseUrl}}/scp/investors/INVESTOR_ID
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "active": false
+}
+
+### Deletar investidor
+DELETE {{baseUrl}}/scp/investors/INVESTOR_ID
+Authorization: Bearer {{token}}
+
+### ========================
+### PROJETOS
+### ========================
+
+### Criar novo projeto
+POST {{baseUrl}}/scp/projects
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Empreendimento Solar ABC",
+  "description": "Projeto de geração de energia solar fotovoltaica",
+  "code": "SOLAR-001",
+  "totalValue": 5000000.00,
+  "startDate": "2024-01-01T00:00:00.000Z",
+  "endDate": "2026-12-31T23:59:59.999Z",
+  "status": "ATIVO",
+  "active": true,
+  "notes": "Projeto de médio prazo com retorno estimado em 36 meses",
+  "attachments": [
+    "https://storage.example.com/projects/solar-001/contract.pdf",
+    "https://storage.example.com/projects/solar-001/business-plan.pdf"
+  ]
+}
+
+### Listar todos os projetos
+GET {{baseUrl}}/scp/projects?page=1&limit=10
+Authorization: Bearer {{token}}
+
+### Listar projetos ativos
+GET {{baseUrl}}/scp/projects?active=true
+Authorization: Bearer {{token}}
+
+### Filtrar projetos por status
+GET {{baseUrl}}/scp/projects?status=ATIVO
+Authorization: Bearer {{token}}
+
+### Buscar projetos por nome/código
+GET {{baseUrl}}/scp/projects?search=solar
+Authorization: Bearer {{token}}
+
+### Buscar projeto por ID
+GET {{baseUrl}}/scp/projects/PROJECT_ID
+Authorization: Bearer {{token}}
+
+### Obter estatísticas de todos os projetos
+GET {{baseUrl}}/scp/projects/stats
+Authorization: Bearer {{token}}
+
+### Atualizar projeto
+PUT {{baseUrl}}/scp/projects/PROJECT_ID
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "CONCLUIDO",
+  "notes": "Projeto concluído com sucesso"
+}
+
+### Deletar projeto
+DELETE {{baseUrl}}/scp/projects/PROJECT_ID
+Authorization: Bearer {{token}}
+
+### ========================
+### APORTES/INVESTIMENTOS
+### ========================
+
+### Criar novo aporte
+POST {{baseUrl}}/scp/investments
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "projectId": "PROJECT_ID",
+  "investorId": "INVESTOR_ID",
+  "amount": 100000.00,
+  "investmentDate": "2024-11-10T10:00:00.000Z",
+  "referenceNumber": "AP-2024-001",
+  "documentNumber": "REC-001",
+  "paymentMethod": "TRANSFERENCIA",
+  "bankAccountId": "BANK_ACCOUNT_ID",
+  "status": "CONFIRMADO",
+  "notes": "Primeiro aporte do investidor",
+  "attachments": [
+    "https://storage.example.com/investments/comprovante-001.pdf"
+  ]
+}
+
+### Listar todos os aportes
+GET {{baseUrl}}/scp/investments?page=1&limit=10
+Authorization: Bearer {{token}}
+
+### Listar aportes de um projeto
+GET {{baseUrl}}/scp/investments?projectId=PROJECT_ID
+Authorization: Bearer {{token}}
+
+### Listar aportes de um investidor
+GET {{baseUrl}}/scp/investments?investorId=INVESTOR_ID
+Authorization: Bearer {{token}}
+
+### Filtrar por status
+GET {{baseUrl}}/scp/investments?status=CONFIRMADO
+Authorization: Bearer {{token}}
+
+### Buscar aporte por ID
+GET {{baseUrl}}/scp/investments/INVESTMENT_ID
+Authorization: Bearer {{token}}
+
+### Obter aportes de um investidor (com totais)
+GET {{baseUrl}}/scp/investments/by-investor/INVESTOR_ID
+Authorization: Bearer {{token}}
+
+### Obter aportes de um projeto (com totais)
+GET {{baseUrl}}/scp/investments/by-project/PROJECT_ID
+Authorization: Bearer {{token}}
+
+### Atualizar aporte
+PUT {{baseUrl}}/scp/investments/INVESTMENT_ID
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "CONFIRMADO",
+  "notes": "Aporte confirmado"
+}
+
+### Cancelar aporte
+PUT {{baseUrl}}/scp/investments/INVESTMENT_ID
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "CANCELADO"
+}
+
+### Deletar aporte
+DELETE {{baseUrl}}/scp/investments/INVESTMENT_ID
+Authorization: Bearer {{token}}
+
+### ========================
+### POLÍTICAS DE DISTRIBUIÇÃO
+### ========================
+
+### Criar política de distribuição
+POST {{baseUrl}}/scp/distribution-policies
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "projectId": "PROJECT_ID",
+  "investorId": "INVESTOR_ID",
+  "percentage": 30.00,
+  "type": "PROPORCIONAL",
+  "active": true,
+  "startDate": "2024-01-01T00:00:00.000Z",
+  "notes": "30% do lucro distribuível"
+}
+
+### Listar todas as políticas
+GET {{baseUrl}}/scp/distribution-policies?page=1&limit=10
+Authorization: Bearer {{token}}
+
+### Listar políticas de um projeto
+GET {{baseUrl}}/scp/distribution-policies?projectId=PROJECT_ID
+Authorization: Bearer {{token}}
+
+### Listar políticas de um investidor
+GET {{baseUrl}}/scp/distribution-policies?investorId=INVESTOR_ID
+Authorization: Bearer {{token}}
+
+### Obter políticas ativas de um projeto (com resumo)
+GET {{baseUrl}}/scp/distribution-policies/by-project/PROJECT_ID
+Authorization: Bearer {{token}}
+
+### Buscar política por ID
+GET {{baseUrl}}/scp/distribution-policies/POLICY_ID
+Authorization: Bearer {{token}}
+
+### Calcular valores de distribuição
+POST {{baseUrl}}/scp/distribution-policies/calculate-amounts/PROJECT_ID
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "baseValue": 50000.00
+}
+
+### Atualizar política
+PUT {{baseUrl}}/scp/distribution-policies/POLICY_ID
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "percentage": 35.00,
+  "notes": "Ajuste de percentual"
+}
+
+### Desativar política
+PUT {{baseUrl}}/scp/distribution-policies/POLICY_ID
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "active": false
+}
+
+### Deletar política
+DELETE {{baseUrl}}/scp/distribution-policies/POLICY_ID
+Authorization: Bearer {{token}}
+
+### ========================
+### DISTRIBUIÇÕES
+### ========================
+
+### Criar distribuição manual
+POST {{baseUrl}}/scp/distributions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "projectId": "PROJECT_ID",
+  "investorId": "INVESTOR_ID",
+  "amount": 15000.00,
+  "percentage": 30.00,
+  "baseValue": 50000.00,
+  "referenceNumber": "DIST-2024-001",
+  "distributionDate": "2024-11-10T00:00:00.000Z",
+  "competenceDate": "2024-10-31T23:59:59.999Z",
+  "paymentMethod": "PIX",
+  "bankAccountId": "BANK_ACCOUNT_ID",
+  "status": "PENDENTE",
+  "irrf": 750.00,
+  "otherDeductions": 0,
+  "notes": "Distribuição referente a outubro/2024",
+  "attachments": []
+}
+
+### Criar distribuições automaticamente com base nas políticas
+POST {{baseUrl}}/scp/distributions/bulk-create
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "projectId": "PROJECT_ID",
+  "baseValue": 50000.00,
+  "competenceDate": "2024-10-31T23:59:59.999Z",
+  "distributionDate": "2024-11-10T00:00:00.000Z"
+}
+
+### Listar todas as distribuições
+GET {{baseUrl}}/scp/distributions?page=1&limit=10
+Authorization: Bearer {{token}}
+
+### Listar distribuições de um projeto
+GET {{baseUrl}}/scp/distributions?projectId=PROJECT_ID
+Authorization: Bearer {{token}}
+
+### Listar distribuições de um investidor
+GET {{baseUrl}}/scp/distributions?investorId=INVESTOR_ID
+Authorization: Bearer {{token}}
+
+### Filtrar por status
+GET {{baseUrl}}/scp/distributions?status=PENDENTE
+Authorization: Bearer {{token}}
+
+### Buscar distribuição por ID
+GET {{baseUrl}}/scp/distributions/DISTRIBUTION_ID
+Authorization: Bearer {{token}}
+
+### Obter distribuições de um investidor (com totais)
+GET {{baseUrl}}/scp/distributions/by-investor/INVESTOR_ID
+Authorization: Bearer {{token}}
+
+### Obter distribuições de um projeto (com totais)
+GET {{baseUrl}}/scp/distributions/by-project/PROJECT_ID
+Authorization: Bearer {{token}}
+
+### Atualizar distribuição
+PUT {{baseUrl}}/scp/distributions/DISTRIBUTION_ID
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "paymentMethod": "TED",
+  "paymentDate": "2024-11-15T10:00:00.000Z",
+  "notes": "Pagamento realizado via TED"
+}
+
+### Marcar distribuição como PAGA
+POST {{baseUrl}}/scp/distributions/DISTRIBUTION_ID/mark-as-paid
+Authorization: Bearer {{token}}
+
+### Marcar distribuição como CANCELADA
+POST {{baseUrl}}/scp/distributions/DISTRIBUTION_ID/mark-as-canceled
+Authorization: Bearer {{token}}
+
+### Deletar distribuição
+DELETE {{baseUrl}}/scp/distributions/DISTRIBUTION_ID
+Authorization: Bearer {{token}}

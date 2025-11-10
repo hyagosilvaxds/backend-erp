@@ -1,0 +1,145 @@
+### 📊 Testes de Exportação de Relatórios Excel - Com Detalhamento
+
+### Variáveis
+@baseUrl = http://localhost:3000
+@token = seu-token-jwt-aqui
+@companyId = uuid-da-empresa
+
+### ===========================================
+### 1. Exportar Fluxo de Caixa (2 abas)
+### ===========================================
+GET {{baseUrl}}/financial/reports/cash-flow/export?companyId={{companyId}}&startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{token}}
+
+### Resultado esperado:
+### - Aba 1: "Fluxo de Caixa" com resumo diário
+### - Aba 2: "Lançamentos Detalhados" com todas as transações
+
+### ===========================================
+### 2. Exportar Contas a Pagar (2 abas)
+### ===========================================
+GET {{baseUrl}}/financial/reports/accounts-payable/export?companyId={{companyId}}&startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{token}}
+
+### Com filtro de status
+GET {{baseUrl}}/financial/reports/accounts-payable/export?companyId={{companyId}}&status=PENDENTE
+Authorization: Bearer {{token}}
+
+### Resultado esperado:
+### - Aba 1: "Contas a Pagar - Resumo"
+### - Aba 2: "Detalhamento Completo" com todas as informações
+
+### ===========================================
+### 3. Exportar Contas a Receber (2 abas)
+### ===========================================
+GET {{baseUrl}}/financial/reports/accounts-receivable/export?companyId={{companyId}}&startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{token}}
+
+### Com filtro de status
+GET {{baseUrl}}/financial/reports/accounts-receivable/export?companyId={{companyId}}&status=VENCIDO
+Authorization: Bearer {{token}}
+
+### Resultado esperado:
+### - Aba 1: "Contas a Receber - Resumo"
+### - Aba 2: "Detalhamento Completo" com informações do cliente
+
+### ===========================================
+### 4. Exportar por Centro de Custo (2 abas)
+### ===========================================
+GET {{baseUrl}}/financial/reports/transactions/by-centro-custo/export?companyId={{companyId}}&startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{token}}
+
+### Período específico
+GET {{baseUrl}}/financial/reports/transactions/by-centro-custo/export?companyId={{companyId}}&startDate=2024-06-01&endDate=2024-06-30
+Authorization: Bearer {{token}}
+
+### Resultado esperado:
+### - Aba 1: "Resumo por Centro de Custo"
+### - Aba 2: "Todas as Transações" com detalhamento
+
+### ===========================================
+### 5. Exportar por Conta Contábil (2 abas)
+### ===========================================
+GET {{baseUrl}}/financial/reports/transactions/by-conta-contabil/export?companyId={{companyId}}&startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{token}}
+
+### Período específico
+GET {{baseUrl}}/financial/reports/transactions/by-conta-contabil/export?companyId={{companyId}}&startDate=2024-Q1-01&endDate=2024-03-31
+Authorization: Bearer {{token}}
+
+### Resultado esperado:
+### - Aba 1: "Resumo por Conta Contábil"
+### - Aba 2: "Todas as Transações" agrupadas
+
+### ===========================================
+### Validações a Fazer
+### ===========================================
+
+### ✅ Verificar se o arquivo Excel tem 2 abas
+### ✅ Verificar formatação de valores monetários (R$ X.XXX,XX)
+### ✅ Verificar formatação de datas (dd/mm/yyyy)
+### ✅ Verificar totais nas abas de resumo
+### ✅ Verificar que todos os campos estão presentes
+### ✅ Verificar que os dados das duas abas são consistentes
+### ✅ Verificar informações de centro de custo e conta contábil
+### ✅ Verificar informações de parcelas (1/3, 2/3, etc.)
+### ✅ Verificar status de conciliação
+
+### ===========================================
+### Casos de Teste Específicos
+### ===========================================
+
+### Teste 1: Período sem transações
+GET {{baseUrl}}/financial/reports/cash-flow/export?companyId={{companyId}}&startDate=2025-12-01&endDate=2025-12-31
+Authorization: Bearer {{token}}
+### Esperado: Arquivo com abas vazias mas com cabeçalhos
+
+### Teste 2: Contas com parcelas
+GET {{baseUrl}}/financial/reports/accounts-payable/export?companyId={{companyId}}&status=PENDENTE
+Authorization: Bearer {{token}}
+### Esperado: Coluna "Parcela" mostrando "1/3", "2/3", etc.
+
+### Teste 3: Transações sem categoria
+GET {{baseUrl}}/financial/reports/cash-flow/export?companyId={{companyId}}&startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{token}}
+### Esperado: "Sem categoria" quando categoryId é null
+
+### Teste 4: Transações sem centro de custo
+GET {{baseUrl}}/financial/reports/transactions/by-centro-custo/export?companyId={{companyId}}&startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{token}}
+### Esperado: Grupo "Sem Centro de Custo" para transações sem centroCustoId
+
+### Teste 5: Transações sem conta contábil
+GET {{baseUrl}}/financial/reports/transactions/by-conta-contabil/export?companyId={{companyId}}&startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{token}}
+### Esperado: Grupo "Sem Conta Contábil" para transações sem contaContabilId
+
+### ===========================================
+### Teste de Performance
+### ===========================================
+
+### Grande volume de dados (ano inteiro)
+GET {{baseUrl}}/financial/reports/cash-flow/export?companyId={{companyId}}&startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{token}}
+### Esperado: Resposta em menos de 5 segundos mesmo com 1000+ transações
+
+### ===========================================
+### Notas de Implementação
+### ===========================================
+
+### 📝 Estrutura do Excel:
+### - Cada relatório tem EXATAMENTE 2 abas
+### - Aba 1: Sempre é um resumo/agregação
+### - Aba 2: Sempre é o detalhamento completo
+### 
+### 📝 Formatação:
+### - Cabeçalhos: Fundo azul (#FF4472C4), texto branco, negrito
+### - Valores monetários: R$ #,##0.00
+### - Datas: dd/mm/yyyy
+### - Totais: Linha final com fórmulas SUM
+###
+### 📝 Dados:
+### - Todas as queries incluem relacionamentos necessários
+### - Valores null são substituídos por "-" ou "Sem X"
+### - Parcelas são formatadas como "X/Y"
+### - Conciliação é mostrada como "Sim"/"Não"

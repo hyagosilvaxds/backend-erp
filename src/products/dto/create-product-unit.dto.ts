@@ -13,5 +13,9 @@ export class CreateProductUnitDto {
 
   @IsBoolean()
   @IsOptional()
+  fractionable?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
   active?: boolean;
 }

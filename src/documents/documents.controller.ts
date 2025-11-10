@@ -13,6 +13,7 @@ import {
   Res,
   StreamableFile,
   ParseBoolPipe,
+  BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
@@ -40,17 +41,17 @@ export class DocumentsController {
   @Get('folders')
   @RequirePermissions('documents.read')
   async findAllFolders(
-    @CurrentCompany() company: { id: string },
+    @CurrentCompany() companyId: string,
     @CurrentUser() user: { userId: string },
     @Query('parentId') parentId?: string,
   ) {
     // Buscar roles do usuário na empresa
     const userCompany = await this.documentsService.getUserRoles(
       user.userId,
-      company.id,
+      companyId,
     );
     return this.documentsService.findAllFolders(
-      company.id,
+      companyId,
       parentId,
       user.userId,
       userCompany?.roleIds || [],
@@ -62,10 +63,10 @@ export class DocumentsController {
   @RequirePermissions('documents.create')
   async createFolder(
     @Body() dto: CreateFolderDto,
-    @CurrentCompany() company: { id: string },
+    @CurrentCompany() companyId: string,
     @CurrentUser() user: { userId: string },
   ) {
-    return this.documentsService.createFolder(dto, company.id, user.userId);
+    return this.documentsService.createFolder(dto, companyId, user.userId);
   }
 
   @Patch('folders/:id')
@@ -73,21 +74,21 @@ export class DocumentsController {
   async updateFolder(
     @Param('id') id: string,
     @Body() dto: UpdateFolderDto,
-    @CurrentCompany() company: { id: string },
+    @CurrentCompany() companyId: string,
     @CurrentUser() user: { userId: string },
   ) {
-    return this.documentsService.updateFolder(id, dto, company.id, user.userId);
+    return this.documentsService.updateFolder(id, dto, companyId, user.userId);
   }
 
   @Delete('folders/:id')
   @RequirePermissions('documents.delete')
   async deleteFolder(
     @Param('id') id: string,
-    @CurrentCompany() company: { id: string },
+    @CurrentCompany() companyId: string,
     @CurrentUser() user: { userId: string },
     @Query('force', ParseBoolPipe) force: boolean = false,
   ) {
-    return this.documentsService.deleteFolder(id, company.id, user.userId, force);
+    return this.documentsService.deleteFolder(id, companyId, user.userId, force);
   }
 
   // ==================== DOCUMENTOS ====================
@@ -95,17 +96,17 @@ export class DocumentsController {
   @Get()
   @RequirePermissions('documents.read')
   async findDocuments(
-    @CurrentCompany() company: { id: string },
+    @CurrentCompany() companyId: string,
     @CurrentUser() user: { userId: string },
     @Query() query: QueryDocumentsDto,
   ) {
     // Buscar roles do usuário na empresa
     const userCompany = await this.documentsService.getUserRoles(
       user.userId,
-      company.id,
+      companyId,
     );
     return this.documentsService.findDocuments(
-      company.id,
+      companyId,
       query,
       user.userId,
       userCompany?.roleIds || [],
@@ -116,28 +117,28 @@ export class DocumentsController {
   @Get('expired')
   @RequirePermissions('documents.read')
   async getExpiredDocuments(
-    @CurrentCompany() company: { id: string },
+    @CurrentCompany() companyId: string,
     @Query('daysAhead') daysAhead?: number,
   ) {
     return this.documentsService.getExpiredDocuments(
-      company.id,
+      companyId,
       daysAhead ? Number(daysAhead) : 30,
     );
   }
 
   @Get('stats')
   @RequirePermissions('documents.read')
-  async getStatistics(@CurrentCompany() company: { id: string }) {
-    return this.documentsService.getStatistics(company.id);
+  async getStatistics(@CurrentCompany() companyId: string) {
+    return this.documentsService.getStatistics(companyId);
   }
 
   @Get(':id')
   @RequirePermissions('documents.read')
   async findOne(
     @Param('id') id: string,
-    @CurrentCompany() company: { id: string },
+    @CurrentCompany() companyId: string,
   ) {
-    return this.documentsService.findOneDocument(id, company.id);
+    return this.documentsService.findOneDocument(id, companyId);
   }
 
   @Post('upload')
@@ -146,13 +147,16 @@ export class DocumentsController {
   async uploadDocument(
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: UploadDocumentDto,
-    @CurrentCompany() company: { id: string },
+    @CurrentCompany() companyId: string,
     @CurrentUser() user: { userId: string },
   ) {
+    if (!companyId) {
+      throw new BadRequestException('CompanyId é obrigatório');
+    }
     return this.documentsService.uploadDocument(
       file,
       dto,
-      company.id,
+      companyId,
       user.userId,
     );
   }
@@ -164,14 +168,14 @@ export class DocumentsController {
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
     @Body('description') description: string,
-    @CurrentCompany() company: { id: string },
+    @CurrentCompany() companyId: string,
     @CurrentUser() user: { userId: string },
   ) {
     return this.documentsService.uploadNewVersion(
       id,
       file,
       description,
-      company.id,
+      companyId,
       user.userId,
     );
   }
@@ -180,12 +184,12 @@ export class DocumentsController {
   @RequirePermissions('documents.read')
   async downloadDocument(
     @Param('id') id: string,
-    @CurrentCompany() company: { id: string },
+    @CurrentCompany() companyId: string,
     @Res({ passthrough: true }) res: Response,
   ) {
     const document = await this.documentsService.findOneDocument(
       id,
-      company.id,
+      companyId,
     );
 
     if (!fs.existsSync(document.filePath)) {
@@ -209,23 +213,23 @@ export class DocumentsController {
   async updateDocument(
     @Param('id') id: string,
     @Body() dto: UpdateDocumentDto,
-    @CurrentCompany() company: { id: string },
+    @CurrentCompany() companyId: string,
     @CurrentUser() user: { userId: string },
   ) {
-    return this.documentsService.updateDocument(id, dto, company.id, user.userId);
+    return this.documentsService.updateDocument(id, dto, companyId, user.userId);
   }
 
   @Delete(':id')
   @RequirePermissions('documents.delete')
   async deleteDocument(
     @Param('id') id: string,
-    @CurrentCompany() company: { id: string },
+    @CurrentCompany() companyId: string,
     @CurrentUser() user: { userId: string },
     @Query('deleteAllVersions', ParseBoolPipe) deleteAllVersions: boolean = false,
   ) {
     return this.documentsService.deleteDocument(
       id,
-      company.id,
+      companyId,
       user.userId,
       deleteAllVersions,
     );

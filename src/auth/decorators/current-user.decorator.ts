@@ -1,15 +1,19 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
 export const CurrentUser = createParamDecorator(
-  (data: unknown, ctx: ExecutionContext) => {
+  (data: string | undefined, ctx: ExecutionContext) => {
     const request = ctx.switchToHttp().getRequest();
-    return request.user;
+    const user = request.user;
+    
+    // Se um campo específico foi solicitado, retornar apenas esse campo
+    return data ? user?.[data] : user;
   },
 );
 
 export const CurrentCompany = createParamDecorator(
   (data: unknown, ctx: ExecutionContext) => {
     const request = ctx.switchToHttp().getRequest();
-    return request.company;
+    // Retorna apenas o ID da empresa
+    return request.company?.id;
   },
 );

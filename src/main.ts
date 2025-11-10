@@ -27,9 +27,26 @@ async function bootstrap() {
   );
 
   // Habilitar CORS
-  app.enableCors();
+  app.enableCors({
+    origin: [
+      'http://localhost:3000',           // Development local
+                // Vite dev server
+      'https://erp.otimizeagenda.com',   // Produção
+      'http://erp.otimizeagenda.com',    // Produção HTTP
+    ],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'x-company-id',
+      'Accept',
+    ],
+    credentials: true,
+    maxAge: 3600, // Cache preflight por 1 hora
+  });
 
   await app.listen(process.env.PORT ?? 4000);
   console.log(`🚀 Aplicação rodando em: http://localhost:${process.env.PORT ?? 4000}`);
+  console.log(`🌐 CORS habilitado para: erp.otimizeagenda.com`);
 }
 bootstrap();

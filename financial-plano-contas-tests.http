@@ -1,0 +1,47 @@
+### Listar Planos de Contas da Empresa
+GET http://localhost:4000/financial/plano-contas?companyId=16dfd69e-6903-4e51-81a4-662465b74cd4
+Authorization: Bearer {{token}}
+
+###
+
+### Listar apenas planos ativos
+GET http://localhost:4000/financial/plano-contas?companyId=16dfd69e-6903-4e51-81a4-662465b74cd4&ativo=true
+Authorization: Bearer {{token}}
+
+###
+
+### Obter Plano de Contas Padrão da Empresa
+GET http://localhost:4000/financial/plano-contas/padrao?companyId=16dfd69e-6903-4e51-81a4-662465b74cd4
+Authorization: Bearer {{token}}
+
+###
+
+### Listar Contas Contábeis de um Plano
+GET http://localhost:4000/financial/plano-contas/{planoId}/contas?page=1&limit=50
+Authorization: Bearer {{token}}
+
+###
+
+### Listar apenas contas que aceitam lançamento
+GET http://localhost:4000/financial/plano-contas/{planoId}/contas?aceitaLancamento=true&limit=100
+Authorization: Bearer {{token}}
+
+###
+
+### Listar contas por tipo
+GET http://localhost:4000/financial/plano-contas/{planoId}/contas?tipo=DESPESA
+Authorization: Bearer {{token}}
+
+###
+
+### Listar contas por nível
+GET http://localhost:4000/financial/plano-contas/{planoId}/contas?nivel=4
+Authorization: Bearer {{token}}
+
+###
+
+### Buscar Conta Contábil por ID
+GET http://localhost:4000/financial/plano-contas/contas/{contaId}
+Authorization: Bearer {{token}}
+
+###

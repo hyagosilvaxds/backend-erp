@@ -1,0 +1,307 @@
+### Criar Distribuição em Lote para Múltiplos Investidores
+POST http://localhost:3000/scp/distributions/bulk
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "PROJECT_ID_AQUI",
+  "baseValue": 100000.00,
+  "referenceNumber": "DIST-2024-001",
+  "distributionDate": "2024-01-15",
+  "competenceDate": "2024-01-01",
+  "paymentMethod": "TED",
+  "status": "PENDENTE",
+  "distributions": [
+    {
+      "investorId": "INVESTOR_1_ID",
+      "amount": 40000.00,
+      "percentage": 40.0,
+      "irrf": 6000.00,
+      "otherDeductions": 0,
+      "notes": "Distribuição referente ao 1º trimestre de 2024"
+    },
+    {
+      "investorId": "INVESTOR_2_ID",
+      "amount": 30000.00,
+      "percentage": 30.0,
+      "irrf": 4500.00,
+      "otherDeductions": 0,
+      "notes": "Distribuição referente ao 1º trimestre de 2024"
+    },
+    {
+      "investorId": "INVESTOR_3_ID",
+      "amount": 30000.00,
+      "percentage": 30.0,
+      "irrf": 4500.00,
+      "otherDeductions": 0,
+      "notes": "Distribuição referente ao 1º trimestre de 2024"
+    }
+  ]
+}
+
+###
+
+### Criar Distribuição em Lote com Status PAGO
+POST http://localhost:3000/scp/distributions/bulk
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "PROJECT_ID_AQUI",
+  "baseValue": 50000.00,
+  "referenceNumber": "DIST-2024-002",
+  "distributionDate": "2024-02-15",
+  "competenceDate": "2024-02-01",
+  "paymentMethod": "PIX",
+  "paymentDate": "2024-02-15",
+  "status": "PAGO",
+  "attachments": ["comprovante-pagamento-1.pdf", "comprovante-pagamento-2.pdf"],
+  "distributions": [
+    {
+      "investorId": "INVESTOR_1_ID",
+      "amount": 25000.00,
+      "percentage": 50.0,
+      "irrf": 3750.00,
+      "otherDeductions": 100.00,
+      "notes": "Pagamento via PIX - 2º trimestre"
+    },
+    {
+      "investorId": "INVESTOR_2_ID",
+      "amount": 25000.00,
+      "percentage": 50.0,
+      "irrf": 3750.00,
+      "otherDeductions": 100.00,
+      "notes": "Pagamento via PIX - 2º trimestre"
+    }
+  ]
+}
+
+###
+
+### Criar Distribuição em Lote com Valores Diferentes
+POST http://localhost:3000/scp/distributions/bulk
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "PROJECT_ID_AQUI",
+  "baseValue": 120000.00,
+  "referenceNumber": "DIST-2024-003",
+  "distributionDate": "2024-03-15",
+  "competenceDate": "2024-03-01",
+  "paymentMethod": "TED",
+  "status": "PENDENTE",
+  "distributions": [
+    {
+      "investorId": "INVESTOR_1_ID",
+      "amount": 60000.00,
+      "percentage": 50.0,
+      "irrf": 9000.00,
+      "otherDeductions": 200.00,
+      "notes": "Maior participação no projeto"
+    },
+    {
+      "investorId": "INVESTOR_2_ID",
+      "amount": 36000.00,
+      "percentage": 30.0,
+      "irrf": 5400.00,
+      "otherDeductions": 0,
+      "notes": "Participação média"
+    },
+    {
+      "investorId": "INVESTOR_3_ID",
+      "amount": 24000.00,
+      "percentage": 20.0,
+      "irrf": 3600.00,
+      "otherDeductions": 0,
+      "notes": "Menor participação no projeto"
+    }
+  ]
+}
+
+###
+
+### Listar Todas as Distribuições (para verificar as criadas em lote)
+GET http://localhost:3000/scp/distributions?page=1&limit=50
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+###
+
+### Criar Distribuição Individual (endpoint original)
+POST http://localhost:3000/scp/distributions
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "PROJECT_ID_AQUI",
+  "investorId": "INVESTOR_ID_AQUI",
+  "amount": 10000.00,
+  "percentage": 100.0,
+  "baseValue": 10000.00,
+  "referenceNumber": "DIST-2024-SINGLE",
+  "distributionDate": "2024-01-15",
+  "competenceDate": "2024-01-01",
+  "paymentMethod": "TED",
+  "status": "PENDENTE",
+  "irrf": 1500.00,
+  "otherDeductions": 0,
+  "notes": "Distribuição individual"
+}
+
+###
+
+### ============================================
+### DISTRIBUIÇÃO AUTOMÁTICA (COM ALÍQUOTAS)
+### ============================================
+
+### 1. Distribuição Automática SEM Deduções (Básico)
+POST http://localhost:3000/scp/distributions/bulk-create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "814d8205-e6e5-4d15-8f71-bfc2db4019c5",
+  "baseValue": 10000,
+  "competenceDate": "2025-11",
+  "distributionDate": "2025-11-10"
+}
+
+###
+
+### 2. Distribuição Automática COM IRRF de 15%
+POST http://localhost:3000/scp/distributions/bulk-create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "814d8205-e6e5-4d15-8f71-bfc2db4019c5",
+  "baseValue": 10000,
+  "competenceDate": "2025-11",
+  "distributionDate": "2025-11-10",
+  "irrf": 15
+}
+
+###
+
+### 3. Distribuição Automática COM IRRF 22.5% (Investimentos)
+POST http://localhost:3000/scp/distributions/bulk-create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "814d8205-e6e5-4d15-8f71-bfc2db4019c5",
+  "baseValue": 50000,
+  "competenceDate": "2025-11",
+  "distributionDate": "2025-11-10",
+  "irrf": 22.5
+}
+
+###
+
+### 4. Distribuição Automática COM IRRF 27.5% (Rendimento Trabalho)
+POST http://localhost:3000/scp/distributions/bulk-create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "814d8205-e6e5-4d15-8f71-bfc2db4019c5",
+  "baseValue": 100000,
+  "competenceDate": "2025-11",
+  "distributionDate": "2025-11-10",
+  "irrf": 27.5
+}
+
+###
+
+### 5. Distribuição Automática COM Outras Deduções (R$ 50 fixo)
+POST http://localhost:3000/scp/distributions/bulk-create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "814d8205-e6e5-4d15-8f71-bfc2db4019c5",
+  "baseValue": 10000,
+  "competenceDate": "2025-11",
+  "distributionDate": "2025-11-10",
+  "otherDeductions": 50
+}
+
+###
+
+### 6. Distribuição Automática COM IRRF 15% + Deduções R$ 100
+POST http://localhost:3000/scp/distributions/bulk-create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "814d8205-e6e5-4d15-8f71-bfc2db4019c5",
+  "baseValue": 20000,
+  "competenceDate": "2025-11",
+  "distributionDate": "2025-11-10",
+  "irrf": 15,
+  "otherDeductions": 100
+}
+
+###
+
+### 7. Distribuição Automática - Competência Mensal (YYYY-MM)
+POST http://localhost:3000/scp/distributions/bulk-create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "814d8205-e6e5-4d15-8f71-bfc2db4019c5",
+  "baseValue": 15000,
+  "competenceDate": "2025-09",
+  "distributionDate": "2025-09-15",
+  "irrf": 15,
+  "otherDeductions": 75
+}
+
+###
+
+### 8. Distribuição Automática - Grande Valor com Taxas Administrativas
+POST http://localhost:3000/scp/distributions/bulk-create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "814d8205-e6e5-4d15-8f71-bfc2db4019c5",
+  "baseValue": 500000,
+  "competenceDate": "2025-12",
+  "distributionDate": "2025-12-31",
+  "irrf": 15,
+  "otherDeductions": 500
+}
+
+###
+
+### 9. Distribuição Automática - Sem IRRF mas com Taxa de Administração
+POST http://localhost:3000/scp/distributions/bulk-create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+{
+  "projectId": "814d8205-e6e5-4d15-8f71-bfc2db4019c5",
+  "baseValue": 30000,
+  "competenceDate": "2025-11",
+  "distributionDate": "2025-11-20",
+  "irrf": 0,
+  "otherDeductions": 300
+}
+
+###

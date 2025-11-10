@@ -1,0 +1,111 @@
+### ========================================
+### 📊 Dashboard - Estatísticas de Vendas
+### ========================================
+
+@baseUrl = http://localhost:4000
+@adminEmail = admin@example.com
+@adminPassword = senha123
+
+### 1. Login como Admin
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+### Extrair token e companyId
+@token = {{login.response.body.access_token}}
+@companyId = {{login.response.body.user.companies[0].companyId}}
+
+### ========================================
+
+### 2. Obter Estatísticas do Dashboard
+GET {{baseUrl}}/sales/dashboard/stats
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ========================================
+### 📝 Análise da Resposta
+### ========================================
+
+### Resposta esperada inclui:
+### 
+### 1. period - Período de análise
+###    - currentMonth (início e fim)
+###    - previousMonth (início e fim)
+###
+### 2. metrics - Métricas comparativas
+###    - sales (vendas totais + variação %)
+###    - products (produtos ativos + variação %)
+###    - customers (clientes + variação %)
+###    - averageTicket (ticket médio + variação %)
+###
+### 3. recentSales - Array com 4 vendas mais recentes
+###    - code, customer, totalAmount, paymentMethod
+###    - confirmedAt, status
+###
+### 4. topProducts - Array com 4 produtos mais vendidos
+###    - product (id, name, sku, salePrice, currentStock)
+###    - quantitySold (total de unidades vendidas)
+###    - salesCount (número de vendas)
+
+### ========================================
+### 🧪 Testes de Validação
+### ========================================
+
+### 3. Teste sem token (deve retornar 401)
+GET {{baseUrl}}/sales/dashboard/stats
+x-company-id: {{companyId}}
+
+### ========================================
+
+### 4. Teste sem company-id (deve retornar erro)
+GET {{baseUrl}}/sales/dashboard/stats
+Authorization: Bearer {{token}}
+
+### ========================================
+
+### 5. Teste com company-id inválido
+GET {{baseUrl}}/sales/dashboard/stats
+Authorization: Bearer {{token}}
+x-company-id: invalid-uuid
+
+### ========================================
+### 📈 Exemplos de Uso
+### ========================================
+
+### Exemplo 1: Verificar vendas do mês
+### Comando: jq '.metrics.sales'
+### Resultado esperado:
+### {
+###   "current": 125000.50,
+###   "previous": 98000.00,
+###   "change": 27.55,
+###   "changePercent": "+27.55%"
+### }
+
+### Exemplo 2: Listar vendas recentes
+### Comando: jq '.recentSales[].code'
+### Resultado: ["VEN-2025-0042", "VEN-2025-0041", ...]
+
+### Exemplo 3: Ver produtos mais vendidos
+### Comando: jq '.topProducts[].product.name'
+### Resultado: ["Notebook Dell", "Mouse Logitech", ...]
+
+### ========================================
+### 💡 Dicas de Teste
+### ========================================
+
+### Para testar com dados reais:
+### 1. Criar algumas vendas
+### 2. Confirmar as vendas
+### 3. Chamar o endpoint de stats
+### 4. Verificar se os números batem
+
+### Para testar variação mensal:
+### 1. Criar vendas em meses diferentes
+### 2. Usar script SQL para alterar confirmedAt
+### 3. Verificar se cálculo de % está correto

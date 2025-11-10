@@ -1,0 +1,559 @@
+### ================================================
+### TESTE: Upload de Documentos em Aportes (Investments)
+### ================================================
+### Este arquivo testa todos os endpoints de documentos para aportes
+###
+### Fluxo:
+### 1. Criar investidor
+### 2. Criar projeto
+### 3. Criar aporte
+### 4. Upload de documentos (comprovantes, contratos, etc)
+### 5. Listar documentos do aporte
+### 6. Buscar aporte com documentos incluídos
+### 7. Download de documento
+### 8. Deletar documento
+
+@baseUrl = http://localhost:4000
+@token = seu_token_jwt_aqui
+@companyId = seu_company_id_aqui
+@investorId = id_do_investidor_aqui
+@projectId = id_do_projeto_aqui
+@investmentId = id_do_aporte_aqui
+@documentId = id_do_documento_aqui
+
+### ================================================
+### 1. Criar Investidor para Teste
+### ================================================
+POST {{baseUrl}}/scp/investors
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: application/json
+
+{
+  "type": "PESSOA_FISICA",
+  "fullName": "Maria Oliveira Costa",
+  "cpf": "987.654.321-00",
+  "rg": "98.765.432-1",
+  "birthDate": "1985-03-15",
+  "phone": "(11) 98765-4321",
+  "email": "maria.oliveira@email.com",
+  "address": "Rua das Flores, 456, São Paulo, SP",
+  "maritalStatus": "CASADO",
+  "nationality": "Brasileira",
+  "profession": "Empresária",
+  "bankInfo": "Banco Itaú - Ag 1234 - CC 56789-0",
+  "investmentProfile": "MODERADO"
+}
+
+### ================================================
+### 2. Criar Projeto para Teste
+### ================================================
+POST {{baseUrl}}/scp/projects
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: application/json
+
+{
+  "name": "Empreendimento Eólico XYZ",
+  "code": "EOLICO-001",
+  "description": "Projeto de energia eólica com capacidade de 10MW",
+  "totalValue": 8000000,
+  "startDate": "2024-01-01",
+  "status": "ATIVO"
+}
+
+### ================================================
+### 3. Criar Aporte
+### ================================================
+POST {{baseUrl}}/scp/investments
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: application/json
+
+{
+  "projectId": "{{projectId}}",
+  "investorId": "{{investorId}}",
+  "amount": 100000,
+  "investmentDate": "2024-11-10",
+  "paymentMethod": "TED",
+  "referenceNumber": "TED-789456123",
+  "documentNumber": "DOC-2024-001",
+  "status": "CONFIRMADO",
+  "notes": "Primeiro aporte da investidora Maria"
+}
+
+### ================================================
+### 4. Upload de Documentos
+### ================================================
+
+### 4.1. Upload - Comprovante de TED
+POST {{baseUrl}}/scp/investments/documents/upload
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="investmentId"
+
+{{investmentId}}
+------Boundary
+Content-Disposition: form-data; name="category"
+
+Comprovantes
+------Boundary
+Content-Disposition: form-data; name="name"
+
+Comprovante de TED R$ 100.000
+------Boundary
+Content-Disposition: form-data; name="description"
+
+Transferência bancária referente ao aporte de R$ 100.000,00 via TED
+------Boundary
+Content-Disposition: form-data; name="tags"
+
+ted,transferencia,bancario
+------Boundary
+Content-Disposition: form-data; name="file"; filename="ted-100k.pdf"
+Content-Type: application/pdf
+
+<@ted-100k.pdf
+------Boundary--
+
+### 4.2. Upload - Contrato de Aporte Assinado
+POST {{baseUrl}}/scp/investments/documents/upload
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="investmentId"
+
+{{investmentId}}
+------Boundary
+Content-Disposition: form-data; name="category"
+
+Contratos
+------Boundary
+Content-Disposition: form-data; name="name"
+
+Contrato de Aporte - Maria Oliveira
+------Boundary
+Content-Disposition: form-data; name="description"
+
+Contrato de aporte assinado pela investidora e empresa
+------Boundary
+Content-Disposition: form-data; name="tags"
+
+contrato,assinado,juridico
+------Boundary
+Content-Disposition: form-data; name="file"; filename="contrato-maria.pdf"
+Content-Type: application/pdf
+
+<@contrato-maria.pdf
+------Boundary--
+
+### 4.3. Upload - Recibo Assinado
+POST {{baseUrl}}/scp/investments/documents/upload
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="investmentId"
+
+{{investmentId}}
+------Boundary
+Content-Disposition: form-data; name="category"
+
+Recibos
+------Boundary
+Content-Disposition: form-data; name="name"
+
+Recibo de Aporte - R$ 100.000
+------Boundary
+Content-Disposition: form-data; name="description"
+
+Recibo assinado confirmando o recebimento do aporte
+------Boundary
+Content-Disposition: form-data; name="file"; filename="recibo.pdf"
+Content-Type: application/pdf
+
+<@recibo.pdf
+------Boundary--
+
+### 4.4. Upload - Termo de Adesão
+POST {{baseUrl}}/scp/investments/documents/upload
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="investmentId"
+
+{{investmentId}}
+------Boundary
+Content-Disposition: form-data; name="category"
+
+Termos
+------Boundary
+Content-Disposition: form-data; name="name"
+
+Termo de Adesão ao Projeto
+------Boundary
+Content-Disposition: form-data; name="description"
+
+Termo de adesão do investidor ao projeto EOLICO-001
+------Boundary
+Content-Disposition: form-data; name="tags"
+
+termo,adesao,regulamento
+------Boundary
+Content-Disposition: form-data; name="file"; filename="termo-adesao.pdf"
+Content-Type: application/pdf
+
+<@termo-adesao.pdf
+------Boundary--
+
+### 4.5. Upload - Documento Bancário (Extrato)
+POST {{baseUrl}}/scp/investments/documents/upload
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="investmentId"
+
+{{investmentId}}
+------Boundary
+Content-Disposition: form-data; name="category"
+
+Documentos Bancários
+------Boundary
+Content-Disposition: form-data; name="name"
+
+Extrato Bancário - Origem dos Recursos
+------Boundary
+Content-Disposition: form-data; name="description"
+
+Extrato bancário demonstrando origem lícita dos recursos
+------Boundary
+Content-Disposition: form-data; name="tags"
+
+extrato,banco,origem-recursos
+------Boundary
+Content-Disposition: form-data; name="file"; filename="extrato.pdf"
+Content-Type: application/pdf
+
+<@extrato.pdf
+------Boundary--
+
+### ================================================
+### 5. Listar Documentos do Aporte
+### ================================================
+
+### 5.1. Listar Todos (Página 1, Limite 20)
+GET {{baseUrl}}/scp/investments/documents/{{investmentId}}?page=1&limit=20
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### 5.2. Listar Paginado (Página 1, Limite 3)
+GET {{baseUrl}}/scp/investments/documents/{{investmentId}}?page=1&limit=3
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ================================================
+### 6. GET Investment por ID - RETORNA DOCUMENTOS
+### ================================================
+### NOVO: Este endpoint agora retorna o array "documents" com
+### todos os documentos vinculados ao aporte
+
+GET {{baseUrl}}/scp/investments/{{investmentId}}
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ================================================
+### Exemplo de Resposta Esperada:
+### ================================================
+### {
+###   "id": "uuid-investment",
+###   "companyId": "uuid-company",
+###   "projectId": "uuid-project",
+###   "investorId": "uuid-investor",
+###   "amount": 100000,
+###   "investmentDate": "2024-11-10T00:00:00.000Z",
+###   "referenceNumber": "TED-789456123",
+###   "documentNumber": "DOC-2024-001",
+###   "paymentMethod": "TED",
+###   "status": "CONFIRMADO",
+###   "notes": "Primeiro aporte da investidora Maria",
+###   "attachments": [
+###     "/documents/uuid-doc-1",
+###     "/documents/uuid-doc-2",
+###     "/documents/uuid-doc-3",
+###     "/documents/uuid-doc-4",
+###     "/documents/uuid-doc-5"
+###   ],
+###   "createdAt": "2024-11-10T15:00:00.000Z",
+###   "updatedAt": "2024-11-10T15:00:00.000Z",
+###   
+###   "project": {
+###     "id": "uuid-project",
+###     "name": "Empreendimento Eólico XYZ",
+###     "code": "EOLICO-001"
+###   },
+###   
+###   "investor": {
+###     "id": "uuid-investor",
+###     "type": "PESSOA_FISICA",
+###     "fullName": "Maria Oliveira Costa",
+###     "cpf": "987.654.321-00"
+###   },
+###   
+###   "documents": [
+###     {
+###       "id": "uuid-doc-1",
+###       "name": "Comprovante de TED R$ 100.000",
+###       "fileName": "ted-100k.pdf",
+###       "fileSize": 524288,
+###       "mimeType": "application/pdf",
+###       "fileExtension": ".pdf",
+###       "reference": "SCP-APT-EOLICO-001-a1b2c3d4",
+###       "documentType": "Comprovantes",
+###       "tags": ["SCP", "Aporte", "Investimento", "EOLICO-001", "uuid-investment", "987.654.321-00", "ted", "transferencia", "bancario"],
+###       "isPublic": false,
+###       "createdAt": "2024-11-10T15:05:00.000Z",
+###       "folder": {
+###         "id": "uuid-folder-1",
+###         "name": "Comprovantes"
+###       },
+###       "uploadedBy": {
+###         "id": "uuid-user",
+###         "name": "Admin User",
+###         "email": "admin@example.com"
+###       }
+###     },
+###     {
+###       "id": "uuid-doc-2",
+###       "name": "Contrato de Aporte - Maria Oliveira",
+###       "fileName": "contrato-maria.pdf",
+###       "fileSize": 1048576,
+###       "mimeType": "application/pdf",
+###       "fileExtension": ".pdf",
+###       "reference": "SCP-APT-EOLICO-001-a1b2c3d4",
+###       "documentType": "Contratos",
+###       "tags": ["SCP", "Aporte", "EOLICO-001", "uuid-investment", "contrato", "assinado", "juridico"],
+###       "isPublic": false,
+###       "createdAt": "2024-11-10T15:10:00.000Z",
+###       "folder": {
+###         "id": "uuid-folder-2",
+###         "name": "Maria Oliveira Costa"
+###       },
+###       "uploadedBy": {
+###         "id": "uuid-user",
+###         "name": "Admin User",
+###         "email": "admin@example.com"
+###       }
+###     }
+###   ]
+### }
+
+### ================================================
+### 7. Download de Documento Específico
+### ================================================
+GET {{baseUrl}}/scp/investments/documents/{{documentId}}/download
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ================================================
+### 8. Deletar Documento
+### ================================================
+DELETE {{baseUrl}}/scp/investments/documents/{{documentId}}
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ================================================
+### OBSERVAÇÕES:
+### ================================================
+### 
+### 1. Estrutura de Pastas Automática:
+###    SCP > Aportes > {Project Code-Name} > {Investor Name} > {Category}
+###    Exemplo: SCP > Aportes > EOLICO-001 - Empreendimento Eólico XYZ > Maria Oliveira Costa > Comprovantes
+###
+### 2. Tags Automáticas:
+###    - SCP (módulo)
+###    - Aporte / Investimento (tipo)
+###    - {PROJECT_CODE} (código do projeto)
+###    - {INVESTMENT_ID} (UUID do aporte)
+###    - {CPF/CNPJ} (documento do investidor)
+###    - {CATEGORY} (categoria escolhida)
+###    - Tags adicionais fornecidas pelo usuário
+###
+### 3. Reference Automática:
+###    Formato: SCP-APT-{PROJECT_CODE}-{INVESTMENT_ID_SHORT}
+###    Exemplo: SCP-APT-EOLICO-001-a1b2c3d4
+###
+### 4. Campo attachments Atualizado:
+###    - Array de URLs: ["/documents/uuid-1", "/documents/uuid-2"]
+###    - Atualizado automaticamente no upload
+###    - Removido automaticamente no delete
+###
+### 5. Categorias Disponíveis:
+###    - Comprovantes (padrão)
+###    - Contratos
+###    - Recibos
+###    - Termos
+###    - Documentos Bancários
+###    - Outros
+###
+### 6. Permissões Necessárias:
+###    - Usuário autenticado (JWT)
+###    - x-company-id header presente
+###    - Usuário pertence à empresa
+###    - Usuário tem permissão resource: 'scp'
+###
+### 7. Vinculação de Documentos:
+###    - Por tags: documento contém ID do aporte
+###    - Por attachments: array no Investment
+###    - Por reference: código único do documento
+###
+### 8. Query no GET Investment:
+###    - Busca documentos onde tags.has(investment.id)
+###    - Ordenado por createdAt desc
+###    - Inclui folder e uploadedBy
+
+### ================================================
+### TESTES ADICIONAIS
+### ================================================
+
+### 9. Teste: Upload Sem Categoria (Usa Padrão "Comprovantes")
+POST {{baseUrl}}/scp/investments/documents/upload
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="investmentId"
+
+{{investmentId}}
+------Boundary
+Content-Disposition: form-data; name="name"
+
+Documento Sem Categoria
+------Boundary
+Content-Disposition: form-data; name="file"; filename="doc.pdf"
+Content-Type: application/pdf
+
+<@doc.pdf
+------Boundary--
+
+### 10. Teste: Upload com Múltiplas Tags
+POST {{baseUrl}}/scp/investments/documents/upload
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="investmentId"
+
+{{investmentId}}
+------Boundary
+Content-Disposition: form-data; name="name"
+
+Documento com Múltiplas Tags
+------Boundary
+Content-Disposition: form-data; name="category"
+
+Outros
+------Boundary
+Content-Disposition: form-data; name="tags"
+
+importante,urgente,revisar,2024,q4
+------Boundary
+Content-Disposition: form-data; name="file"; filename="multi-tags.pdf"
+Content-Type: application/pdf
+
+<@multi-tags.pdf
+------Boundary--
+
+### 11. Teste: Listar com Paginação Pequena
+GET {{baseUrl}}/scp/investments/documents/{{investmentId}}?page=1&limit=2
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### 12. Teste: Listar Página 2
+GET {{baseUrl}}/scp/investments/documents/{{investmentId}}?page=2&limit=2
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ================================================
+### CASOS DE USO REAIS
+### ================================================
+
+### Caso 1: Aporte Parcelado (3 Parcelas)
+### Upload de 3 comprovantes diferentes
+
+# Parcela 1
+POST {{baseUrl}}/scp/investments/documents/upload
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="investmentId"
+
+{{investmentId}}
+------Boundary
+Content-Disposition: form-data; name="name"
+
+Parcela 1/3 - R$ 30.000
+------Boundary
+Content-Disposition: form-data; name="description"
+
+Primeira parcela do aporte total de R$ 100.000
+------Boundary
+Content-Disposition: form-data; name="tags"
+
+parcela,1de3,30k
+------Boundary
+Content-Disposition: form-data; name="file"; filename="parcela-1.pdf"
+Content-Type: application/pdf
+
+<@parcela-1.pdf
+------Boundary--
+
+### Caso 2: Correção de Documento
+### Delete documento antigo e upload novo
+
+# 1. Deletar documento antigo
+DELETE {{baseUrl}}/scp/investments/documents/{{documentId}}
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+# 2. Upload documento corrigido
+POST {{baseUrl}}/scp/investments/documents/upload
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="investmentId"
+
+{{investmentId}}
+------Boundary
+Content-Disposition: form-data; name="name"
+
+Comprovante Corrigido
+------Boundary
+Content-Disposition: form-data; name="description"
+
+Documento com informações atualizadas
+------Boundary
+Content-Disposition: form-data; name="tags"
+
+corrigido,atualizado
+------Boundary
+Content-Disposition: form-data; name="file"; filename="corrigido.pdf"
+Content-Type: application/pdf
+
+<@corrigido.pdf
+------Boundary--

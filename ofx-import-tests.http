@@ -1,0 +1,247 @@
+### ========================================
+### IMPORTAÇÃO E CONCILIAÇÃO OFX
+### ========================================
+
+@baseUrl = http://localhost:3000
+@token = seu_token_jwt_aqui
+@companyId = uuid_da_empresa
+@bankAccountId = uuid_da_conta_bancaria
+@ofxImportId = uuid_do_extrato_importado
+
+### ========================================
+### 1. Importar arquivo OFX (Conciliação Manual)
+### ========================================
+
+POST {{baseUrl}}/financial/ofx/import?companyId={{companyId}}&bankAccountId={{bankAccountId}}
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="extrato.ofx"
+Content-Type: application/x-ofx
+
+<OFX>
+<SIGNONMSGSRSV1>
+<SONRS>
+<STATUS>
+<CODE>0</CODE>
+<SEVERITY>INFO</SEVERITY>
+</STATUS>
+<DTSERVER>20240115120000</DTSERVER>
+<LANGUAGE>POR</LANGUAGE>
+</SONRS>
+</SIGNONMSGSRSV1>
+<BANKMSGSRSV1>
+<STMTTRNRS>
+<TRNUID>1</TRNUID>
+<STATUS>
+<CODE>0</CODE>
+<SEVERITY>INFO</SEVERITY>
+</STATUS>
+<STMTRS>
+<CURDEF>BRL</CURDEF>
+<BANKACCTFROM>
+<BANKID>001</BANKID>
+<ACCTID>12345</ACCTID>
+<ACCTTYPE>CHECKING</ACCTTYPE>
+</BANKACCTFROM>
+<BANKTRANLIST>
+<DTSTART>20240101</DTSTART>
+<DTEND>20240115</DTEND>
+<STMTTRN>
+<TRNTYPE>CREDIT</TRNTYPE>
+<DTPOSTED>20240105120000</DTPOSTED>
+<TRNAMT>1500.00</TRNAMT>
+<FITID>20240105001</FITID>
+<NAME>PAGAMENTO CLIENTE ABC</NAME>
+<MEMO>PIX RECEBIDO</MEMO>
+</STMTTRN>
+<STMTTRN>
+<TRNTYPE>DEBIT</TRNTYPE>
+<DTPOSTED>20240108140000</DTPOSTED>
+<TRNAMT>-500.00</TRNAMT>
+<FITID>20240108002</FITID>
+<NAME>FORNECEDOR XYZ LTDA</NAME>
+<MEMO>PAGAMENTO FORNECEDOR</MEMO>
+</STMTTRN>
+</BANKTRANLIST>
+<LEDGERBAL>
+<BALAMT>15000.00</BALAMT>
+<DTASOF>20240115120000</DTASOF>
+</LEDGERBAL>
+</STMTRS>
+</STMTTRNRS>
+</BANKMSGSRSV1>
+</OFX>
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### ========================================
+### 2. Buscar transações similares para um lançamento OFX
+### ========================================
+
+POST {{baseUrl}}/financial/ofx/find-similar?companyId={{companyId}}&bankAccountId={{bankAccountId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "fitId": "20240105001",
+  "type": "CREDIT",
+  "datePosted": "2024-01-05T12:00:00.000Z",
+  "amount": 1500.00,
+  "name": "PAGAMENTO CLIENTE ABC",
+  "memo": "PIX RECEBIDO"
+}
+
+### Resposta esperada:
+# [
+#   {
+#     "transactionId": "uuid",
+#     "description": "Recebimento Cliente ABC - PIX",
+#     "amount": 1500.00,
+#     "transactionDate": "2024-01-05T10:00:00.000Z",
+#     "type": "RECEITA",
+#     "categoryName": "Vendas",
+#     "matchScore": 92,
+#     "matchReasons": [
+#       "Valor exato",
+#       "Diferença de 1 dia",
+#       "Descrição muito similar (85%+)",
+#       "3 palavra(s) em comum"
+#     ]
+#   }
+# ]
+
+### ========================================
+### 3. Conciliar manualmente uma transação
+### ========================================
+
+PATCH {{baseUrl}}/financial/ofx/reconcile/uuid_transacao_sistema?companyId={{companyId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ofxFitId": "20240105001"
+}
+
+### Resposta esperada:
+# {
+#   "id": "uuid",
+#   "description": "Recebimento Cliente ABC",
+#   "amount": 1500.00,
+#   "reconciled": true,
+#   "reconciledAt": "2024-01-15T14:30:00.000Z",
+#   "referenceNumber": "20240105001"
+# }
+
+### ========================================
+### 4. Exemplo de Importação Completa - Resultado
+### ========================================
+
+# Resposta do endpoint /import:
+# {
+#   "totalTransactions": 25,
+#   "autoMatched": 0,
+#   "needsReview": 23,
+#   "alreadyImported": 2,
+#   "matches": [
+#     {
+#       "ofxTransactionId": "20240105001",
+#       "systemTransactionId": "uuid-system-txn",
+#       "matchScore": 95,
+#       "matchReasons": [
+#         "Valor exato",
+#         "Mesma data",
+#         "Descrição muito similar (90%+)"
+#       ],
+#       "autoMatched": false
+#     },
+#     {
+#       "ofxTransactionId": "20240106002",
+#       "systemTransactionId": "uuid-system-txn-2",
+#       "matchScore": 75,
+#       "matchReasons": [
+#         "Valor próximo (diferença < 5%)",
+#         "Diferença de 2 dias",
+#         "Descrição similar (65%+)"
+#       ],
+#       "autoMatched": false
+#     },
+#     {
+#       "ofxTransactionId": "20240107003",
+#       "matchScore": 0,
+#       "matchReasons": [
+#         "Nenhuma transação similar encontrada"
+#       ],
+#       "autoMatched": false
+#     }
+#   ]
+# }
+
+### ========================================
+### 4. Listar Extratos OFX Importados
+### ========================================
+
+GET {{baseUrl}}/financial/ofx/imports?companyId={{companyId}}&page=1&limit=20
+Authorization: Bearer {{token}}
+
+### Com filtros
+GET {{baseUrl}}/financial/ofx/imports?companyId={{companyId}}&bankAccountId={{bankAccountId}}&startDate=2024-01-01&endDate=2024-12-31&page=1&limit=20
+Authorization: Bearer {{token}}
+
+### ========================================
+### 5. Buscar Detalhes de um Extrato OFX
+### ========================================
+
+GET {{baseUrl}}/financial/ofx/imports/{{ofxImportId}}?companyId={{companyId}}
+Authorization: Bearer {{token}}
+
+### ========================================
+### 6. Deletar Extrato OFX Importado
+### ========================================
+
+DELETE {{baseUrl}}/financial/ofx/imports/{{ofxImportId}}?companyId={{companyId}}
+Authorization: Bearer {{token}}
+
+### ========================================
+### NOTAS IMPORTANTES
+### ========================================
+
+# 1. Conciliação Manual:
+#    - O sistema NUNCA concilia automaticamente
+#    - Todas as transações precisam de confirmação manual do usuário
+#    - O score é apenas uma sugestão para orientar a decisão
+
+# 2. Interpretação do Score:
+#    - 85-100 pontos: Alta confiança (muito provável ser o mesmo)
+#    - 60-84 pontos: Média confiança (possível match)
+#    - 30-59 pontos: Baixa confiança (incerto)
+#    - 0-29 pontos: Sem match (provavelmente não relacionadas)
+
+# 3. Algoritmo de Matching considera:
+#    - Valor (peso: 40 pontos)
+#    - Data (peso: 30 pontos)
+#    - Descrição (peso: 30 pontos)
+#    - Bônus por palavras em comum (até 15 pontos)
+
+# 4. Transações já conciliadas são identificadas pelo FITID
+#    e não serão processadas novamente
+
+# 5. Apenas transações NÃO conciliadas são consideradas
+#    para sugestões de matching
+
+# 6. Busca em janela de ±7 dias da data do lançamento OFX
+
+# 7. Fluxo do Usuário:
+#    a) Upload do OFX
+#    b) Sistema retorna sugestões ordenadas por score
+#    c) Para cada transação do extrato:
+#       - Se tem sugestão: Revisar e decidir se concilia
+#       - Se não tem: Criar novo lançamento ou buscar manualmente
+#    d) Confirmar conciliações uma por uma
+
+# 8. Gerenciamento de Extratos:
+#    - Use GET /imports para ver histórico de importações
+#    - Cada extrato salva: arquivo, período, estatísticas
+#    - DELETE remove apenas o registro, não desfaz conciliações
+#    - Use para limpar importações antigas ou incorretas
+

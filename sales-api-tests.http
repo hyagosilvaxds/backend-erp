@@ -1,0 +1,359 @@
+# ============================================
+# SALES MODULE - API TESTS
+# ============================================
+# Módulo completo de vendas com métodos de pagamento, orçamentos,
+# análise de crédito, gestão de estoque e fluxo quote→sale
+
+@baseUrl = http://localhost:3000
+@token = SEU_TOKEN_JWT_AQUI
+@companyId = SEU_COMPANY_ID_AQUI
+
+# ============================================
+# MÉTODOS DE PAGAMENTO
+# ============================================
+
+### 1. Criar Método de Pagamento - PIX
+POST {{baseUrl}}/sales/payment-methods
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "PIX",
+  "code": "PIX",
+  "type": "PIX",
+  "allowInstallments": false,
+  "requiresCreditAnalysis": false,
+  "daysToReceive": 0,
+  "transactionFee": 0.5
+}
+
+### 2. Criar Método de Pagamento - Cartão de Crédito (com parcelas)
+POST {{baseUrl}}/sales/payment-methods
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Cartão de Crédito",
+  "code": "CREDIT_CARD",
+  "type": "CREDIT_CARD",
+  "allowInstallments": true,
+  "maxInstallments": 12,
+  "installmentFee": 2.5,
+  "requiresCreditAnalysis": true,
+  "minCreditScore": 600,
+  "daysToReceive": 30,
+  "transactionFee": 3.5
+}
+
+### 3. Criar Método de Pagamento - Boleto
+POST {{baseUrl}}/sales/payment-methods
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Boleto Bancário",
+  "code": "BANK_SLIP",
+  "type": "BANK_SLIP",
+  "allowInstallments": false,
+  "requiresCreditAnalysis": false,
+  "daysToReceive": 3,
+  "transactionFee": 2.0
+}
+
+### 4. Listar todos os métodos de pagamento
+GET {{baseUrl}}/sales/payment-methods
+Authorization: Bearer {{token}}
+
+### 5. Listar apenas métodos ativos
+GET {{baseUrl}}/sales/payment-methods?active=true
+Authorization: Bearer {{token}}
+
+### 6. Listar por tipo
+GET {{baseUrl}}/sales/payment-methods?type=PIX
+Authorization: Bearer {{token}}
+
+### 7. Buscar método específico
+GET {{baseUrl}}/sales/payment-methods/ID_DO_METODO
+Authorization: Bearer {{token}}
+
+### 8. Atualizar método de pagamento
+PUT {{baseUrl}}/sales/payment-methods/ID_DO_METODO
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "transactionFee": 1.0,
+  "maxInstallments": 10
+}
+
+### 9. Ativar/Desativar método
+PATCH {{baseUrl}}/sales/payment-methods/ID_DO_METODO/toggle-active
+Authorization: Bearer {{token}}
+
+### 10. Excluir método de pagamento
+DELETE {{baseUrl}}/sales/payment-methods/ID_DO_METODO
+Authorization: Bearer {{token}}
+
+# ============================================
+# VENDAS E ORÇAMENTOS
+# ============================================
+
+### 11. Criar Orçamento (Quote)
+POST {{baseUrl}}/sales
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "customerId": "ID_DO_CLIENTE",
+  "status": "QUOTE",
+  "items": [
+    {
+      "productId": "ID_DO_PRODUTO_1",
+      "stockLocationId": "ID_DO_LOCAL_ESTOQUE",
+      "quantity": 2,
+      "unitPrice": 150.00,
+      "discount": 10.00,
+      "notes": "Produto com desconto especial"
+    },
+    {
+      "productId": "ID_DO_PRODUTO_2",
+      "quantity": 1,
+      "unitPrice": 200.00
+    }
+  ],
+  "discountPercent": 5,
+  "shippingCost": 25.00,
+  "notes": "Orçamento para cliente especial",
+  "validUntil": "2024-12-31",
+  "useCustomerAddress": true
+}
+
+### 12. Criar Venda com Endereço de Entrega Customizado
+POST {{baseUrl}}/sales
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "customerId": "ID_DO_CLIENTE",
+  "status": "PENDING_APPROVAL",
+  "paymentMethodId": "ID_DO_METODO_PAGAMENTO",
+  "installments": 3,
+  "items": [
+    {
+      "productId": "ID_DO_PRODUTO",
+      "stockLocationId": "ID_DO_LOCAL_ESTOQUE",
+      "quantity": 5,
+      "unitPrice": 100.00
+    }
+  ],
+  "discountAmount": 50.00,
+  "shippingCost": 30.00,
+  "useCustomerAddress": false,
+  "deliveryAddress": {
+    "street": "Rua das Flores",
+    "number": "123",
+    "complement": "Apto 45",
+    "neighborhood": "Centro",
+    "city": "São Paulo",
+    "state": "SP",
+    "zipCode": "01234-567"
+  },
+  "notes": "Entrega urgente",
+  "internalNotes": "Cliente VIP - priorizar"
+}
+
+### 13. Criar Venda com Análise de Crédito
+POST {{baseUrl}}/sales
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "customerId": "ID_DO_CLIENTE",
+  "status": "PENDING_APPROVAL",
+  "paymentMethodId": "ID_METODO_COM_CREDITO",
+  "installments": 6,
+  "items": [
+    {
+      "productId": "ID_DO_PRODUTO",
+      "quantity": 10,
+      "unitPrice": 500.00
+    }
+  ],
+  "shippingCost": 50.00,
+  "notes": "Venda com análise de crédito"
+}
+
+### 14. Listar todas as vendas
+GET {{baseUrl}}/sales
+Authorization: Bearer {{token}}
+
+### 15. Listar vendas por status
+GET {{baseUrl}}/sales?status=QUOTE
+Authorization: Bearer {{token}}
+
+### 16. Listar vendas por cliente
+GET {{baseUrl}}/sales?customerId=ID_DO_CLIENTE
+Authorization: Bearer {{token}}
+
+### 17. Listar vendas por período
+GET {{baseUrl}}/sales?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{token}}
+
+### 18. Buscar vendas (por código ou nome do cliente)
+GET {{baseUrl}}/sales?search=VDA-000001
+Authorization: Bearer {{token}}
+
+### 19. Listar vendas com paginação
+GET {{baseUrl}}/sales?page=1&limit=10
+Authorization: Bearer {{token}}
+
+### 20. Buscar venda específica
+GET {{baseUrl}}/sales/ID_DA_VENDA
+Authorization: Bearer {{token}}
+
+### 21. Atualizar orçamento (apenas QUOTE ou PENDING_APPROVAL)
+PUT {{baseUrl}}/sales/ID_DA_VENDA
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "discountPercent": 10,
+  "shippingCost": 20.00,
+  "notes": "Orçamento atualizado com novo desconto"
+}
+
+# ============================================
+# ANÁLISE DE CRÉDITO
+# ============================================
+
+### 22. Aprovar Análise de Crédito
+POST {{baseUrl}}/sales/ID_DA_VENDA/credit-analysis/approve
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "creditScore": 750,
+  "notes": "Cliente com bom histórico de pagamento"
+}
+
+### 23. Reprovar Análise de Crédito
+POST {{baseUrl}}/sales/ID_DA_VENDA/credit-analysis/reject
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "creditScore": 450,
+  "notes": "Score insuficiente. Cliente possui restrições no cadastro."
+}
+
+# ============================================
+# FLUXO DA VENDA
+# ============================================
+
+### 24. Confirmar Venda (dar baixa no estoque)
+POST {{baseUrl}}/sales/ID_DA_VENDA/confirm
+Authorization: Bearer {{token}}
+
+### 25. Cancelar Venda (devolver estoque se já confirmada)
+POST {{baseUrl}}/sales/ID_DA_VENDA/cancel
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "cancellationReason": "Cliente desistiu da compra"
+}
+
+### 26. Mudar Status da Venda - Para Produção
+PATCH {{baseUrl}}/sales/ID_DA_VENDA/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "IN_PRODUCTION"
+}
+
+### 27. Mudar Status - Pronto para Envio
+PATCH {{baseUrl}}/sales/ID_DA_VENDA/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "READY_TO_SHIP"
+}
+
+### 28. Mudar Status - Enviado
+PATCH {{baseUrl}}/sales/ID_DA_VENDA/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "SHIPPED"
+}
+
+### 29. Mudar Status - Entregue
+PATCH {{baseUrl}}/sales/ID_DA_VENDA/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "DELIVERED"
+}
+
+### 30. Mudar Status - Concluído
+PATCH {{baseUrl}}/sales/ID_DA_VENDA/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "COMPLETED"
+}
+
+# ============================================
+# CENÁRIOS DE TESTE
+# ============================================
+
+### Cenário 1: Orçamento → Venda → Produção → Entrega → Concluída
+# 1. Criar orçamento (status QUOTE)
+# 2. Converter em venda pendente (PUT status → PENDING_APPROVAL)
+# 3. Aprovar (PATCH status → APPROVED)
+# 4. Confirmar venda (POST /confirm)
+# 5. Mover para produção (PATCH status → IN_PRODUCTION)
+# 6. Marcar pronto (PATCH status → READY_TO_SHIP)
+# 7. Enviar (PATCH status → SHIPPED)
+# 8. Entregar (PATCH status → DELIVERED)
+# 9. Concluir (PATCH status → COMPLETED)
+
+### Cenário 2: Venda com Crédito → Aprovada → Confirmada
+# 1. Criar venda com método que requer crédito
+# 2. Aprovar análise de crédito (POST /credit-analysis/approve)
+# 3. Confirmar venda (POST /confirm) - dá baixa no estoque
+# 4. Verificar movimentação de estoque
+
+### Cenário 3: Venda com Crédito → Reprovada
+# 1. Criar venda com método que requer crédito
+# 2. Reprovar análise de crédito (POST /credit-analysis/reject)
+# 3. Venda fica com status REJECTED
+# 4. Estoque não é afetado
+
+### Cenário 4: Venda Confirmada → Cancelada (devolver estoque)
+# 1. Criar e confirmar venda (estoque é reduzido)
+# 2. Cancelar venda (POST /cancel)
+# 3. Estoque é devolvido
+# 4. Verificar movimentações de estoque
+
+### Cenário 5: Orçamento → Cancelado (sem afetar estoque)
+# 1. Criar orçamento (status QUOTE)
+# 2. Cancelar (POST /cancel)
+# 3. Estoque não é afetado
+
+# ============================================
+# VALIDAÇÕES IMPORTANTES
+# ============================================
+# - Orçamentos (QUOTE) não afetam estoque
+# - Vendas confirmadas reduzem estoque automaticamente
+# - Cancelamento de vendas confirmadas devolve estoque
+# - Análise de crédito bloqueia confirmação até aprovação
+# - Métodos de pagamento inativos não podem ser usados
+# - Transições de status seguem fluxo definido
+# - Parcelas só permitidas em métodos configurados
+# - Validação de estoque disponível antes de confirmar

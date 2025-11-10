@@ -1,0 +1,289 @@
+### SCP - Exemplo de Criação de Investidor (CORRETO)
+
+### Variáveis
+@baseUrl = http://localhost:4000
+@token = SEU_TOKEN_JWT_AQUI
+@companyId = SEU_COMPANY_ID_AQUI
+
+###############################################
+# ⚠️ IMPORTANTE - HEADERS OBRIGATÓRIOS
+###############################################
+# 1. Authorization: Token JWT obtido no login
+# 2. x-company-id: UUID da empresa (obrigatório!)
+# 3. NÃO INCLUA "companyId" no body JSON!
+###############################################
+
+###############################################
+# COMO OBTER O COMPANY ID
+###############################################
+# Faça login e pegue o companyId da resposta:
+# POST /auth/login
+# {
+#   "email": "seu@email.com",
+#   "password": "suasenha"
+# }
+# 
+# Resposta inclui:
+# {
+#   "user": {
+#     "companies": [
+#       {
+#         "companyId": "16dfd69e-6903-4e51-81a4-662465b74cd4",
+#         "companyName": "Minha Empresa"
+#       }
+#     ]
+#   }
+# }
+###############################################
+
+###############################################
+# 1. CRIAR INVESTIDOR PESSOA FÍSICA
+###############################################
+
+### 1.1. Exemplo Completo (COM headers obrigatórios)
+POST {{baseUrl}}/scp/investors
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: application/json
+
+{
+  "type": "PESSOA_FISICA",
+  "fullName": "João Silva Santos",
+  "cpf": "015.281.920-79",
+  "rg": "015.281.920-79",
+  "birthDate": "2000-02-02",
+  "gender": "MASCULINO",
+  "maritalStatus": "SOLTEIRO",
+  "nationality": "Brasileira",
+  "profession": "Engenheiro",
+  "motherName": "Maria Silva",
+  "fatherName": "José Silva",
+  "monthlyIncome": 70000,
+  "patrimony": 70000000,
+  "email": "investidor@gmail.com",
+  "alternativeEmail": "email2@gmail.com",
+  "phone": "235235235",
+  "mobilePhone": "234123423",
+  "whatsapp": "235235232",
+  "street": "Rua das Flores",
+  "number": "999",
+  "complement": "Apto 101",
+  "neighborhood": "Centro",
+  "city": "São Paulo",
+  "state": "SP",
+  "zipCode": "39404046",
+  "country": "Brasil",
+  "addressType": "COMERCIAL",
+  "bankName": "Banco do Brasil",
+  "bankCode": "001",
+  "agencyNumber": "0000",
+  "agencyDigit": "0",
+  "accountNumber": "00000",
+  "accountDigit": "0",
+  "accountType": "CORRENTE",
+  "pixKeyType": "CPF",
+  "pixKey": "015.281.920-79",
+  "investorProfile": "MODERADO",
+  "investmentGoal": "Crescimento patrimonial",
+  "investorCode": "INV-0001",
+  "category": "premium",
+  "isAccreditedInvestor": true,
+  "status": "ATIVO",
+  "active": true,
+  "notes": "Cliente premium com alto patrimônio",
+  "internalNotes": "Priorizar atendimento",
+  "termsAcceptedAt": "2025-11-10T14:10:13.125Z",
+  "privacyPolicyAcceptedAt": "2025-11-10T14:10:13.125Z"
+}
+
+### 1.2. Exemplo Mínimo (campos obrigatórios apenas)
+POST {{baseUrl}}/scp/investors
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "type": "PESSOA_FISICA",
+  "fullName": "Maria Santos",
+  "cpf": "123.456.789-00",
+  "email": "maria@email.com"
+}
+
+###############################################
+# 2. CRIAR INVESTIDOR PESSOA JURÍDICA
+###############################################
+
+### 2.1. Exemplo Completo PJ
+POST {{baseUrl}}/scp/investors
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "type": "PESSOA_JURIDICA",
+  "companyName": "Tech Solutions Ltda",
+  "tradeName": "Tech Solutions",
+  "cnpj": "12.345.678/0001-90",
+  "stateRegistration": "123.456.789.012",
+  "municipalRegistration": "98765432",
+  "foundedDate": "2015-03-20",
+  "legalNature": "Sociedade Limitada",
+  "mainActivity": "Desenvolvimento de Software",
+  "legalRepName": "Carlos Alberto Santos",
+  "legalRepDocument": "987.654.321-00",
+  "legalRepRole": "Sócio-Administrador",
+  "email": "contato@techsolutions.com.br",
+  "alternativeEmail": "financeiro@techsolutions.com.br",
+  "phone": "(11) 3456-7890",
+  "mobilePhone": "(11) 98765-4321",
+  "whatsapp": "(11) 98765-4321",
+  "street": "Av. Paulista",
+  "number": "1000",
+  "complement": "Conjunto 505",
+  "neighborhood": "Bela Vista",
+  "city": "São Paulo",
+  "state": "SP",
+  "zipCode": "01310-100",
+  "country": "Brasil",
+  "addressType": "COMERCIAL",
+  "bankName": "Itaú",
+  "bankCode": "341",
+  "agencyNumber": "5678",
+  "accountNumber": "12345",
+  "accountDigit": "6",
+  "accountType": "CORRENTE",
+  "pixKeyType": "CNPJ",
+  "pixKey": "12345678000190",
+  "investorProfile": "ARROJADO",
+  "investmentGoal": "Expansão empresarial",
+  "investorCode": "INV-PJ-001",
+  "category": "Pessoa Jurídica",
+  "isAccreditedInvestor": true,
+  "termsAcceptedAt": "2025-11-10T10:00:00.000Z",
+  "privacyPolicyAcceptedAt": "2025-11-10T10:00:00.000Z",
+  "status": "ATIVO",
+  "active": true
+}
+
+### 2.2. Exemplo Mínimo PJ
+POST {{baseUrl}}/scp/investors
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "type": "PESSOA_JURIDICA",
+  "companyName": "ABC Investimentos Ltda",
+  "cnpj": "98.765.432/0001-10",
+  "email": "contato@abc.com.br"
+}
+
+###############################################
+# 3. LISTAR INVESTIDORES
+###############################################
+
+### 3.1. Listar todos
+GET {{baseUrl}}/scp/investors?page=1&limit=10
+Authorization: Bearer {{token}}
+
+### 3.2. Buscar por nome/CPF/CNPJ
+GET {{baseUrl}}/scp/investors?search=João
+Authorization: Bearer {{token}}
+
+### 3.3. Filtrar por tipo
+GET {{baseUrl}}/scp/investors?type=PESSOA_FISICA
+Authorization: Bearer {{token}}
+
+### 3.4. Filtrar por status
+GET {{baseUrl}}/scp/investors?status=ATIVO
+Authorization: Bearer {{token}}
+
+###############################################
+# 4. BUSCAR INVESTIDOR POR ID
+###############################################
+
+### 4.1. Detalhes completos
+GET {{baseUrl}}/scp/investors/{investorId}
+Authorization: Bearer {{token}}
+
+###############################################
+# 5. ATUALIZAR INVESTIDOR
+###############################################
+
+### 5.1. Atualizar dados (NÃO ENVIE companyId)
+PUT {{baseUrl}}/scp/investors/{investorId}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "mobilePhone": "11999998888",
+  "investorProfile": "ARROJADO",
+  "monthlyIncome": 80000
+}
+
+###############################################
+# 6. DELETAR INVESTIDOR
+###############################################
+
+### 6.1. Remover investidor
+DELETE {{baseUrl}}/scp/investors/{investorId}
+Authorization: Bearer {{token}}
+
+###############################################
+# ERROS COMUNS E SOLUÇÕES
+###############################################
+
+### ❌ ERRO: "property companyId should not exist"
+# CAUSA: Você enviou o campo "companyId" no JSON
+# SOLUÇÃO: Remova completamente o campo "companyId" do payload
+
+### ❌ ERRO: "CPF já cadastrado"
+# CAUSA: Já existe um investidor com este CPF na sua empresa
+# SOLUÇÃO: Use outro CPF ou edite o investidor existente
+
+### ❌ ERRO: "Email já cadastrado"
+# CAUSA: Já existe um investidor com este email na sua empresa
+# SOLUÇÃO: Use outro email ou edite o investidor existente
+
+### ❌ ERRO: 401 Unauthorized
+# CAUSA: Token JWT inválido ou expirado
+# SOLUÇÃO: Faça login novamente e obtenha um novo token
+
+###############################################
+# COMPARAÇÃO: ERRADO vs CORRETO
+###############################################
+
+### ❌ ERRADO - Com companyId (retorna erro 400)
+# POST {{baseUrl}}/scp/investors
+# {
+#   "type": "PESSOA_FISICA",
+#   "fullName": "João Silva",
+#   "cpf": "123.456.789-00",
+#   "companyId": "16dfd69e-6903-4e51-81a4-662465b74cd4"  ← REMOVA ISSO!
+# }
+
+### ✅ CORRETO - Sem companyId
+POST {{baseUrl}}/scp/investors
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "type": "PESSOA_FISICA",
+  "fullName": "João Silva",
+  "cpf": "123.456.789-00",
+  "email": "joao@email.com"
+}
+
+###############################################
+# NOTAS IMPORTANTES
+###############################################
+
+# 1. O companyId é extraído AUTOMATICAMENTE do token JWT
+# 2. Você NÃO DEVE e NÃO PODE enviar companyId em nenhum endpoint
+# 3. Isso garante que cada empresa só acesse seus próprios dados
+# 4. O isolamento é automático e transparente
+# 5. Aplica-se a TODOS os endpoints: investidores, projetos, aportes, distribuições, etc.
+
+# Para obter seu token JWT:
+# POST {{baseUrl}}/auth/login
+# {
+#   "email": "seu@email.com",
+#   "password": "suasenha"
+# }

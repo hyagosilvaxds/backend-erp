@@ -56,6 +56,46 @@
 
 ---
 
+### 4. 📦 Gerenciamento de Produtos e Estoque
+**Status:** 🟢 Implementado e Operacional
+
+#### Documentação Geral
+- **[API_ENDPOINTS_CLIENT.md](./API_ENDPOINTS_CLIENT.md)** - 📘 Referência completa da API (600+ linhas)
+- **[API_CLIENT_EXAMPLES.md](./API_CLIENT_EXAMPLES.md)** - Exemplos práticos em React, Angular, Vue, React Native (800+ linhas)
+- **[INDEX.md](./INDEX.md)** - Índice navegável completo (400+ linhas)
+
+#### Movimentações de Estoque
+- **[API_STOCK_MOVEMENTS.md](./API_STOCK_MOVEMENTS.md)** - 🆕 **NOVA!** API completa de movimentações com upload de documentos (1200+ linhas)
+- **[STOCK_MOVEMENTS_TRANSFERS_WITH_DOCUMENTS.md](./STOCK_MOVEMENTS_TRANSFERS_WITH_DOCUMENTS.md)** - Movimentações e transferências técnicas (1000+ linhas)
+- **[STOCK_MOVEMENTS_WITH_LOCATIONS_GUIDE.md](./STOCK_MOVEMENTS_WITH_LOCATIONS_GUIDE.md)** - Guia completo de estoque e locais (1100+ linhas)
+
+#### Upload e Documentos
+- **[STOCK_DOCUMENTS_UPLOAD_GUIDE.md](./STOCK_DOCUMENTS_UPLOAD_GUIDE.md)** - Upload de documentos fiscais (800+ linhas)
+- **[AUTO_FOLDER_CREATION.md](./AUTO_FOLDER_CREATION.md)** - Organização automática de pastas (900+ linhas)
+
+#### Atualizações e Migrações
+- **[STOCK_LOCATION_REQUIRED_UPDATE.md](./STOCK_LOCATION_REQUIRED_UPDATE.md)** - Breaking changes e migração (2100+ linhas)
+
+**Endpoints:** 40+  
+**Features:** CRUD produtos, locais de estoque, movimentações (6 tipos), transferências com workflow, campos fiscais brasileiros, upload automático de NF, organização automática por ano/mês
+
+**Banco de Dados:**
+- ✅ Schema Prisma completo
+- ✅ Modelos: `Product`, `ProductStockByLocation`, `StockLocation`, `StockTransfer`, `StockTransferItem`, `ProductStockMovement`
+- ✅ 3 Migrations aplicadas
+- ✅ Seed de permissões executado (9 permissões)
+- ✅ Relações com DocumentHub
+
+**Implementação:**
+- ✅ ProductsService completo (1966 linhas)
+- ✅ DocumentsService com criação automática de pastas (1200+ linhas)
+- ✅ Controller com 40+ endpoints (493 linhas)
+- ✅ 15 DTOs com validação
+- ✅ Integração completa com Hub de Documentos
+- ✅ Total: ~4000 linhas de código + ~8000 linhas de documentação
+
+---
+
 ## 🗂️ Estrutura de Documentação
 
 ### Por Funcionalidade

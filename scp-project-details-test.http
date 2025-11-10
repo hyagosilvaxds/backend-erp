@@ -1,0 +1,302 @@
+### ================================================
+### TESTE: GET Project by ID - Com Documentos
+### ================================================
+### Este arquivo testa o endpoint GET /scp/projects/:id que agora
+### retorna os documentos vinculados ao projeto
+###
+### Estrutura de Resposta:
+### - Dados do projeto (nome, código, valores, datas)
+### - Lista de investimentos com dados dos investidores
+### - Lista de distribuições realizadas
+### - Políticas de distribuição ativas
+### - **NOVO**: Array de documentos vinculados
+### - Totais calculados (investido, distribuído, pendente)
+
+@baseUrl = http://localhost:4000
+@token = seu_token_jwt_aqui
+@companyId = seu_company_id_aqui
+@projectId = id_do_projeto_aqui
+
+### ================================================
+### 1. Criar Projeto para Teste
+### ================================================
+POST {{baseUrl}}/scp/projects
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: application/json
+
+{
+  "name": "Empreendimento Solar ABC",
+  "code": "SOLAR-001",
+  "description": "Projeto de energia solar fotovoltaica com capacidade de 5MW",
+  "totalValue": 5000000,
+  "startDate": "2024-01-01",
+  "status": "ATIVO"
+}
+
+### ================================================
+### 2. Upload de Documentos para o Projeto
+### ================================================
+
+### 2.1. Upload - Contrato de Investimento
+POST {{baseUrl}}/scp/projects/documents/upload
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="projectId"
+
+{{projectId}}
+------Boundary
+Content-Disposition: form-data; name="category"
+
+Contratos
+------Boundary
+Content-Disposition: form-data; name="name"
+
+Contrato de Investimento
+------Boundary
+Content-Disposition: form-data; name="description"
+
+Contrato padrão de investimento para o projeto
+------Boundary
+Content-Disposition: form-data; name="file"; filename="contrato.pdf"
+Content-Type: application/pdf
+
+<@contrato.pdf
+------Boundary--
+
+### 2.2. Upload - Estudo de Viabilidade
+POST {{baseUrl}}/scp/projects/documents/upload
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="projectId"
+
+{{projectId}}
+------Boundary
+Content-Disposition: form-data; name="category"
+
+Estudos e Análises
+------Boundary
+Content-Disposition: form-data; name="name"
+
+Estudo de Viabilidade
+------Boundary
+Content-Disposition: form-data; name="description"
+
+Análise técnica e financeira do projeto
+------Boundary
+Content-Disposition: form-data; name="file"; filename="estudo.pdf"
+Content-Type: application/pdf
+
+<@estudo.pdf
+------Boundary--
+
+### 2.3. Upload - Certidão Negativa
+POST {{baseUrl}}/scp/projects/documents/upload
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="projectId"
+
+{{projectId}}
+------Boundary
+Content-Disposition: form-data; name="category"
+
+Documentos Legais
+------Boundary
+Content-Disposition: form-data; name="name"
+
+Certidão Negativa de Débitos
+------Boundary
+Content-Disposition: form-data; name="description"
+
+Certidão negativa atualizada
+------Boundary
+Content-Disposition: form-data; name="tags"
+
+legal,certidao,negativa
+------Boundary
+Content-Disposition: form-data; name="file"; filename="certidao.pdf"
+Content-Type: application/pdf
+
+<@certidao.pdf
+------Boundary--
+
+### ================================================
+### 3. GET Project by ID - RETORNA DOCUMENTOS
+### ================================================
+### NOVO: Este endpoint agora retorna o array "documents" com
+### todos os documentos vinculados ao projeto
+###
+### O array documents contém:
+### - id, name, fileName, fileSize, mimeType, fileExtension
+### - reference (código do projeto), documentType, tags
+### - folder (pasta onde está armazenado)
+### - uploadedBy (usuário que fez upload)
+### - createdAt, updatedAt
+
+GET {{baseUrl}}/scp/projects/{{projectId}}
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ================================================
+### Exemplo de Resposta Esperada:
+### ================================================
+### {
+###   "id": "uuid",
+###   "name": "Empreendimento Solar ABC",
+###   "code": "SOLAR-001",
+###   "description": "Projeto de energia solar fotovoltaica...",
+###   "totalValue": 5000000,
+###   "investedValue": 0,
+###   "distributedValue": 0,
+###   "startDate": "2024-01-01T00:00:00.000Z",
+###   "status": "ATIVO",
+###   "active": true,
+###   "attachments": [
+###     "/documents/uuid-doc-1",
+###     "/documents/uuid-doc-2",
+###     "/documents/uuid-doc-3"
+###   ],
+###   "createdAt": "2024-01-15T10:00:00.000Z",
+###   "updatedAt": "2024-01-15T10:00:00.000Z",
+###   
+###   "investments": [],
+###   "distributions": [],
+###   "distributionPolicies": [],
+###   
+###   "documents": [
+###     {
+###       "id": "uuid-doc-1",
+###       "name": "Contrato de Investimento",
+###       "fileName": "contrato.pdf",
+###       "fileSize": 524288,
+###       "mimeType": "application/pdf",
+###       "fileExtension": ".pdf",
+###       "reference": "SCP-SOLAR-001",
+###       "documentType": "Contratos",
+###       "tags": ["SCP", "Projeto", "SOLAR-001", "Contratos"],
+###       "isPublic": false,
+###       "createdAt": "2024-01-15T10:05:00.000Z",
+###       "folder": {
+###         "id": "uuid-folder",
+###         "name": "SOLAR-001 - Empreendimento Solar ABC"
+###       },
+###       "uploadedBy": {
+###         "id": "uuid-user",
+###         "name": "Admin User",
+###         "email": "admin@example.com"
+###       }
+###     },
+###     {
+###       "id": "uuid-doc-2",
+###       "name": "Estudo de Viabilidade",
+###       "fileName": "estudo.pdf",
+###       "fileSize": 1048576,
+###       "mimeType": "application/pdf",
+###       "fileExtension": ".pdf",
+###       "reference": "SCP-SOLAR-001",
+###       "documentType": "Estudos e Análises",
+###       "tags": ["SCP", "Projeto", "SOLAR-001", "Estudos e Análises"],
+###       "isPublic": false,
+###       "createdAt": "2024-01-15T10:10:00.000Z",
+###       "folder": {
+###         "id": "uuid-folder-2",
+###         "name": "Estudos e Análises"
+###       },
+###       "uploadedBy": {
+###         "id": "uuid-user",
+###         "name": "Admin User",
+###         "email": "admin@example.com"
+###       }
+###     },
+###     {
+###       "id": "uuid-doc-3",
+###       "name": "Certidão Negativa de Débitos",
+###       "fileName": "certidao.pdf",
+###       "fileSize": 262144,
+###       "mimeType": "application/pdf",
+###       "fileExtension": ".pdf",
+###       "reference": "SCP-SOLAR-001",
+###       "documentType": "Documentos Legais",
+###       "tags": ["SCP", "Projeto", "SOLAR-001", "Documentos Legais", "legal", "certidao", "negativa"],
+###       "isPublic": false,
+###       "createdAt": "2024-01-15T10:15:00.000Z",
+###       "folder": {
+###         "id": "uuid-folder-3",
+###         "name": "Documentos Legais"
+###       },
+###       "uploadedBy": {
+###         "id": "uuid-user",
+###         "name": "Admin User",
+###         "email": "admin@example.com"
+###       }
+###     }
+###   ],
+###   
+###   "totals": {
+###     "invested": 0,
+###     "distributed": 0,
+###     "pending": 0
+###   },
+###   
+###   "_count": {
+###     "investments": 0,
+###     "distributions": 0
+###   }
+### }
+
+### ================================================
+### 4. Listar Documentos do Projeto (Endpoint Específico)
+### ================================================
+### Caso queira apenas os documentos, sem os dados do projeto
+GET {{baseUrl}}/scp/projects/{{projectId}}/documents?page=1&limit=20
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ================================================
+### 5. Download de Documento Específico
+### ================================================
+GET {{baseUrl}}/scp/projects/documents/{{documentId}}/download
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ================================================
+### OBSERVAÇÕES:
+### ================================================
+### 
+### 1. Os documentos são vinculados ao projeto através das tags
+###    - Cada documento possui o código do projeto nas tags
+###    - Exemplo: tags incluem "SOLAR-001"
+###
+### 2. O campo "attachments" no projeto contém os IDs dos documentos
+###    - Formato: ["/documents/uuid-1", "/documents/uuid-2"]
+###    - Atualizado automaticamente no upload
+###
+### 3. Estrutura de pastas automática:
+###    SCP > Projetos > [Code-Name] > [Categoria]
+###    Exemplo: SCP > Projetos > SOLAR-001 - Empreendimento Solar ABC > Contratos
+###
+### 4. Categorias disponíveis:
+###    - Contratos
+###    - Relatórios Financeiros
+###    - Estudos e Análises
+###    - Documentos Legais
+###    - Comprovantes de Pagamento
+###    - Termos e Acordos
+###    - Laudos e Certificações
+###    - Fotos e Imagens
+###    - Correspondências
+###    - Outros
+###
+### 5. Permissões:
+###    - Usuário precisa ter acesso ao módulo SCP
+###    - Verificado via rolePermissions → permission.resource = 'scp'
+###    - Aplica-se a todos os endpoints de documentos
