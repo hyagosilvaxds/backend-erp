@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { AuditService } from '../audit/audit.service';
+import { EncryptionService } from '../common/services/encryption.service';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -15,6 +16,7 @@ export class CompaniesService {
   constructor(
     private prisma: PrismaService,
     private auditService: AuditService,
+    private encryptionService: EncryptionService,
   ) {}
 
   // Método privado para remover campos sensíveis
@@ -461,14 +463,14 @@ export class CompaniesService {
     }
 
     // Criptografar senha do certificado antes de salvar
-    const hashedSenha = await bcrypt.hash(senha, 10);
+    const encryptedSenha = this.encryptionService.encrypt(senha);
 
     // Salvar path do certificado e senha criptografada
     const updatedCompany = await this.prisma.company.update({
       where: { id },
       data: {
         certificadoDigitalPath: file.path,
-        certificadoDigitalSenha: hashedSenha,
+        certificadoDigitalSenha: encryptedSenha,
       },
     });
 
@@ -549,8 +551,30 @@ export class CompaniesService {
       throw new NotFoundException('Certificado digital não encontrado');
     }
 
-    // Comparar senha fornecida com hash armazenado
-    return bcrypt.compare(senha, company.certificadoDigitalSenha);
+    try {
+      // Descriptografar senha armazenada e comparar
+      const decryptedPassword = this.encryptionService.decrypt(company.certificadoDigitalSenha);
+      return decryptedPassword === senha;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // Método auxiliar: Obter senha descriptografada do certificado
+  // ATENÇÃO: Use apenas internamente para operações que precisam da senha real
+  async getDecryptedCertificatePassword(companyId: string): Promise<string> {
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+      select: {
+        certificadoDigitalSenha: true,
+      },
+    });
+
+    if (!company || !company.certificadoDigitalSenha) {
+      throw new NotFoundException('Certificado digital não encontrado');
+    }
+
+    return this.encryptionService.decrypt(company.certificadoDigitalSenha);
   }
 
   // Método para buscar histórico de auditoria da empresa

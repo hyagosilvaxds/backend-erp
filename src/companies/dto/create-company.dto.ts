@@ -166,6 +166,26 @@ export class CreateCompanyDto {
   @IsString({ message: 'Ambiente fiscal deve ser uma string' })
   ambienteFiscal?: string;
 
+  // Responsável Técnico (obrigatório para NFe desde 01/04/2024)
+  @IsOptional()
+  @IsString({ message: 'CNPJ do responsável técnico deve ser uma string' })
+  @Length(14, 14, { message: 'CNPJ do responsável técnico deve ter 14 caracteres' })
+  @Matches(/^\d{14}$/, { message: 'CNPJ do responsável técnico deve conter apenas números' })
+  respTecCNPJ?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Nome do contato do responsável técnico deve ser uma string' })
+  respTecContato?: string;
+
+  @IsOptional()
+  @IsEmail({}, { message: 'Email do responsável técnico deve ser válido' })
+  respTecEmail?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Telefone do responsável técnico deve ser uma string' })
+  @Matches(/^\d{10,11}$/, { message: 'Telefone deve ter 10 ou 11 dígitos' })
+  respTecFone?: string;
+
   // Controle interno
   @IsOptional()
   @IsBoolean({ message: 'Active deve ser um booleano' })

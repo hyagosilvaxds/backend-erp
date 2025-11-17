@@ -36,6 +36,7 @@ export class AccountsReceivableService {
       endDate?: string;
       categoryId?: string;
       customerId?: string;
+      saleId?: string;
     },
   ) {
     const where: any = { companyId };
@@ -43,6 +44,7 @@ export class AccountsReceivableService {
     if (filters?.status) where.status = filters.status;
     if (filters?.categoryId) where.categoryId = filters.categoryId;
     if (filters?.customerId) where.customerId = filters.customerId;
+    if (filters?.saleId) where.saleId = filters.saleId;
     if (filters?.startDate || filters?.endDate) {
       where.dueDate = {};
       if (filters.startDate) where.dueDate.gte = new Date(filters.startDate);
@@ -54,6 +56,22 @@ export class AccountsReceivableService {
       include: {
         category: true,
         centroCusto: true,
+        sale: {
+          select: {
+            id: true,
+            code: true,
+            status: true,
+            totalAmount: true,
+            customer: {
+              select: {
+                id: true,
+                name: true,
+                companyName: true,
+                personType: true,
+              },
+            },
+          },
+        },
       },
       orderBy: { dueDate: 'asc' },
     });
@@ -68,6 +86,22 @@ export class AccountsReceivableService {
         installments: true,
         parent: true,
         transaction: true,
+        sale: {
+          select: {
+            id: true,
+            code: true,
+            status: true,
+            totalAmount: true,
+            customer: {
+              select: {
+                id: true,
+                name: true,
+                companyName: true,
+                personType: true,
+              },
+            },
+          },
+        },
       },
     });
 

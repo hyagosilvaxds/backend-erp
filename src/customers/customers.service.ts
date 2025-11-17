@@ -200,16 +200,61 @@ export class CustomersService {
       }
     }
 
-    // Separar endereços e contatos do DTO (não permitir atualização em massa aqui)
+    // Separar endereços e contatos do DTO
     const { addresses, contacts, ...customerData } = dto;
 
-    return this.prisma.customer.update({
-      where: { id },
-      data: customerData,
-      include: {
-        addresses: true,
-        contacts: true,
-      },
+    // Atualizar customer com transação para garantir consistência
+    return this.prisma.$transaction(async (prisma) => {
+      // 1. Atualizar dados do cliente
+      const updatedCustomer = await prisma.customer.update({
+        where: { id },
+        data: customerData,
+      });
+
+      // 2. Processar endereços se fornecidos
+      if (addresses && Array.isArray(addresses)) {
+        // Deletar endereços existentes
+        await prisma.customerAddress.deleteMany({
+          where: { customerId: id },
+        });
+
+        // Criar novos endereços
+        if (addresses.length > 0) {
+          await prisma.customerAddress.createMany({
+            data: addresses.map(addr => ({
+              ...addr,
+              customerId: id,
+            })),
+          });
+        }
+      }
+
+      // 3. Processar contatos se fornecidos
+      if (contacts && Array.isArray(contacts)) {
+        // Deletar contatos existentes
+        await prisma.customerContact.deleteMany({
+          where: { customerId: id },
+        });
+
+        // Criar novos contatos
+        if (contacts.length > 0) {
+          await prisma.customerContact.createMany({
+            data: contacts.map(contact => ({
+              ...contact,
+              customerId: id,
+            })),
+          });
+        }
+      }
+
+      // 4. Retornar cliente atualizado com relações
+      return prisma.customer.findUnique({
+        where: { id },
+        include: {
+          addresses: true,
+          contacts: true,
+        },
+      });
     });
   }
 

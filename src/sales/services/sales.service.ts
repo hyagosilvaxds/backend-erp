@@ -145,6 +145,7 @@ export class SalesService {
     const discountAmount = dto.discountAmount || 0;
     const discountPercent = dto.discountPercent || 0;
     const shippingCost = dto.shippingCost || 0;
+    const shippingModality = dto.shippingModality ?? 9; // Default: Sem frete
     const otherCharges = dto.otherCharges || 0;
 
     // Aplicar descontos
@@ -198,6 +199,7 @@ export class SalesService {
         discountAmount: totalDiscountAmount,
         discountPercent,
         shippingCost,
+        shippingModality,
         otherCharges,
         otherChargesDesc: dto.otherChargesDesc,
         totalAmount,
@@ -663,7 +665,7 @@ export class SalesService {
       await this.prisma.accountReceivable.updateMany({
         where: {
           companyId,
-          documentNumber: sale.code,
+          saleId: sale.id,
           status: {
             in: ['PENDENTE', 'VENCIDO'],
           },
@@ -694,6 +696,216 @@ export class SalesService {
             stockLocation: true,
           },
         },
+      },
+    });
+  }
+
+  /**
+   * Aprovar venda: cria contas a receber e movimenta estoque
+   */
+  async approveSale(companyId: string, id: string) {
+    const sale = await this.findOne(companyId, id);
+
+    // Validar status
+    if (sale.status === 'CANCELED') {
+      throw new BadRequestException('Venda cancelada não pode ser aprovada');
+    }
+
+    if (sale.status === 'APPROVED') {
+      throw new BadRequestException('Venda já está aprovada');
+    }
+
+    // Verificar se há método de pagamento
+    if (!sale.paymentMethodId) {
+      throw new BadRequestException('Venda deve ter um método de pagamento definido');
+    }
+
+    // Verificar análise de crédito se necessário
+    if (sale.creditAnalysisRequired && sale.creditAnalysisStatus !== 'APPROVED') {
+      throw new BadRequestException('Análise de crédito deve ser aprovada primeiro');
+    }
+
+    // Verificar e movimentar estoque
+    for (const item of sale.items) {
+      const product = await this.prisma.product.findUnique({
+        where: { id: item.productId },
+        select: { 
+          id: true, 
+          name: true, 
+          currentStock: true, 
+          manageStock: true 
+        },
+      });
+
+      if (!product) {
+        throw new NotFoundException(`Produto ${item.productId} não encontrado`);
+      }
+
+      // Pular se o produto não gerencia estoque
+      if (!product.manageStock) {
+        continue;
+      }
+
+      // Verificar se tem local de estoque definido
+      if (!item.stockLocationId) {
+        throw new BadRequestException(
+          `Item ${product.name} não possui local de estoque definido`,
+        );
+      }
+
+      // Verificar disponibilidade de estoque no local
+      const stockByLocation = await this.prisma.productStockByLocation.findUnique({
+        where: {
+          productId_locationId: {
+            productId: item.productId,
+            locationId: item.stockLocationId,
+          },
+        },
+      });
+
+      const availableStock = Number(stockByLocation?.quantity || 0);
+      if (availableStock < item.quantity) {
+        throw new BadRequestException(
+          `Estoque insuficiente para ${product.name} no local selecionado. Disponível: ${availableStock}, Solicitado: ${item.quantity}`,
+        );
+      }
+
+      // Dar baixa no estoque do local
+      const newLocationStock = availableStock - item.quantity;
+      await this.prisma.productStockByLocation.update({
+        where: {
+          productId_locationId: {
+            productId: item.productId,
+            locationId: item.stockLocationId,
+          },
+        },
+        data: {
+          quantity: newLocationStock,
+        },
+      });
+
+      // Atualizar estoque geral do produto
+      const currentProductStock = Number(product.currentStock || 0);
+      const newProductStock = currentProductStock - item.quantity;
+      
+      await this.prisma.product.update({
+        where: { id: item.productId },
+        data: {
+          currentStock: new Prisma.Decimal(newProductStock),
+        },
+      });
+
+      // Registrar movimentação de saída
+      await this.prisma.productStockMovement.create({
+        data: {
+          companyId,
+          productId: item.productId,
+          locationId: item.stockLocationId,
+          saleId: sale.id,
+          type: 'EXIT',
+          quantity: new Prisma.Decimal(-item.quantity), // Negativo para saída
+          previousStock: new Prisma.Decimal(availableStock),
+          newStock: new Prisma.Decimal(newLocationStock),
+          reason: 'Venda aprovada',
+          notes: `Venda #${sale.code}`,
+          reference: sale.code,
+        },
+      });
+    }
+
+    // Criar contas a receber baseado nas parcelas da venda
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 30); // 30 dias padrão
+
+    // Buscar detalhes das parcelas se existirem
+    const installmentDetails = await this.prisma.saleInstallment.findMany({
+      where: { saleId: sale.id },
+      orderBy: { installmentNumber: 'asc' },
+    });
+
+    const customerName = sale.customer.personType === 'JURIDICA' 
+      ? (sale.customer.companyName || sale.customer.name || 'Cliente')
+      : (sale.customer.name || 'Cliente');
+    
+    const customerDocument = sale.customer.personType === 'JURIDICA'
+      ? (sale.customer.cnpj || '')
+      : (sale.customer.cpf || '');
+
+    if (installmentDetails.length > 0) {
+      // Criar uma conta a receber para cada parcela
+      for (const installment of installmentDetails) {
+        await this.prisma.accountReceivable.create({
+          data: {
+            companyId,
+            saleId: sale.id,
+            customerId: sale.customerId,
+            customerName,
+            customerDocument,
+            description: `Venda #${sale.code} - Parcela ${installment.installmentNumber}/${sale.installments}`,
+            documentNumber: `${sale.code}-${installment.installmentNumber}`,
+            originalAmount: installment.amount,
+            receivedAmount: 0,
+            remainingAmount: installment.amount,
+            issueDate: new Date(),
+            dueDate: installment.dueDate,
+            competenceDate: new Date(),
+            installmentNumber: installment.installmentNumber,
+            totalInstallments: sale.installments,
+            status: 'PENDENTE',
+            paymentMethod: sale.paymentMethod?.name || 'Não especificado',
+          },
+        });
+      }
+    } else {
+      // Criar parcelas baseado no número de installments da venda
+      const installmentValue = sale.totalAmount / sale.installments;
+      
+      for (let i = 1; i <= sale.installments; i++) {
+        const installmentDueDate = new Date();
+        installmentDueDate.setDate(installmentDueDate.getDate() + (30 * i));
+
+        await this.prisma.accountReceivable.create({
+          data: {
+            companyId,
+            saleId: sale.id,
+            customerId: sale.customerId,
+            customerName,
+            customerDocument,
+            description: `Venda #${sale.code}${sale.installments > 1 ? ` - Parcela ${i}/${sale.installments}` : ''}`,
+            documentNumber: sale.installments > 1 ? `${sale.code}-${i}` : sale.code,
+            originalAmount: installmentValue,
+            receivedAmount: 0,
+            remainingAmount: installmentValue,
+            issueDate: new Date(),
+            dueDate: installmentDueDate,
+            competenceDate: new Date(),
+            installmentNumber: sale.installments > 1 ? i : null,
+            totalInstallments: sale.installments > 1 ? sale.installments : null,
+            status: 'PENDENTE',
+            paymentMethod: sale.paymentMethod?.name || 'Não especificado',
+          },
+        });
+      }
+    }
+
+    // Atualizar status da venda para APPROVED
+    return this.prisma.sale.update({
+      where: { id },
+      data: {
+        status: 'APPROVED',
+        confirmedAt: new Date(),
+      },
+      include: {
+        customer: true,
+        paymentMethod: true,
+        items: {
+          include: {
+            product: true,
+            stockLocation: true,
+          },
+        },
+        accountsReceivable: true,
+        stockMovements: true,
       },
     });
   }

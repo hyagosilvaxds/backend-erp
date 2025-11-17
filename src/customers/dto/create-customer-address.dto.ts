@@ -32,6 +32,10 @@ export class CreateCustomerAddressDto {
 
   @IsOptional()
   @IsString()
+  ibgeCode?: string;
+
+  @IsOptional()
+  @IsString()
   country?: string;
 
   @IsOptional()

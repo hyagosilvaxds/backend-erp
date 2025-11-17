@@ -32,6 +32,7 @@ export class AccountsReceivableController {
     @Query('endDate') endDate?: string,
     @Query('categoryId') categoryId?: string,
     @Query('customerId') customerId?: string,
+    @Query('saleId') saleId?: string,
   ) {
     return this.accountsReceivableService.findAll(companyId, {
       status,
@@ -39,6 +40,7 @@ export class AccountsReceivableController {
       endDate,
       categoryId,
       customerId,
+      saleId,
     });
   }
 

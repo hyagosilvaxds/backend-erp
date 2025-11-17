@@ -10,6 +10,7 @@ import {
   MinLength,
   MaxLength,
   Min,
+  Max,
   IsDecimal,
   ValidateNested,
 } from 'class-validator';
@@ -113,6 +114,7 @@ export class CreateProductDto {
 
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
+  @Max(999.99)
   @IsOptional()
   @Transform(({ value }) => (value ? parseFloat(value) : 0))
   profitMargin?: number;
@@ -300,6 +302,7 @@ export class CreateProductDto {
 
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
+  @Max(100)
   @IsOptional()
   @Transform(({ value }) => (value ? parseFloat(value) : null))
   icmsRate?: number;
@@ -317,6 +320,7 @@ export class CreateProductDto {
 
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
+  @Max(100)
   @IsOptional()
   @Transform(({ value }) => (value ? parseFloat(value) : null))
   ipiRate?: number;
@@ -329,6 +333,7 @@ export class CreateProductDto {
 
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
+  @Max(100)
   @IsOptional()
   @Transform(({ value }) => (value ? parseFloat(value) : null))
   pisRate?: number;
@@ -341,6 +346,7 @@ export class CreateProductDto {
 
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
+  @Max(100)
   @IsOptional()
   @Transform(({ value }) => (value ? parseFloat(value) : null))
   cofinsRate?: number;
@@ -384,6 +390,7 @@ export class CreateProductDto {
 
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
+  @Max(100)
   @IsOptional()
   @Transform(({ value }) => (value ? parseFloat(value) : null))
   issRate?: number; // Alíquota do ISS (%)

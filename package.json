@@ -41,6 +41,8 @@
     "dotenv": "^17.2.3",
     "exceljs": "^4.4.0",
     "multer": "^2.0.2",
+    "node-sped-nfe": "^1.2.45",
+    "node-sped-pdf": "^1.0.65",
     "ofx-js": "^0.2.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",

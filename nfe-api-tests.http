@@ -1,0 +1,357 @@
+### NF-e API Tests
+### Arquivo de testes para emissão de NF-e
+### Use REST Client (VS Code Extension) ou similar
+
+@baseUrl = http://localhost:3000
+@token = seu-jwt-token-aqui
+@companyId = uuid-da-empresa
+@saleId = uuid-da-venda
+@nfeId = uuid-da-nfe
+
+###############################################
+# 1. CONFIGURAÇÃO - Certificado Digital
+###############################################
+
+### Upload Certificado A1
+POST {{baseUrl}}/companies/{{companyId}}/certificate
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="certificate"; filename="certificado.pfx"
+Content-Type: application/x-pkcs12
+
+< ./certificado.pfx
+------Boundary
+Content-Disposition: form-data; name="senha"
+
+senha-do-certificado
+------Boundary--
+
+### Remover Certificado
+DELETE {{baseUrl}}/companies/{{companyId}}/certificate
+Authorization: Bearer {{token}}
+
+###############################################
+# 2. CONFIGURAÇÃO - Dados Fiscais da Empresa
+###############################################
+
+### Atualizar Dados Fiscais
+PUT {{baseUrl}}/companies/{{companyId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "razaoSocial": "EMPRESA EXEMPLO LTDA",
+  "nomeFantasia": "Empresa Exemplo",
+  "cnpj": "12345678000190",
+  "inscricaoEstadual": "123456789",
+  "regimeTributario": "SIMPLES NACIONAL",
+  "logradouro": "Rua Exemplo",
+  "numero": "123",
+  "complemento": "Sala 01",
+  "bairro": "Centro",
+  "cidade": "São Paulo",
+  "estado": "SP",
+  "cep": "01234567",
+  "codigoMunicipioIBGE": "3550308",
+  "nfeAmbiente": "2",
+  "serieNFe": "1",
+  "proximoNumeroNFe": 1,
+  "respTecCNPJ": "12345678000190",
+  "respTecContato": "Nome do Responsável",
+  "respTecEmail": "suporte@empresa.com.br",
+  "respTecFone": "11999999999",
+  "telefone": "1133334444",
+  "celular": "11999998888",
+  "email": "contato@empresa.com.br"
+}
+
+### Buscar Empresa
+GET {{baseUrl}}/companies/{{companyId}}
+Authorization: Bearer {{token}}
+
+###############################################
+# 3. CONFIGURAÇÃO - Produtos com Dados Fiscais
+###############################################
+
+### Atualizar Produto (Simples Nacional)
+PUT {{baseUrl}}/products/{{productId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Produto Exemplo",
+  "price": 100.00,
+  "ncm": "12345678",
+  "cest": "0123456",
+  "cfopEstadual": "5102",
+  "cfopInterestadual": "6108",
+  "origin": "0",
+  "csosn": "102",
+  "barcode": "7891234567890",
+  "unitId": "uuid-unidade"
+}
+
+### Atualizar Produto (Lucro Real)
+PUT {{baseUrl}}/products/{{productId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Produto Exemplo",
+  "price": 100.00,
+  "ncm": "12345678",
+  "cfopEstadual": "5102",
+  "cfopInterestadual": "6108",
+  "origin": "0",
+  "icmsCst": "00",
+  "icmsRate": 18.00,
+  "icmsModBc": "3",
+  "pisCst": "01",
+  "pisRate": 1.65,
+  "cofinsCst": "01",
+  "cofinsRate": 7.60,
+  "barcode": "7891234567890",
+  "unitId": "uuid-unidade"
+}
+
+###############################################
+# 4. PRÉ-REQUISITO - Venda Aprovada
+###############################################
+
+### Aprovar Venda (necessário antes de emitir NF-e)
+POST {{baseUrl}}/sales/{{saleId}}/approve
+Authorization: Bearer {{token}}
+
+### Verificar Status da Venda
+GET {{baseUrl}}/sales/{{saleId}}
+Authorization: Bearer {{token}}
+
+###############################################
+# 5. EMISSÃO DE NF-e
+###############################################
+
+### Emitir NF-e (Gerar XML apenas - não enviar SEFAZ)
+POST {{baseUrl}}/fiscal/nfe/emitir
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "saleId": "{{saleId}}",
+  "enviarSefaz": false
+}
+
+### Emitir NF-e (Completo - com envio para SEFAZ)
+POST {{baseUrl}}/fiscal/nfe/emitir
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "saleId": "{{saleId}}",
+  "enviarSefaz": true
+}
+
+### Emitir NF-e (Completo com opções)
+POST {{baseUrl}}/fiscal/nfe/emitir
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "saleId": "{{saleId}}",
+  "enviarSefaz": true,
+  "modelo": "55",
+  "serie": "1",
+  "numero": null,
+  "naturezaOperacao": "VENDA",
+  "tipoOperacao": 1,
+  "consumidorFinal": 1,
+  "presencaComprador": 1,
+  "modalidadeFrete": 9
+}
+
+###############################################
+# 6. CONSULTA E LISTAGEM
+###############################################
+
+### Listar todas as NF-e
+GET {{baseUrl}}/fiscal/nfe
+Authorization: Bearer {{token}}
+
+### Listar NF-e por Status
+GET {{baseUrl}}/fiscal/nfe?status=AUTHORIZED
+Authorization: Bearer {{token}}
+
+### Listar NF-e por Período
+GET {{baseUrl}}/fiscal/nfe?dataInicio=2023-11-01&dataFim=2023-11-30
+Authorization: Bearer {{token}}
+
+### Listar NF-e por Venda
+GET {{baseUrl}}/fiscal/nfe?saleId={{saleId}}
+Authorization: Bearer {{token}}
+
+### Buscar NF-e específica
+GET {{baseUrl}}/fiscal/nfe/{{nfeId}}
+Authorization: Bearer {{token}}
+
+###############################################
+# 7. DOWNLOAD DE ARQUIVOS
+###############################################
+
+### Baixar DANFE (PDF)
+GET {{baseUrl}}/fiscal/nfe/{{nfeId}}/danfe
+Authorization: Bearer {{token}}
+
+### Baixar XML
+GET {{baseUrl}}/fiscal/nfe/{{nfeId}}/xml
+Authorization: Bearer {{token}}
+
+###############################################
+# 8. CONSULTAS SEFAZ
+###############################################
+
+### Consultar Status do Serviço SEFAZ
+GET {{baseUrl}}/fiscal/nfe/sefaz/status-servico
+Authorization: Bearer {{token}}
+
+### Consultar NF-e na SEFAZ por Chave de Acesso
+GET {{baseUrl}}/fiscal/nfe/consultar/35231234567890001234550010000000011234567890
+Authorization: Bearer {{token}}
+
+###############################################
+# 9. CANCELAMENTO
+###############################################
+
+### Cancelar NF-e
+POST {{baseUrl}}/fiscal/nfe/{{nfeId}}/cancelar
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "justificativa": "Cancelamento solicitado pelo cliente devido a erro no pedido"
+}
+
+###############################################
+# 10. TESTES DE VALIDAÇÃO
+###############################################
+
+### Tentar emitir sem certificado (deve falhar)
+POST {{baseUrl}}/fiscal/nfe/emitir
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "saleId": "{{saleId}}",
+  "enviarSefaz": true
+}
+
+### Tentar emitir venda não aprovada (deve falhar)
+POST {{baseUrl}}/fiscal/nfe/emitir
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "saleId": "uuid-venda-nao-aprovada",
+  "enviarSefaz": true
+}
+
+### Tentar cancelar com justificativa curta (deve falhar)
+POST {{baseUrl}}/fiscal/nfe/{{nfeId}}/cancelar
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "justificativa": "Erro"
+}
+
+###############################################
+# 11. CENÁRIOS DE TESTE
+###############################################
+
+### Cenário 1: Fluxo Completo de Sucesso
+# 1. Upload certificado
+# 2. Configurar empresa
+# 3. Configurar produto
+# 4. Criar venda
+# 5. Aprovar venda
+# 6. Emitir NF-e
+# 7. Baixar DANFE
+
+### Cenário 2: Emissão em Homologação
+# 1. Configurar nfeAmbiente = "2"
+# 2. Emitir NF-e
+# 3. Verificar marca d'água no DANFE
+
+### Cenário 3: Tratamento de Rejeição
+# 1. Emitir NF-e com dados inválidos
+# 2. Verificar response com status "REJEITADA"
+# 3. Corrigir dados
+# 4. Emitir novamente
+
+### Cenário 4: Cancelamento
+# 1. Emitir NF-e
+# 2. Cancelar dentro de 24h
+# 3. Verificar status "CANCELED"
+
+###############################################
+# 12. WEBHOOK/CALLBACKS (Futuro)
+###############################################
+
+### Callback de Status (exemplo de webhook que a SEFAZ poderia enviar)
+# POST {{baseUrl}}/fiscal/nfe/webhook
+# Content-Type: application/json
+# 
+# {
+#   "chaveAcesso": "35231234567890001234550010000000011234567890",
+#   "status": "AUTORIZADA",
+#   "protocolo": "135230000000001",
+#   "dataHora": "2023-11-16T10:30:00-03:00"
+# }
+
+###############################################
+# 13. UTILITÁRIOS
+###############################################
+
+### Validar NCM (exemplo de integração externa)
+# GET https://portalunico.siscomex.gov.br/classif/#/consultar?perfil=publico&tipoBusca=codigo&codigo=12345678
+
+### Consultar CFOP (exemplo)
+# GET http://www.econeteditora.com.br/tabelas_fiscais/cfop.php
+
+###############################################
+# NOTAS IMPORTANTES
+###############################################
+
+# 1. Certificado A1:
+#    - Deve ser arquivo .pfx válido
+#    - Senha correta
+#    - Não pode estar expirado
+
+# 2. Ambiente:
+#    - Homologação (2): Testes sem valor fiscal
+#    - Produção (1): Notas fiscais válidas
+
+# 3. Timing:
+#    - Emissão pode levar 3-10 segundos
+#    - Cancelamento: até 24h após autorização
+
+# 4. Erros Comuns:
+#    - 539: Duplicidade de NF-e
+#    - 204: Número já utilizado
+#    - 227: CNPJ destinatário inválido
+#    - 280: Certificado inválido
+
+# 5. Status da NF-e:
+#    - DRAFT: XML gerado, não enviado
+#    - AUTHORIZED: Autorizada pela SEFAZ
+#    - REJECTED: Rejeitada pela SEFAZ
+#    - CANCELED: Cancelada
+
+###############################################
+# VARIÁVEIS DE AMBIENTE (.env)
+###############################################
+
+# DATABASE_URL=postgresql://user:pass@localhost:5432/erp_db
+# JWT_SECRET=your-jwt-secret
+# ENCRYPTION_KEY=your-encryption-key-min-32-chars
+# PORT=3000

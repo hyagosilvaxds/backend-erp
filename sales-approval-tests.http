@@ -1,0 +1,432 @@
+### ========================================
+### TESTES DE APROVAÇÃO DE VENDAS
+### ========================================
+
+### 1. Criar Venda para Teste
+POST http://localhost:3000/api/sales
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "status": "QUOTE",
+  "paymentMethodId": "{{paymentMethodId}}",
+  "installments": 3,
+  "shippingCost": 50.00,
+  "shippingModality": 0,
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "stockLocationId": "{{stockLocationId}}",
+      "quantity": 5,
+      "unitPrice": 100.00
+    }
+  ]
+}
+
+# Salvar o saleId da resposta: {{saleId}}
+
+###
+
+### 2. Aprovar Venda (Cria Contas a Receber + Movimenta Estoque)
+POST http://localhost:3000/api/sales/{{saleId}}/approve
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+###
+
+### 3. Buscar Venda Aprovada (com todos os vínculos)
+GET http://localhost:3000/api/sales/{{saleId}}
+Authorization: Bearer {{authToken}}
+
+###
+
+### 4. Listar Contas a Receber da Venda
+GET http://localhost:3000/api/financial/accounts-receivable?saleId={{saleId}}
+Authorization: Bearer {{authToken}}
+
+###
+
+### 5. Listar Movimentações de Estoque da Venda
+GET http://localhost:3000/api/stock/movements?saleId={{saleId}}
+Authorization: Bearer {{authToken}}
+
+###
+
+### 6. Cancelar Venda (Reverte Contas a Receber + Devolve Estoque)
+POST http://localhost:3000/api/sales/{{saleId}}/cancel
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "cancellationReason": "Cliente desistiu da compra"
+}
+
+###
+
+### 7. Verificar Contas a Receber Após Cancelamento
+GET http://localhost:3000/api/financial/accounts-receivable?saleId={{saleId}}
+Authorization: Bearer {{authToken}}
+
+# Todas devem estar com status = CANCELADO
+
+###
+
+### 8. Verificar Movimentações Após Cancelamento
+GET http://localhost:3000/api/stock/movements?saleId={{saleId}}
+Authorization: Bearer {{authToken}}
+
+# Deve ter movimentações tipo EXIT e RETURN
+
+###
+
+### ========================================
+### CENÁRIOS DE ERRO
+### ========================================
+
+### Erro: Tentar aprovar venda sem método de pagamento
+POST http://localhost:3000/api/sales
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "status": "QUOTE",
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "stockLocationId": "{{stockLocationId}}",
+      "quantity": 2,
+      "unitPrice": 50.00
+    }
+  ]
+}
+
+# Salvar ID: {{saleWithoutPaymentId}}
+
+###
+
+POST http://localhost:3000/api/sales/{{saleWithoutPaymentId}}/approve
+Authorization: Bearer {{authToken}}
+
+# Deve retornar: "Venda deve ter um método de pagamento definido"
+
+###
+
+### Erro: Estoque Insuficiente
+POST http://localhost:3000/api/sales
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "paymentMethodId": "{{paymentMethodId}}",
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "stockLocationId": "{{stockLocationId}}",
+      "quantity": 99999,
+      "unitPrice": 50.00
+    }
+  ]
+}
+
+# Salvar ID: {{saleInsufficientStockId}}
+
+###
+
+POST http://localhost:3000/api/sales/{{saleInsufficientStockId}}/approve
+Authorization: Bearer {{authToken}}
+
+# Deve retornar: "Estoque insuficiente para [Produto] no local selecionado"
+
+###
+
+### Erro: Aprovar Venda Já Aprovada
+POST http://localhost:3000/api/sales/{{saleId}}/approve
+Authorization: Bearer {{authToken}}
+
+# Deve retornar: "Venda já está aprovada"
+
+###
+
+### Erro: Aprovar Venda Cancelada
+POST http://localhost:3000/api/sales/{{canceledSaleId}}/approve
+Authorization: Bearer {{authToken}}
+
+# Deve retornar: "Venda cancelada não pode ser aprovada"
+
+###
+
+### ========================================
+### FLUXO COMPLETO: Orçamento → Aprovação → NFe
+### ========================================
+
+### Passo 1: Criar Orçamento
+POST http://localhost:3000/api/sales
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "status": "QUOTE",
+  "paymentMethodId": "{{paymentMethodId}}",
+  "installments": 2,
+  "shippingCost": 75.00,
+  "shippingModality": 0,
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "stockLocationId": "{{stockLocationId}}",
+      "quantity": 10,
+      "unitPrice": 150.00
+    }
+  ]
+}
+
+# Salvar: {{completeSaleId}}
+
+###
+
+### Passo 2: Aprovar Venda
+POST http://localhost:3000/api/sales/{{completeSaleId}}/approve
+Authorization: Bearer {{authToken}}
+
+###
+
+### Passo 3: Verificar Contas a Receber Criadas
+GET http://localhost:3000/api/financial/accounts-receivable?saleId={{completeSaleId}}
+Authorization: Bearer {{authToken}}
+
+# Deve ter 2 parcelas criadas automaticamente
+
+###
+
+### Passo 4: Verificar Estoque Foi Movimentado
+GET http://localhost:3000/api/stock/movements?saleId={{completeSaleId}}
+Authorization: Bearer {{authToken}}
+
+# Deve ter 1 movimentação tipo EXIT
+
+###
+
+### Passo 5: Mudar Status para Confirmado
+PATCH http://localhost:3000/api/sales/{{completeSaleId}}/status
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "status": "CONFIRMED"
+}
+
+###
+
+### Passo 6: Emitir NFe da Venda
+POST http://localhost:3000/api/nfe/from-sale
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "saleId": "{{completeSaleId}}",
+  "serie": "1",
+  "naturezaOperacao": "Venda de mercadoria",
+  "tipoOperacao": 1,
+  "finalidade": 1
+}
+
+###
+
+### ========================================
+### TESTE DE PARCELAMENTO
+### ========================================
+
+### Venda Parcelada em 4x
+POST http://localhost:3000/api/sales
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "paymentMethodId": "{{paymentMethodId}}",
+  "installments": 4,
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "stockLocationId": "{{stockLocationId}}",
+      "quantity": 1,
+      "unitPrice": 1000.00
+    }
+  ]
+}
+
+# Salvar: {{installmentSaleId}}
+
+###
+
+### Aprovar e Verificar Parcelas
+POST http://localhost:3000/api/sales/{{installmentSaleId}}/approve
+Authorization: Bearer {{authToken}}
+
+###
+
+### Listar as 4 Contas a Receber
+GET http://localhost:3000/api/financial/accounts-receivable?saleId={{installmentSaleId}}
+Authorization: Bearer {{authToken}}
+
+# Deve retornar 4 parcelas de R$ 250,00 cada
+
+###
+
+### ========================================
+### TESTE DE MÚLTIPLOS PRODUTOS
+### ========================================
+
+### Venda com Múltiplos Produtos
+POST http://localhost:3000/api/sales
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "paymentMethodId": "{{paymentMethodId}}",
+  "installments": 1,
+  "items": [
+    {
+      "productId": "{{productId1}}",
+      "stockLocationId": "{{stockLocationId}}",
+      "quantity": 5,
+      "unitPrice": 50.00
+    },
+    {
+      "productId": "{{productId2}}",
+      "stockLocationId": "{{stockLocationId}}",
+      "quantity": 3,
+      "unitPrice": 100.00
+    },
+    {
+      "productId": "{{productId3}}",
+      "stockLocationId": "{{stockLocationId}}",
+      "quantity": 2,
+      "unitPrice": 200.00
+    }
+  ]
+}
+
+# Salvar: {{multiProductSaleId}}
+
+###
+
+### Aprovar Venda Múltiplos Produtos
+POST http://localhost:3000/api/sales/{{multiProductSaleId}}/approve
+Authorization: Bearer {{authToken}}
+
+###
+
+### Verificar Movimentações (deve ter 3)
+GET http://localhost:3000/api/stock/movements?saleId={{multiProductSaleId}}
+Authorization: Bearer {{authToken}}
+
+# Deve ter 3 movimentações, uma para cada produto
+
+###
+
+### ========================================
+### TESTE DE CANCELAMENTO E DEVOLUÇÃO
+### ========================================
+
+### Criar e Aprovar Venda
+POST http://localhost:3000/api/sales
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "paymentMethodId": "{{paymentMethodId}}",
+  "installments": 2,
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "stockLocationId": "{{stockLocationId}}",
+      "quantity": 8,
+      "unitPrice": 75.00
+    }
+  ]
+}
+
+# Salvar: {{cancelTestSaleId}}
+
+###
+
+POST http://localhost:3000/api/sales/{{cancelTestSaleId}}/approve
+Authorization: Bearer {{authToken}}
+
+###
+
+### Verificar Estoque ANTES do Cancelamento
+GET http://localhost:3000/api/products/{{productId}}
+Authorization: Bearer {{authToken}}
+
+# Anotar o currentStock
+
+###
+
+### Cancelar Venda
+POST http://localhost:3000/api/sales/{{cancelTestSaleId}}/cancel
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "cancellationReason": "Teste de cancelamento - validar devolução de estoque"
+}
+
+###
+
+### Verificar Estoque APÓS Cancelamento
+GET http://localhost:3000/api/products/{{productId}}
+Authorization: Bearer {{authToken}}
+
+# currentStock deve ter voltado ao valor original (+8)
+
+###
+
+### Verificar Movimentações de RETURN
+GET http://localhost:3000/api/stock/movements?saleId={{cancelTestSaleId}}&type=RETURN
+Authorization: Bearer {{authToken}}
+
+# Deve ter movimentação tipo RETURN com quantity = +8
+
+###
+
+### Verificar Contas a Receber Canceladas
+GET http://localhost:3000/api/financial/accounts-receivable?saleId={{cancelTestSaleId}}
+Authorization: Bearer {{authToken}}
+
+# Todas devem estar com status = CANCELADO
+
+###
+
+### ========================================
+### DASHBOARD - ESTATÍSTICAS
+### ========================================
+
+### Listar Todas as Vendas Aprovadas
+GET http://localhost:3000/api/sales?status=APPROVED
+Authorization: Bearer {{authToken}}
+
+###
+
+### Dashboard de Vendas
+GET http://localhost:3000/api/sales/dashboard/stats
+Authorization: Bearer {{authToken}}
+
+###
+
+### ========================================
+### VARIÁVEIS DE AMBIENTE (Configure estas)
+### ========================================
+
+# authToken = seu-token-jwt-aqui
+# customerId = uuid-do-cliente
+# productId = uuid-do-produto
+# stockLocationId = uuid-do-local-estoque
+# paymentMethodId = uuid-do-metodo-pagamento

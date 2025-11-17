@@ -1,0 +1,233 @@
+### ============================================
+### MÓDULO DE NFE - NOTA FISCAL ELETRÔNICA
+### ============================================
+
+### Variáveis de ambiente
+@baseUrl = http://localhost:3000
+@token = seu_token_jwt_aqui
+@companyId = seu_company_id_aqui
+@saleId = seu_sale_id_aqui
+@nfeId = seu_nfe_id_aqui
+
+### ============================================
+### 1. CRIAR NFE MANUAL
+### ============================================
+
+POST {{baseUrl}}/nfe
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: application/json
+
+{
+  "serie": "1",
+  "modelo": "55",
+  "naturezaOperacao": "Venda de mercadoria",
+  "tipoOperacao": 1,
+  "finalidade": 1,
+  "destinatarioNome": "Cliente Teste LTDA",
+  "destinatarioCnpjCpf": "12345678000190",
+  "destinatarioIe": "123456789",
+  "destinatarioEmail": "cliente@teste.com",
+  "destinatarioTelefone": "11999999999",
+  "destLogradouro": "Rua Teste",
+  "destNumero": "123",
+  "destComplemento": "Sala 1",
+  "destBairro": "Centro",
+  "destCidade": "São Paulo",
+  "destEstado": "SP",
+  "destCep": "01310-100",
+  "destPais": "Brasil",
+  "valorProdutos": 1000.00,
+  "valorFrete": 50.00,
+  "valorDesconto": 0.00,
+  "valorTotal": 1050.00,
+  "valorIPI": 0.00,
+  "valorICMS": 180.00,
+  "valorPIS": 16.50,
+  "valorCOFINS": 76.00,
+  "modalidadeFrete": 0,
+  "informacoesComplementares": "Observações da nota fiscal",
+  "items": [
+    {
+      "codigoProduto": "PROD001",
+      "codigoEAN": "7891234567890",
+      "descricao": "Produto Teste",
+      "ncm": "12345678",
+      "cfop": "5102",
+      "unidade": "UN",
+      "quantidade": 10,
+      "valorUnitario": 100.00,
+      "valorTotal": 1000.00,
+      "valorDesconto": 0.00,
+      "icmsCst": "00",
+      "icmsOrigem": 0,
+      "icmsAliquota": 18.00,
+      "icmsBase": 1000.00,
+      "icmsValor": 180.00,
+      "pisCst": "01",
+      "pisAliquota": 1.65,
+      "pisBase": 1000.00,
+      "pisValor": 16.50,
+      "cofinsCst": "01",
+      "cofinsAliquota": 7.60,
+      "cofinsBase": 1000.00,
+      "cofinsValor": 76.00
+    }
+  ]
+}
+
+### ============================================
+### 2. CRIAR NFE A PARTIR DE UMA VENDA
+### ============================================
+
+POST {{baseUrl}}/nfe/from-sale
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: application/json
+
+{
+  "saleId": "{{saleId}}",
+  "serie": "1",
+  "modelo": "55",
+  "naturezaOperacao": "Venda de mercadoria",
+  "tipoOperacao": 1,
+  "finalidade": 1,
+  "modalidadeFrete": 0,
+  "informacoesComplementares": "NFe gerada automaticamente da venda",
+  "observacoes": "Venda confirmada"
+}
+
+### ============================================
+### 3. LISTAR TODAS AS NFES
+### ============================================
+
+GET {{baseUrl}}/nfe
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ============================================
+### 4. LISTAR NFES COM FILTROS
+### ============================================
+
+GET {{baseUrl}}/nfe?status=DRAFT&page=1&limit=10
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ============================================
+### 5. LISTAR NFES POR VENDA
+### ============================================
+
+GET {{baseUrl}}/nfe?saleId={{saleId}}
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ============================================
+### 6. LISTAR NFES POR CLIENTE
+### ============================================
+
+GET {{baseUrl}}/nfe?destinatarioId={{companyId}}
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ============================================
+### 7. BUSCAR NFES POR PERÍODO
+### ============================================
+
+GET {{baseUrl}}/nfe?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ============================================
+### 8. BUSCAR NFE POR NÚMERO/NOME/CNPJ
+### ============================================
+
+GET {{baseUrl}}/nfe?search=teste
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ============================================
+### 9. BUSCAR ESTATÍSTICAS DE NFES
+### ============================================
+
+GET {{baseUrl}}/nfe/stats
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ============================================
+### 10. BUSCAR NFE ESPECÍFICA
+### ============================================
+
+GET {{baseUrl}}/nfe/{{nfeId}}
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ============================================
+### 11. ATUALIZAR NFE (APENAS RASCUNHO)
+### ============================================
+
+PUT {{baseUrl}}/nfe/{{nfeId}}
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: application/json
+
+{
+  "observacoes": "Observação atualizada",
+  "informacoesComplementares": "Informações complementares atualizadas"
+}
+
+### ============================================
+### 12. EMITIR NFE (ENVIAR PARA SEFAZ)
+### ============================================
+### Nota: Funcionalidade ainda não implementada
+
+POST {{baseUrl}}/nfe/{{nfeId}}/emitir
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ============================================
+### 13. CANCELAR NFE
+### ============================================
+### Nota: Funcionalidade ainda não implementada
+
+POST {{baseUrl}}/nfe/{{nfeId}}/cancelar
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+Content-Type: application/json
+
+{
+  "motivoCancelamento": "Cliente solicitou cancelamento da compra"
+}
+
+### ============================================
+### 14. GERAR DANFE (PDF)
+### ============================================
+### Nota: Funcionalidade ainda não implementada
+
+GET {{baseUrl}}/nfe/{{nfeId}}/danfe
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ============================================
+### 15. BAIXAR XML DA NFE
+### ============================================
+
+GET {{baseUrl}}/nfe/{{nfeId}}/xml
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ============================================
+### 16. CONSULTAR STATUS NA SEFAZ
+### ============================================
+### Nota: Funcionalidade ainda não implementada
+
+GET {{baseUrl}}/nfe/{{nfeId}}/status
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}
+
+### ============================================
+### 17. DELETAR NFE (APENAS RASCUNHO)
+### ============================================
+
+DELETE {{baseUrl}}/nfe/{{nfeId}}
+Authorization: Bearer {{token}}
+x-company-id: {{companyId}}

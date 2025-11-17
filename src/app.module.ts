@@ -23,6 +23,8 @@ import { LegalModule } from './legal/legal.module';
 import { FinancialModule } from './financial/financial.module';
 import { ScpModule } from './scp/scp.module';
 import { SalesModule } from './sales/sales.module';
+import { NFeModule } from './nfe/nfe.module';
+import { FiscalModule } from './fiscal/fiscal.module';
 
 @Module({
   imports: [
@@ -48,6 +50,8 @@ import { SalesModule } from './sales/sales.module';
     FinancialModule,
     ScpModule,
     SalesModule,
+    NFeModule,
+    FiscalModule,
   ],
   controllers: [AppController],
   providers: [AppService],

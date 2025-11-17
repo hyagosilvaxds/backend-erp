@@ -1084,6 +1084,7 @@ export class ProductsService {
     filters?: {
       type?: string;
       locationId?: string;
+      saleId?: string;
       startDate?: Date;
       endDate?: Date;
       page?: number;
@@ -1116,6 +1117,10 @@ export class ProductsService {
       where.locationId = filters.locationId;
     }
 
+    if (filters?.saleId) {
+      where.saleId = filters.saleId;
+    }
+
     if (filters?.startDate || filters?.endDate) {
       where.createdAt = {};
       if (filters.startDate) {
@@ -1144,6 +1149,22 @@ export class ProductsService {
               name: true,
               code: true,
               address: true,
+            },
+          },
+          sale: {
+            select: {
+              id: true,
+              code: true,
+              status: true,
+              totalAmount: true,
+              customer: {
+                select: {
+                  id: true,
+                  name: true,
+                  companyName: true,
+                  personType: true,
+                },
+              },
             },
           },
           document: {
