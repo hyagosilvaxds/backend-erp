@@ -10,6 +10,9 @@ import {
   IsEmail,
   IsUrl,
   IsInt,
+  IsNumber,
+  Min,
+  Max,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -174,6 +177,19 @@ export class CreateCompanyDto {
   @IsOptional()
   @IsString({ message: 'Ambiente fiscal deve ser uma string' })
   ambienteFiscal?: string;
+
+  // Alíquotas IBS/CBS (novo sistema tributário brasileiro)
+  @IsOptional()
+  @IsNumber({}, { message: 'Alíquota IBS deve ser um número' })
+  @Min(0, { message: 'Alíquota IBS deve ser maior ou igual a 0' })
+  @Max(100, { message: 'Alíquota IBS deve ser menor ou igual a 100' })
+  aliquotaIBS?: number;
+
+  @IsOptional()
+  @IsNumber({}, { message: 'Alíquota CBS deve ser um número' })
+  @Min(0, { message: 'Alíquota CBS deve ser maior ou igual a 0' })
+  @Max(100, { message: 'Alíquota CBS deve ser menor ou igual a 100' })
+  aliquotaCBS?: number;
 
   // Responsável Técnico (obrigatório para NFe desde 01/04/2024)
   @IsOptional()

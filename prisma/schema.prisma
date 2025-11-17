@@ -104,6 +104,10 @@ model Company {
   ambienteFiscal String @default("Homologacao") // Homologacao ou Producao
   nfeAmbiente    String @default("2") // 1=Produção, 2=Homologação (para API node-sped-nfe)
 
+  // Alíquotas IBS/CBS (novo sistema tributário brasileiro)
+  aliquotaIBS Float? @default(0.1) // Alíquota do IBS (Imposto sobre Bens e Serviços) em %
+  aliquotaCBS Float? @default(0.9) // Alíquota do CBS (Contribuição sobre Bens e Serviços) em %
+
   // Responsável Técnico (para NFe)
   respTecCNPJ    String? // CNPJ do responsável técnico
   respTecContato String? // Nome do contato
@@ -2471,6 +2475,9 @@ model Sale {
   notes         String?
   internalNotes String? // Notas internas (não visível para cliente)
 
+  // NFe vinculada (atalho para acesso rápido)
+  nfeXmlUrl String? // URL pública do XML da NFe para download
+
   // Datas importantes
   quoteDate          DateTime  @default(now())
   validUntil         DateTime? // Validade do orçamento
@@ -2509,6 +2516,7 @@ enum SaleStatus {
   READY_TO_SHIP // Pronto para envio
   SHIPPED // Enviado
   DELIVERED // Entregue
+  INVOICED // Faturado (NFe emitida)
   COMPLETED // Concluída
   CANCELED // Cancelada
   REJECTED // Rejeitada
@@ -2704,7 +2712,8 @@ model NFe {
   dataAutorizacao DateTime? // Data/hora da autorização
   xmlEnviado String? // XML enviado para SEFAZ
   xmlRetorno String? // XML de retorno da SEFAZ
-  xmlAutorizado String? // XML autorizado (completo)
+  xmlAutorizado String? // Caminho local do XML autorizado (completo)
+  xmlAutorizadoUrl String? // URL pública do XML autorizado para download
 
   // DANFE
   danfePdfPath String? // Caminho do arquivo PDF da DANFE

@@ -62,10 +62,6 @@ export class NFeService {
     // LOG DE DEBUG: Verificar dados da venda
     console.log('\n🔍 [DEBUG] Dados completos da venda:');
     console.log('   - subtotal:', sale.subtotal, '(tipo:', typeof sale.subtotal, ')');
-    console.log('   - discountAmount:', sale.discountAmount, '(tipo:', typeof sale.discountAmount, ')');
-    console.log('   - discountPercent:', sale.discountPercent, '(tipo:', typeof sale.discountPercent, ')');
-    console.log('   - shippingCost:', sale.shippingCost, '(tipo:', typeof sale.shippingCost, ')');
-    console.log('   - otherCharges:', sale.otherCharges, '(tipo:', typeof sale.otherCharges, ')');
     console.log('   - totalAmount:', sale.totalAmount, '(tipo:', typeof sale.totalAmount, ')');
     console.log('   - installments:', sale.installments);
     
@@ -247,32 +243,107 @@ export class NFeService {
     // 4.6. Impostos de cada produto
     console.log('   🧮 Processando impostos dos produtos...');
     for (let index = 0; index < sale.items.length; index++) {
-      // ICMS
-      NFe.tagProdICMSSN(index, { orig: '0', CSOSN: '400' });
+      const item = sale.items[index];
+      const produto = item.product;
+      const itemTotal = this.garantirNumero(item.total);
       
-      // PIS
-      NFe.tagProdPIS(index, { CST: '49', qBCProd: 0, vAliqProd: 0, vPIS: 0 });
+      console.log(`\n   📦 Item ${index + 1}: ${produto.name}`);
+      console.log(`      💰 Valor total: R$ ${itemTotal.toFixed(2)}`);
       
-      // COFINS
-      NFe.tagProdCOFINS(index, { CST: '49', qBCProd: 0, vAliqProd: 0, vCOFINS: 0 });
+      // ===== ICMS =====
+      const crt = this.obterCRT(sale.company.regimeTributario || '');
+      const origem = produto.origin || produto.origem || '0'; // 0 = Nacional
       
-      // IBS/CBS
-      const itemTotal = this.garantirNumero(sale.items[index].total);
-      const pIBSUF = 0.10; // Exemplo: 0.10%
-      const pIBSMun = 0.00; // Exemplo: 0.00%
-      const pCBS = 0.90; // Exemplo: 0.90%
+      if (crt === '1') {
+        // Simples Nacional - usar CSOSN
+        const csosn = produto.csosn || '400'; // 400 = Não tributado pelo Simples Nacional
+        console.log(`      🏷️  ICMS: CSOSN ${csosn} (Simples Nacional)`);
+        NFe.tagProdICMSSN(index, { orig: origem, CSOSN: csosn });
+      } else {
+        // Regime Normal - usar CST
+        const icmsCst = produto.icmsCst || produto.cstIcms || '41'; // 41 = Não tributado
+        const icmsRate = this.garantirNumero(produto.icmsRate || produto.aliqIcms);
+        console.log(`      🏷️  ICMS: CST ${icmsCst}, Alíquota ${icmsRate.toFixed(2)}%`);
+        
+        if (icmsRate > 0) {
+          const vBC = itemTotal;
+          const vICMS = vBC * (icmsRate / 100);
+          NFe.tagProdICMS(index, {
+            orig: origem,
+            CST: icmsCst,
+            modBC: produto.icmsModBc || produto.modBcIcms || '3', // 3 = Valor da operação
+            vBC: vBC.toFixed(2),
+            pICMS: icmsRate.toFixed(2),
+            vICMS: vICMS.toFixed(2),
+          });
+        } else {
+          NFe.tagProdICMS(index, { orig: origem, CST: icmsCst });
+        }
+      }
+      
+      // ===== PIS =====
+      const pisCst = produto.pisCst || produto.cstPis || '49'; // 49 = Outras operações de saída
+      const pisRate = this.garantirNumero(produto.pisRate || produto.aliqPis);
+      console.log(`      🏷️  PIS: CST ${pisCst}, Alíquota ${pisRate.toFixed(2)}%`);
+      
+      if (pisRate > 0) {
+        const vBCPis = this.garantirNumero(produto.bcPis) || itemTotal;
+        const vPIS = vBCPis * (pisRate / 100);
+        NFe.tagProdPIS(index, {
+          CST: pisCst,
+          vBC: vBCPis.toFixed(2),
+          pPIS: pisRate.toFixed(2),
+          vPIS: vPIS.toFixed(2),
+        });
+      } else {
+        NFe.tagProdPIS(index, { 
+          CST: pisCst, 
+          qBCProd: 0, 
+          vAliqProd: 0, 
+          vPIS: 0 
+        });
+      }
+      
+      // ===== COFINS =====
+      const cofinsCst = produto.cofinsCst || produto.cstCofins || '49'; // 49 = Outras operações de saída
+      const cofinsRate = this.garantirNumero(produto.cofinsRate || produto.aliqCofins);
+      console.log(`      🏷️  COFINS: CST ${cofinsCst}, Alíquota ${cofinsRate.toFixed(2)}%`);
+      
+      if (cofinsRate > 0) {
+        const vBCCofins = this.garantirNumero(produto.bcCofins) || itemTotal;
+        const vCOFINS = vBCCofins * (cofinsRate / 100);
+        NFe.tagProdCOFINS(index, {
+          CST: cofinsCst,
+          vBC: vBCCofins.toFixed(2),
+          pCOFINS: cofinsRate.toFixed(2),
+          vCOFINS: vCOFINS.toFixed(2),
+        });
+      } else {
+        NFe.tagProdCOFINS(index, { 
+          CST: cofinsCst, 
+          qBCProd: 0, 
+          vAliqProd: 0, 
+          vCOFINS: 0 
+        });
+      }
+      
+      // ===== IBS/CBS =====
+      // Usar alíquotas cadastradas na empresa
+      const pIBSUF = sale.company.aliquotaIBS || 0.10; // Alíquota da empresa ou padrão 0.10%
+      const pIBSMun = 0.00; // Municipal (não implementado ainda)
+      const pCBS = sale.company.aliquotaCBS || 0.90; // Alíquota da empresa ou padrão 0.90%
 
       const vIBSUF = itemTotal * (pIBSUF / 100);
       const vIBSMun = itemTotal * (pIBSMun / 100);
       const vIBS = vIBSUF + vIBSMun;
       const vCBS = itemTotal * (pCBS / 100);
 
-      console.log(`   - [IBS/CBS] Item ${index + 1}:`);
-      console.log(`     - vBC: ${itemTotal.toFixed(2)}`);
-      console.log(`     - pIBSUF: ${pIBSUF}, vIBSUF: ${vIBSUF.toFixed(2)}`);
-      console.log(`     - pIBSMun: ${pIBSMun}, vIBSMun: ${vIBSMun.toFixed(2)}`);
-      console.log(`     - vIBS: ${vIBS.toFixed(2)}`);
-      console.log(`     - pCBS: ${pCBS}, vCBS: ${vCBS.toFixed(2)}`);
+      console.log(`      🏷️  IBS/CBS:`);
+      console.log(`         - vBC: R$ ${itemTotal.toFixed(2)}`);
+      console.log(`         - pIBSUF: ${pIBSUF}%, vIBSUF: R$ ${vIBSUF.toFixed(2)}`);
+      console.log(`         - pIBSMun: ${pIBSMun}%, vIBSMun: R$ ${vIBSMun.toFixed(2)}`);
+      console.log(`         - vIBS: R$ ${vIBS.toFixed(2)}`);
+      console.log(`         - pCBS: ${pCBS}%, vCBS: R$ ${vCBS.toFixed(2)}`);
 
       NFe.tagProdIBSCBS(index, {
         CST: '000',
@@ -295,35 +366,120 @@ export class NFeService {
         },
       });
     }
-    console.log('   ✅ Impostos dos produtos adicionados');
+    console.log('\n   ✅ Impostos de todos os produtos adicionados');
     
     // 4.7. Totais
     console.log('\n💰 [NF-e] Calculando totais da NF-e...');
     
     // Garantir que valores sejam numéricos válidos
     const subtotal = this.garantirNumero(sale.subtotal);
-    const discountAmount = this.garantirNumero(sale.discountAmount);
-    const shippingCost = this.garantirNumero(sale.shippingCost);
-    const otherCharges = this.garantirNumero(sale.otherCharges);
     const totalAmount = this.garantirNumero(sale.totalAmount);
     
-    console.log('   💰 Valores para cálculo:');
-    console.log(`      - subtotal (vProd): ${subtotal.toFixed(2)}`);
-    console.log(`      - discountAmount (vDesc): ${discountAmount.toFixed(2)}`);
-    console.log(`      - shippingCost (vFrete): ${shippingCost.toFixed(2)}`);
-    console.log(`      - otherCharges (vOutro): ${otherCharges.toFixed(2)}`);
-    console.log(`      - totalAmount (vNF): ${totalAmount.toFixed(2)}`);
+    console.log('   💰 Valores da venda:');
+    console.log(`      - Subtotal (produtos): R$ ${subtotal.toFixed(2)}`);
+    console.log(`      - Total da venda (vNF): R$ ${totalAmount.toFixed(2)}`);
     
-    NFe.tagTotal({});
-    console.log('   ✅ Totais calculados');
+    // Calcular totais de impostos (somar todos os itens)
+    let totalICMS = 0;
+    let totalPIS = 0;
+    let totalCOFINS = 0;
+    let totalIBS = 0;
+    let totalCBS = 0;
+    
+    for (let index = 0; index < sale.items.length; index++) {
+      const item = sale.items[index];
+      const produto = item.product;
+      const itemTotal = this.garantirNumero(item.total);
+      
+      // Calcular ICMS
+      const crt = this.obterCRT(sale.company.regimeTributario || '');
+      if (crt !== '1') { // Não é Simples Nacional
+        const icmsRate = this.garantirNumero(produto.icmsRate || produto.aliqIcms);
+        if (icmsRate > 0) {
+          totalICMS += itemTotal * (icmsRate / 100);
+        }
+      }
+      
+      // Calcular PIS
+      const pisRate = this.garantirNumero(produto.pisRate || produto.aliqPis);
+      if (pisRate > 0) {
+        totalPIS += itemTotal * (pisRate / 100);
+      }
+      
+      // Calcular COFINS
+      const cofinsRate = this.garantirNumero(produto.cofinsRate || produto.aliqCofins);
+      if (cofinsRate > 0) {
+        totalCOFINS += itemTotal * (cofinsRate / 100);
+      }
+      
+      // Calcular IBS/CBS
+      const pIBSUF = sale.company.aliquotaIBS || 0.10;
+      const pCBS = sale.company.aliquotaCBS || 0.90;
+      totalIBS += itemTotal * (pIBSUF / 100);
+      totalCBS += itemTotal * (pCBS / 100);
+    }
+    
+    console.log('\n   💰 Totais de impostos calculados:');
+    console.log(`      - Total ICMS: R$ ${totalICMS.toFixed(2)}`);
+    console.log(`      - Total PIS: R$ ${totalPIS.toFixed(2)}`);
+    console.log(`      - Total COFINS: R$ ${totalCOFINS.toFixed(2)}`);
+    console.log(`      - Total IBS: R$ ${totalIBS.toFixed(2)}`);
+    console.log(`      - Total CBS: R$ ${totalCBS.toFixed(2)}`);
+    
+    // Usar o totalAmount da venda como vNF (já inclui produtos, frete, descontos, encargos, etc)
+    // A NFe não precisa detalhar cada componente, apenas informar os valores principais
+    const vNF = totalAmount;
+    
+    console.log('\n   🧮 Totais da NF-e:');
+    console.log(`      - vProd (produtos): R$ ${subtotal.toFixed(2)}`);
+    console.log(`      - vNF (total): R$ ${vNF.toFixed(2)}`);
+    
+    // Montar objeto de totais para a NFe
+    const totaisNFe = {
+      // Total de produtos
+      vProd: subtotal.toFixed(2),
+      
+      // Totais de tributos
+      vICMS: totalICMS.toFixed(2),
+      vPIS: totalPIS.toFixed(2),
+      vCOFINS: totalCOFINS.toFixed(2),
+      
+      // Outros valores (todos zerados - já incluídos no totalAmount)
+      vFrete: '0.00', // Frete (já incluído no totalAmount)
+      vSeg: '0.00', // Seguro
+      vDesc: '0.00', // Desconto (já aplicado no totalAmount)
+      vOutro: '0.00', // Outras despesas (já aplicadas no totalAmount)
+      vII: '0.00', // Imposto de Importação
+      vIPI: '0.00', // IPI
+      
+      // Valor total da nota (do banco, já calculado corretamente)
+      vNF: vNF.toFixed(2),
+    };
+    
+    console.log('\n   💰 Estrutura de totais para XML:');
+    console.log(JSON.stringify(totaisNFe, null, 2));
+    
+    NFe.tagTotal(totaisNFe);
+    console.log('   ✅ Totais calculados e adicionados');
     
     // 4.8. Transporte
-    NFe.tagTransp({ modFrete: parseInt(dto.modalidadeFrete || '9') });
+    console.log('\n🚚 [NF-e] Processando transporte...');
+    const modalidadeFrete = sale.shippingModality || 9; // 9 = Sem frete (padrão)
+    console.log(`   🚚 Modalidade de frete: ${modalidadeFrete}`);
+    
+    NFe.tagTransp({ modFrete: modalidadeFrete });
     console.log('   ✅ Dados de transporte adicionados');
     
     // 4.9. Pagamento
     console.log('\n💳 [NF-e] Processando pagamento...');
-    const valorPagamento = totalAmount > 0 ? totalAmount : 0;
+    
+    // IMPORTANTE: vPag DEVE ser igual ao vNF (= totalAmount)
+    console.log(`   💰 vNF: R$ ${vNF.toFixed(2)}`);
+    console.log(`   💰 totalAmount: R$ ${totalAmount.toFixed(2)}`);
+    if (Math.abs(vNF - totalAmount) > 0.01) {
+      console.log(`   ⚠️  ATENÇÃO: Diferença de R$ ${Math.abs(vNF - totalAmount).toFixed(2)} entre vNF e totalAmount!`);
+      console.log(`   ℹ️  Usando vNF calculado para o pagamento (correto para SEFAZ)`);
+    }
     
     // Obter o código SEFAZ do método de pagamento
     let codigoPagamentoSefaz = sale.paymentMethod?.sefazCode || '99'; // 99 = Outros (padrão)
@@ -334,16 +490,16 @@ export class NFeService {
       codigoPagamentoSefaz = this.mapearFormaPagamento(codigoPagamentoSefaz);
     }
     
-    console.log(`   💳 Valor do pagamento: ${valorPagamento.toFixed(2)}`);
     console.log(`   💳 Código SEFAZ do pagamento (tPag): ${codigoPagamentoSefaz}`);
     console.log(`   💳 Nome do método: ${sale.paymentMethod?.name || 'Não informado'}`);
     console.log(`   💳 Parcelas: ${sale.installments}`);
     
     // Construir objeto de pagamento
+    // IMPORTANTE: vPag DEVE ser igual ao vNF calculado anteriormente
     const detPagamento: any = {
       indPag: sale.installments > 1 ? 1 : 0, // 0=à vista, 1=a prazo
       tPag: codigoPagamentoSefaz,
-      vPag: valorPagamento.toFixed(2),
+      vPag: vNF.toFixed(2), // DEVE SER IGUAL AO vNF (não usar totalAmount!)
     };
     
     // Se for código 99 (Outros), a descrição é OBRIGATÓRIA
@@ -354,8 +510,41 @@ export class NFeService {
       console.log(`   💳 Descrição do pagamento (xPag): ${detPagamento.xPag}`);
     }
     
+    console.log(`   💳 Estrutura de pagamento:`);
+    console.log(`      - indPag: ${detPagamento.indPag} (${detPagamento.indPag === 0 ? 'À vista' : 'A prazo'})`);
+    console.log(`      - tPag: ${detPagamento.tPag}`);
+    console.log(`      - vPag: R$ ${detPagamento.vPag}`);
+    
     NFe.tagDetPag([detPagamento]);
-    NFe.tagTroco('0.00');
+    
+    // IMPORTANTE: O troco só deve ser informado quando o valor pago for MAIOR que o valor da nota
+    // Em vendas normais, o troco é sempre 0.00
+    // Validação SEFAZ: vPag - vTroco = vNF
+    const valorTroco = 0; // Em vendas a prazo ou cartão, não há troco
+    NFe.tagTroco(valorTroco.toFixed(2));
+    
+    console.log(`   💳 Troco: R$ ${valorTroco.toFixed(2)}`);
+    console.log(`\n   ✅ Validação SEFAZ do pagamento:`);
+    console.log(`      Fórmula: vPag - vTroco = vNF`);
+    console.log(`      Valores: ${detPagamento.vPag} - ${valorTroco.toFixed(2)} = ${vNF.toFixed(2)}`);
+    
+    // Verificar se a validação está correta
+    const vPagNum = parseFloat(detPagamento.vPag);
+    const vTrocoNum = parseFloat(valorTroco.toFixed(2));
+    const vNFNum = parseFloat(vNF.toFixed(2));
+    const resultadoValidacao = vPagNum - vTrocoNum;
+    
+    console.log(`      Conversão numérica:`);
+    console.log(`        vPag: ${vPagNum}`);
+    console.log(`        vTroco: ${vTrocoNum}`);
+    console.log(`        vNF: ${vNFNum}`);
+    console.log(`        vPag - vTroco: ${resultadoValidacao}`);
+    
+    if (Math.abs(resultadoValidacao - vNFNum) < 0.01) {
+      console.log(`      ✅ Validação OK!`);
+    } else {
+      console.log(`      ❌ ERRO: Diferença de R$ ${Math.abs(resultadoValidacao - vNFNum).toFixed(2)}`);
+    }
     console.log(`   ✅ Formas de pagamento adicionadas`);
     
     // 4.10. Responsável Técnico
@@ -369,6 +558,56 @@ export class NFeService {
     
     const xmlGerado = NFe.xml();
     console.log(`   ✅ XML gerado com sucesso (${xmlGerado.length} caracteres)`);
+    
+    // DEBUG: Extrair e mostrar seção de totais e pagamento do XML
+    console.log('\n🔍 [DEBUG] Verificando XML gerado:');
+    try {
+      const totalMatch = xmlGerado.match(/<total>[\s\S]*?<\/total>/);
+      const vNFMatchTotal = totalMatch ? totalMatch[0].match(/<vNF>([\d.]+)<\/vNF>/) : null;
+      
+      if (totalMatch) {
+        console.log('   📊 Seção <total>:');
+        const vProdMatch = totalMatch[0].match(/<vProd>([\d.]+)<\/vProd>/);
+        const vFreteMatch = totalMatch[0].match(/<vFrete>([\d.]+)<\/vFrete>/);
+        const vDescMatch = totalMatch[0].match(/<vDesc>([\d.]+)<\/vDesc>/);
+        const vOutroMatch = totalMatch[0].match(/<vOutro>([\d.]+)<\/vOutro>/);
+        
+        if (vProdMatch) console.log(`      - vProd: ${vProdMatch[1]}`);
+        if (vFreteMatch) console.log(`      - vFrete: ${vFreteMatch[1]}`);
+        if (vDescMatch) console.log(`      - vDesc: ${vDescMatch[1]}`);
+        if (vOutroMatch) console.log(`      - vOutro: ${vOutroMatch[1]}`);
+        if (vNFMatchTotal) console.log(`      - vNF: ${vNFMatchTotal[1]}`);
+      }
+      
+      const pagMatch = xmlGerado.match(/<pag>[\s\S]*?<\/pag>/);
+      if (pagMatch) {
+        console.log('   💳 Seção <pag>:');
+        const vPagMatch = pagMatch[0].match(/<vPag>([\d.]+)<\/vPag>/);
+        const vTrocoMatch = pagMatch[0].match(/<vTroco>([\d.]+)<\/vTroco>/);
+        
+        if (vPagMatch) console.log(`      - vPag: ${vPagMatch[1]}`);
+        if (vTrocoMatch) console.log(`      - vTroco: ${vTrocoMatch[1]}`);
+        
+        if (vNFMatchTotal && vPagMatch && vTrocoMatch) {
+          const vNFVal = parseFloat(vNFMatchTotal[1]);
+          const vPagVal = parseFloat(vPagMatch[1]);
+          const vTrocoVal = parseFloat(vTrocoMatch[1]);
+          const diffXml = Math.abs((vPagVal - vTrocoVal) - vNFVal);
+          
+          console.log(`   🧮 Validação no XML:`);
+          console.log(`      ${vPagVal} - ${vTrocoVal} = ${(vPagVal - vTrocoVal).toFixed(2)}`);
+          console.log(`      vNF = ${vNFVal}`);
+          
+          if (diffXml < 0.01) {
+            console.log(`      ✅ XML está correto!`);
+          } else {
+            console.log(`      ❌ ERRO no XML! Diferença: ${diffXml.toFixed(2)}`);
+          }
+        }
+      }
+    } catch (e) {
+      console.log('   ⚠️  Erro ao analisar XML:', e.message);
+    }
     
     // 5. Salvar XML gerado
     const xmlGeradoFile = await this.salvarArquivo(companyId, dto.saleId, 'nfe.xml', xmlGerado);
@@ -386,6 +625,11 @@ export class NFeService {
     console.log('🔗 [NF-e] URL pública:', xmlAssinadoFile.url);
     
     let resultado: any = {
+      numero: numeroNFe,
+      serie: dto.serie || '1',
+      cUF: this.obterCodigoUF(sale.company.estado || 'SP'),
+      cNF: cNF,
+      naturezaOperacao: dto.naturezaOperacao || 'VENDA',
       xmlGerado: xmlGeradoFile.path,
       xmlGeradoUrl: xmlGeradoFile.url,
       xmlAssinado: xmlAssinadoFile.path,
@@ -482,11 +726,21 @@ export class NFeService {
           }
           
           // 11. Salvar NF-e no banco de dados
-          await this.salvarNFeNoBanco(companyId, dto.saleId, resultado);
+          await this.salvarNFeNoBanco(companyId, dto.saleId, resultado, sale);
           console.log('   ✅ NF-e salva no banco de dados');
           
-          // 12. Atualizar contador de numeração da empresa
-          await this.atualizarContadorNFe(companyId, numeroNFe);
+          // 12. Atualizar status da venda para INVOICED (faturado) e adicionar URL do XML
+          if (dto.saleId) {
+            await this.prisma.sale.update({
+              where: { id: dto.saleId },
+              data: { 
+                status: 'INVOICED',
+                nfeXmlUrl: resultado.xmlAssinadoUrl, // URL pública do XML para download
+              },
+            });
+            console.log('   ✅ Status da venda atualizado para INVOICED');
+            console.log('   ✅ URL do XML adicionada na venda');
+          }
         } else {
           // NF-e rejeitada ou erro no serviço
           console.log('❌ [NF-e] NF-e REJEITADA OU ERRO NO SERVIÇO');
@@ -519,6 +773,13 @@ export class NFeService {
             console.log('   ℹ️  Verifique os dados informados e tente novamente');
           }
         }
+        
+        // 13. Atualizar contador de numeração da empresa SEMPRE
+        // Independente de autorização ou rejeição, o número foi usado
+        console.log('\n🔢 [NF-e] Atualizando contador de numeração...');
+        await this.atualizarContadorNFe(companyId, numeroNFe);
+        console.log('   ⚠️  Número da NFe consumido (autorizada ou rejeitada)');
+        
       } catch (error) {
         console.log('💥 [NF-e] ERRO durante envio para SEFAZ!');
         console.log('❌ [NF-e] Mensagem:', error.message);
@@ -537,6 +798,12 @@ export class NFeService {
         resultado.xmlErroUrl = xmlErroFile.url;
         console.log('   💾 Erro salvo em:', xmlErroFile.path);
         console.log('   🔗 URL pública:', xmlErroFile.url);
+        
+        // Incrementar contador mesmo com erro
+        console.log('\n🔢 [NF-e] Atualizando contador de numeração (erro)...');
+        await this.atualizarContadorNFe(companyId, numeroNFe);
+        console.log('   ⚠️  Número da NFe consumido (erro durante envio)');
+        
         throw error;
       }
     }
@@ -725,7 +992,7 @@ export class NFeService {
   /**
    * Salva NF-e no banco de dados
    */
-  private async salvarNFeNoBanco(companyId: string, saleId: string, dados: any) {
+  private async salvarNFeNoBanco(companyId: string, saleId: string, dados: any, sale?: any) {
     const numero = parseInt(dados.numero || '1');
     const serie = dados.serie || '1';
     
@@ -734,6 +1001,7 @@ export class NFeService {
     console.log(`   - Série: ${serie}`);
     console.log(`   - Número: ${numero}`);
     console.log(`   - Chave: ${dados.chaveAcesso || 'N/A'}`);
+    console.log(`   - Cliente: ${sale?.customerId || 'N/A'}`);
     
     // Verificar se já existe
     const existente = await this.prisma.nFe.findFirst({
@@ -751,35 +1019,37 @@ export class NFeService {
       console.log(`   ✨ Criando novo registro...`);
     }
     
-    // Usar upsert para evitar erro de duplicação
-    // Se já existir uma NFe com mesma empresa/serie/numero, atualiza
-    await this.prisma.nFe.upsert({
-      where: {
-        companyId_serie_numero: {
-          companyId,
-          serie,
-          numero,
-        },
-      },
-      update: {
-        chaveAcesso: dados.chaveAcesso,
-        protocoloAutorizacao: dados.protocolo,
-        status: dados.status === 'AUTORIZADA' ? 'AUTHORIZED' : 'DRAFT',
-        dataAutorizacao: dados.dataAutorizacao ? new Date(dados.dataAutorizacao) : undefined,
-        xmlAutorizado: dados.xmlAssinado,
-        danfePdfPath: dados.danfe,
-        danfePdfUrl: dados.danfeUrl,
-      },
-      create: {
+    // Preparar dados do destinatário
+    const destinatarioId = sale?.customerId || null;
+    const destinatarioNome = sale?.customer?.name || sale?.customer?.companyName || 'Cliente';
+    const destinatarioCnpjCpf = sale?.customer?.document || '00000000000';
+    
+    // Buscar endereço do cliente
+    const enderecoCliente = sale?.customer?.addresses?.find((a: any) => a.type === 'BILLING') 
+                         || sale?.customer?.addresses?.find((a: any) => a.type === 'MAIN')
+                         || sale?.customer?.addresses?.[0];
+    
+    // Verificar se já existe NFe com essa numeração
+    // Se existir, não devemos sobrescrever - isso indica erro de numeração
+    if (existente) {
+      throw new Error(`Já existe uma NFe com a série ${serie} e número ${numero}. Verifique a numeração.`);
+    }
+    
+    // Criar nova NFe no banco
+    await this.prisma.nFe.create({
+      data: {
         companyId,
         saleId,
+        destinatarioId, // Vincular com o cliente
         chaveAcesso: dados.chaveAcesso,
         protocoloAutorizacao: dados.protocolo,
         numero,
         serie,
         status: dados.status === 'AUTORIZADA' ? 'AUTHORIZED' : 'DRAFT',
         dataAutorizacao: dados.dataAutorizacao ? new Date(dados.dataAutorizacao) : undefined,
+        dataEmissao: dados.dataAutorizacao ? new Date(dados.dataAutorizacao) : new Date(),
         xmlAutorizado: dados.xmlAssinado,
+        xmlAutorizadoUrl: dados.xmlAssinadoUrl,
         danfePdfPath: dados.danfe,
         danfePdfUrl: dados.danfeUrl,
         // Campos obrigatórios com valores padrão
@@ -787,17 +1057,17 @@ export class NFeService {
         cNF: dados.cNF || Math.random().toString().slice(2, 10),
         naturezaOperacao: dados.naturezaOperacao || 'VENDA',
         cMunFG: dados.cMunFG || '3550308',
-        destinatarioNome: dados.destinatarioNome || 'Cliente',
-        destinatarioCnpjCpf: dados.destinatarioCnpjCpf || '00000000',
-        destLogradouro: dados.destLogradouro || 'Rua',
-        destNumero: dados.destNumero || 'S/N',
-        destBairro: dados.destBairro || 'Bairro',
-        destCidade: dados.destCidade || 'Cidade',
-        destCodigoMunicipio: dados.destCodigoMunicipio || '3550308',
-        destEstado: dados.destEstado || 'SP',
-        destCep: dados.destCep || '00000000',
-        valorProdutos: dados.valorProdutos || 0,
-        valorTotal: dados.valorTotal || 0,
+        destinatarioNome,
+        destinatarioCnpjCpf,
+        destLogradouro: enderecoCliente?.street || 'Rua',
+        destNumero: enderecoCliente?.number || 'S/N',
+        destBairro: enderecoCliente?.neighborhood || 'Bairro',
+        destCidade: enderecoCliente?.city || 'Cidade',
+        destCodigoMunicipio: enderecoCliente?.cityCode || '3550308',
+        destEstado: enderecoCliente?.state || 'SP',
+        destCep: enderecoCliente?.zipCode?.replace(/\D/g, '') || '00000000',
+        valorProdutos: sale?.subtotal || dados.valorProdutos || 0,
+        valorTotal: sale?.totalAmount || dados.valorTotal || 0,
       },
     });
     
@@ -889,30 +1159,69 @@ export class NFeService {
   }
 
   /**
-   * Lista NF-es
+   * Lista NF-es com filtros avançados
    */
   async listarNFes(companyId: string, filters?: any) {
     const where: any = {
       companyId,
     };
 
+    // Filtro por status
     if (filters?.status) {
       where.status = filters.status;
     }
 
+    // Filtro por venda
     if (filters?.saleId) {
       where.saleId = filters.saleId;
     }
 
+    // Filtro por número da NFe
+    if (filters?.numero) {
+      where.numero = parseInt(filters.numero);
+    }
+
+    // Filtro por série
+    if (filters?.serie) {
+      where.serie = filters.serie;
+    }
+
+    // Filtro por chave de acesso (busca exata ou parcial)
+    if (filters?.chaveAcesso) {
+      where.chaveAcesso = {
+        contains: filters.chaveAcesso,
+        mode: 'insensitive',
+      };
+    }
+
+    // Filtro por cliente (destinatário)
+    if (filters?.customerId) {
+      where.destinatarioId = filters.customerId;
+    }
+
+    // Filtro por nome do cliente (busca parcial)
+    if (filters?.customerName) {
+      where.destinatarioNome = {
+        contains: filters.customerName,
+        mode: 'insensitive',
+      };
+    }
+
+    // Filtro por período de emissão
     if (filters?.dataInicio || filters?.dataFim) {
       where.dataEmissao = {};
       if (filters.dataInicio) {
         where.dataEmissao.gte = new Date(filters.dataInicio);
       }
       if (filters.dataFim) {
-        where.dataEmissao.lte = new Date(filters.dataFim);
+        // Adicionar 23:59:59 ao fim do dia
+        const dataFim = new Date(filters.dataFim);
+        dataFim.setHours(23, 59, 59, 999);
+        where.dataEmissao.lte = dataFim;
       }
     }
+
+    console.log('🔍 [NF-e] Listando NFes com filtros:', JSON.stringify(where, null, 2));
 
     return this.prisma.nFe.findMany({
       where,
@@ -922,6 +1231,7 @@ export class NFeService {
             customer: true,
           },
         },
+        customer: true, // Incluir dados do destinatário diretamente
       },
       orderBy: {
         createdAt: 'desc',

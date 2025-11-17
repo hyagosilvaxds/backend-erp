@@ -34,19 +34,40 @@ export class NFeController {
 
   /**
    * GET /fiscal/nfe
-   * Lista todas as NF-e
+   * Lista todas as NF-e com filtros avançados
+   * 
+   * Parâmetros disponíveis:
+   * - status: Status da NFe (DRAFT, AUTHORIZED, REJECTED, CANCELED, etc)
+   * - saleId: ID da venda vinculada
+   * - numero: Número da NFe
+   * - serie: Série da NFe
+   * - chaveAcesso: Chave de acesso (44 dígitos)
+   * - customerId: ID do cliente (destinatário)
+   * - customerName: Nome do cliente (busca parcial)
+   * - dataInicio: Data de emissão inicial (YYYY-MM-DD)
+   * - dataFim: Data de emissão final (YYYY-MM-DD)
    */
   @Get()
   async listarNFes(
     @CompanyId() companyId: string,
     @Query('status') status?: string,
     @Query('saleId') saleId?: string,
+    @Query('numero') numero?: string,
+    @Query('serie') serie?: string,
+    @Query('chaveAcesso') chaveAcesso?: string,
+    @Query('customerId') customerId?: string,
+    @Query('customerName') customerName?: string,
     @Query('dataInicio') dataInicio?: string,
     @Query('dataFim') dataFim?: string,
   ) {
     return this.nfeService.listarNFes(companyId, {
       status,
       saleId,
+      numero,
+      serie,
+      chaveAcesso,
+      customerId,
+      customerName,
       dataInicio,
       dataFim,
     });

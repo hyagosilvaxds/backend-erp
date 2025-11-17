@@ -17,6 +17,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { OFXImportService } from '../services/ofx-import.service';
 import type { OFXTransactionDto } from '../dto/ofx-transaction.dto';
 import { ListOFXImportsDto } from '../dto/list-ofx-imports.dto';
+import { CreateFromOFXDto } from '../dto/create-from-ofx.dto';
 
 @Controller('financial/ofx')
 @UseGuards(JwtAuthGuard)
@@ -143,5 +144,15 @@ export class OFXController {
     }
 
     return this.ofxImportService.deleteOFXImport(id, companyId);
+  }
+
+  /**
+   * Criar um lançamento financeiro a partir de uma transação OFX
+   * Esta é uma alternativa à conciliação - ao invés de vincular a um lançamento existente,
+   * o usuário cria um novo lançamento com os dados da movimentação bancária
+   */
+  @Post('create-transaction')
+  async createTransactionFromOFX(@Body() dto: CreateFromOFXDto) {
+    return this.ofxImportService.createTransactionFromOFX(dto);
   }
 }
