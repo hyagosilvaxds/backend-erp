@@ -132,6 +132,18 @@ export class NFeController {
   }
 
   /**
+   * POST /fiscal/nfe/:id/gerar-danfe
+   * Gera DANFE de uma NF-e já emitida
+   */
+  @Post(':id/gerar-danfe')
+  async gerarDANFE(
+    @CompanyId() companyId: string,
+    @Param('id') id: string,
+  ) {
+    return this.nfeService.gerarDANFENFeExistente(companyId, id);
+  }
+
+  /**
    * GET /fiscal/nfe/consultar/:chaveAcesso
    * Consulta uma NF-e pela chave de acesso
    */

@@ -2708,6 +2708,7 @@ model NFe {
 
   // DANFE
   danfePdfPath String? // Caminho do arquivo PDF da DANFE
+  danfePdfUrl  String? // URL pública do PDF da DANFE
 
   // Cancelamento
   canceladaEm DateTime?

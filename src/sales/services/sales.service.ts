@@ -277,11 +277,34 @@ export class SalesService {
       this.prisma.sale.findMany({
         where,
         include: {
-          customer: true,
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              cpf: true,
+              cnpj: true,
+              phone: true,
+            },
+          },
           paymentMethod: true,
           items: {
             include: {
-              product: true,
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  sku: true,
+                  salePrice: true,
+                },
+              },
+            },
+          },
+          _count: {
+            select: {
+              nfes: true, // Quantidade de NFes
+              accountsReceivable: true, // Quantidade de contas a receber
+              stockMovements: true, // Quantidade de movimentações de estoque
             },
           },
         },
@@ -307,12 +330,53 @@ export class SalesService {
     const sale = await this.prisma.sale.findFirst({
       where: { id, companyId },
       include: {
-        customer: true,
+        customer: {
+          include: {
+            addresses: true, // Endereços do cliente
+          },
+        },
         paymentMethod: true,
         items: {
           include: {
             product: true,
             stockLocation: true,
+          },
+        },
+        nfes: {
+          // NFes vinculadas à venda
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
+        accountsReceivable: {
+          // Contas a receber vinculadas
+          orderBy: {
+            dueDate: 'asc',
+          },
+        },
+        stockMovements: {
+          // Movimentações de estoque vinculadas
+          include: {
+            product: {
+              select: {
+                name: true,
+                sku: true,
+              },
+            },
+            location: {
+              select: {
+                name: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
+        installmentDetails: {
+          // Detalhes das parcelas
+          orderBy: {
+            installmentNumber: 'asc',
           },
         },
       },

@@ -9,6 +9,7 @@ import {
   IsDate,
   IsEmail,
   IsUrl,
+  IsInt,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -153,6 +154,14 @@ export class CreateCompanyDto {
   @IsOptional()
   @IsString({ message: 'Série NF-e deve ser uma string' })
   serieNFe?: string;
+
+  @IsOptional()
+  @IsInt({ message: 'Último número NF-e deve ser um inteiro' })
+  ultimoNumeroNFe?: number;
+
+  @IsOptional()
+  @IsInt({ message: 'Próximo número NF-e deve ser um inteiro' })
+  proximoNumeroNFe?: number;
 
   @IsOptional()
   @IsString({ message: 'Série NFC-e deve ser uma string' })

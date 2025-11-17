@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CompaniesService } from '../../companies/companies.service';
 import { NFeSefazService } from './nfe-sefaz.service';
 import { EmitirNFeDto } from '../dto/emitir-nfe.dto';
+import { Make } from 'node-sped-nfe';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -15,14 +16,14 @@ export class NFeService {
   ) {}
 
   /**
-   * Emite uma NF-e enviando os dados para a API externa
+   * Emite uma NF-e gerando XML localmente e enviando para SEFAZ
    */
   async emitirNFe(companyId: string, dto: EmitirNFeDto) {
     console.log('🏁 [NF-e] ===== INICIANDO EMISSÃO DE NF-e =====');
     console.log('📋 [NF-e] Dados recebidos:', JSON.stringify(dto, null, 2));
     
     // 1. Buscar todos os dados necessários do banco de dados
-    console.log('� [NF-e] Buscando dados da venda, empresa e cliente...');
+    console.log('🔍 [NF-e] Buscando dados da venda, empresa e cliente...');
     const sale = await this.prisma.sale.findUnique({
       where: { id: dto.saleId },
       include: {
@@ -57,6 +58,27 @@ export class NFeService {
     console.log('   - Empresa:', sale.company.razaoSocial);
     console.log('   - Cliente:', sale.customer.name);
     console.log('   - Produtos:', sale.items.length);
+    
+    // LOG DE DEBUG: Verificar dados da venda
+    console.log('\n🔍 [DEBUG] Dados completos da venda:');
+    console.log('   - subtotal:', sale.subtotal, '(tipo:', typeof sale.subtotal, ')');
+    console.log('   - discountAmount:', sale.discountAmount, '(tipo:', typeof sale.discountAmount, ')');
+    console.log('   - discountPercent:', sale.discountPercent, '(tipo:', typeof sale.discountPercent, ')');
+    console.log('   - shippingCost:', sale.shippingCost, '(tipo:', typeof sale.shippingCost, ')');
+    console.log('   - otherCharges:', sale.otherCharges, '(tipo:', typeof sale.otherCharges, ')');
+    console.log('   - totalAmount:', sale.totalAmount, '(tipo:', typeof sale.totalAmount, ')');
+    console.log('   - installments:', sale.installments);
+    
+    console.log('\n🔍 [DEBUG] Itens da venda:');
+    sale.items.forEach((item, index) => {
+      console.log(`   Item ${index + 1}:`);
+      console.log(`     - productId: ${item.productId}`);
+      console.log(`     - productName: ${item.productName}`);
+      console.log(`     - quantity: ${item.quantity} (tipo: ${typeof item.quantity})`);
+      console.log(`     - unitPrice: ${item.unitPrice} (tipo: ${typeof item.unitPrice})`);
+      console.log(`     - discount: ${item.discount} (tipo: ${typeof item.discount})`);
+      console.log(`     - total: ${item.total} (tipo: ${typeof item.total})`);
+    });
 
     // 2. Obter próximo número da NF-e
     const numeroNFe = dto.numero || await this.obterProximoNumero(companyId, dto.serie || '1');
@@ -74,228 +96,456 @@ export class NFeService {
     const idDest = sale.company.estado === enderecoCliente.state ? '1' : '2';
     const isInterestadual = idDest === '2';
 
-    // 4. Ler certificado digital como base64
-    if (!sale.company.certificadoDigitalPath) {
-      throw new Error('Empresa não possui certificado digital cadastrado');
-    }
+    console.log('\n📝 [NF-e] ETAPA 1: Gerando XML da NF-e...');
     
-    const certificatePath = path.resolve(sale.company.certificadoDigitalPath);
-    const certificadoPfxBuffer = fs.readFileSync(certificatePath);
-    const certificadoPfxBase64 = certificadoPfxBuffer.toString('base64');
+    // 4. Criar instância do Make para gerar XML
+    const NFe = new Make();
     
-    // Descriptografar senha do certificado
-    const senhaDescriptografada = await this.companiesService.getDecryptedCertificatePassword(sale.company.id);
-
-    // 5. Montar payload para a API externa
-    const payload = {
-      config: {
-        mod: '55',
-        tpAmb: sale.company.ambienteFiscal === 'Homologacao' ? 2 : 1, // 1=Produção, 2=Homologação
-        UF: sale.company.estado || 'SP',
-        versao: '4.00',
-        timeout: 10,
-      },
-      certificado: {
-        pfxBase64: certificadoPfxBase64,
-        senha: senhaDescriptografada,
-      },
-      ide: {
-        cUF: this.obterCodigoUF(sale.company.estado || 'SP'),
-        cNF: cNF,
-        natOp: dto.naturezaOperacao || 'VENDA',
-        mod: dto.modelo || '55',
-        serie: dto.serie || '1',
-        nNF: numeroNFe.toString(),
-        dhEmi: new Date().toISOString(),
-        tpNF: dto.tipoOperacao || '1',
-        idDest: idDest,
-        cMunFG: sale.company.codigoMunicipioIBGE || '3550308',
-        tpImp: '1',
-        tpEmis: '1',
-        cDV: '1',
-        tpAmb: (sale.company.ambienteFiscal === 'Homologacao' ? 2 : 1).toString(), // 1=Produção, 2=Homologação
-        finNFe: dto.finalidade || '1',
-        indFinal: dto.consumidorFinal || '0',
-        indPres: dto.presencaComprador || '1',
-        indIntermed: '0',
-        procEmi: '0',
-        verProc: '4.13',
-      },
-      emit: {
-        CNPJ: sale.company.cnpj.replace(/\D/g, ''),
-        xNome: this.removerAcentuacao(sale.company.razaoSocial),
-        xFant: this.removerAcentuacao(sale.company.nomeFantasia || sale.company.razaoSocial),
-        IE: sale.company.inscricaoEstadual?.replace(/\D/g, ''),
-        CRT: this.obterCRT(sale.company.regimeTributario || ''),
-      },
-      enderEmit: {
-        xLgr: this.removerAcentuacao(sale.company.logradouro || ''),
-        nro: sale.company.numero || 'S/N',
-        xCpl: sale.company.complemento ? this.removerAcentuacao(sale.company.complemento) : undefined,
-        xBairro: this.removerAcentuacao(sale.company.bairro || ''),
-        cMun: sale.company.codigoMunicipioIBGE || '3550308',
-        xMun: this.removerAcentuacao(sale.company.cidade || ''),
-        UF: sale.company.estado || '',
-        CEP: sale.company.cep?.replace(/\D/g, '') || '',
-        cPais: '1058',
-        xPais: 'BRASIL',
-        fone: sale.company.telefone?.replace(/\D/g, '') || sale.company.celular?.replace(/\D/g, '') || undefined,
-      },
-      dest: sale.customer.cnpj
-        ? {
-            CNPJ: sale.customer.cnpj.replace(/\D/g, ''),
-            xNome: this.removerAcentuacao(sale.customer.companyName || sale.customer.name),
-            indIEDest: sale.customer.stateRegistrationExempt ? '2' : '1',
-            IE: !sale.customer.stateRegistrationExempt && sale.customer.stateRegistration 
-                ? sale.customer.stateRegistration.replace(/\D/g, '') 
-                : undefined,
-          }
-        : {
-            CPF: sale.customer.cpf?.replace(/\D/g, ''),
-            xNome: this.removerAcentuacao(sale.customer.name),
-            indIEDest: '9',
-          },
-      enderDest: {
-        xLgr: this.removerAcentuacao(enderecoCliente.street),
-        nro: enderecoCliente.number,
-        xCpl: enderecoCliente.complement ? this.removerAcentuacao(enderecoCliente.complement) : undefined,
-        xBairro: this.removerAcentuacao(enderecoCliente.neighborhood),
-        cMun: enderecoCliente.ibgeCode || '3550308',
-        xMun: this.removerAcentuacao(enderecoCliente.city),
-        UF: enderecoCliente.state,
-        CEP: enderecoCliente.zipCode.replace(/\D/g, ''),
-        cPais: '1058',
-        xPais: 'BRASIL',
-        fone: sale.customer.phone?.replace(/\D/g, '') || sale.customer.mobile?.replace(/\D/g, '') || undefined,
-      },
-      produtos: sale.items.map((item, index) => {
-        const produto = item.product;
-        const cfop = isInterestadual
-          ? (produto.cfopInterestadual || produto.cfop || '6102')
-          : (produto.cfopEstadual || produto.cfop || '5102');
-        const unidade = produto.unit?.abbreviation || produto.unit?.name || 'UNID';
-        
-        // Gerar código numérico: usar SKU se for numérico, senão usar índice + 1
-        const codigoProduto = produto.sku && /^\d+$/.test(produto.sku) 
-          ? produto.sku 
-          : (index + 1).toString();
-        
-        return {
-          cProd: codigoProduto,
-          cEAN: produto.barcode || 'SEM GTIN',
-          xProd: this.removerAcentuacao(produto.name.substring(0, 120)),
-          NCM: produto.ncm?.replace(/\D/g, ''),
-          CFOP: cfop,
-          uCom: unidade,
-          qCom: item.quantity.toFixed(4),
-          vUnCom: item.unitPrice.toFixed(10),
-          vProd: item.total.toFixed(2),
-          cEANTrib: produto.barcode || 'SEM GTIN',
-          uTrib: unidade,
-          qTrib: item.quantity.toFixed(4),
-          vUnTrib: item.unitPrice.toFixed(10),
-          vDesc: item.discount ? item.discount.toFixed(2) : undefined,
-          indTot: '1',
-          impostos: {
-            ICMS: {
-              orig: '0',
-              CSOSN: '400',
-            },
-            PIS: {
-              CST: '49',
-              qBCProd: 0,
-              vAliqProd: 0,
-              vPIS: 0,
-            },
-            COFINS: {
-              CST: '49',
-              qBCProd: 0,
-              vAliqProd: 0,
-              vCOFINS: 0,
-            },
-            IBSCBS: {
-              CST: '000',
-              cClassTrib: '000001',
-              gIBSCBS: {
-                vBC: item.total.toFixed(2),
-                gIBSUF: {
-                  pIBSUF: '0.10',
-                  vIBSUF: '0.10',
-                },
-                gIBSMun: {
-                  pIBSMun: '0.0000',
-                  vIBSMun: '0.00',
-                },
-                vIBS: '0.10',
-                gCBS: {
-                  pCBS: '0.90',
-                  vCBS: '0.90',
-                },
-              },
-            },
-          },
+    // A ORDEM DAS CHAMADAS É CRÍTICA PARA A VALIDAÇÃO DO SCHEMA PELA SEFAZ
+    
+    // 4.1. Informações da NF-e
+    NFe.tagInfNFe({ Id: null, versao: '4.00' });
+    
+    // 4.2. Identificação da NF-e
+    const tpAmb = sale.company.ambienteFiscal === 'Homologacao' ? '2' : '1';
+    console.log(`   - Código numérico (cNF): ${cNF}`);
+    console.log(`   - Nota Fiscal: Série ${dto.serie || '1'} / Número ${numeroNFe}`);
+    console.log(`   - Ambiente: ${tpAmb === '1' ? 'PRODUÇÃO' : 'HOMOLOGAÇÃO'}`);
+    
+    NFe.tagIde({
+      cUF: this.obterCodigoUF(sale.company.estado || 'SP'),
+      cNF: cNF,
+      natOp: this.removerAcentuacao(dto.naturezaOperacao || 'VENDA'),
+      mod: dto.modelo || '55',
+      serie: dto.serie || '1',
+      nNF: numeroNFe.toString(),
+      dhEmi: NFe.formatData(),
+      tpNF: dto.tipoOperacao || '1',
+      idDest: idDest,
+      cMunFG: sale.company.codigoMunicipioIBGE || '3550308',
+      tpImp: '1',
+      tpEmis: '1',
+      cDV: '1',
+      tpAmb: tpAmb,
+      finNFe: dto.finalidade || '1',
+      indFinal: dto.consumidorFinal || '0',
+      indPres: dto.presencaComprador || '1',
+      indIntermed: '0',
+      procEmi: '0',
+      verProc: '4.13',
+    });
+    
+    // 4.3. Emitente
+    NFe.tagEmit({
+      CNPJ: sale.company.cnpj.replace(/\D/g, ''),
+      xNome: this.removerAcentuacao(sale.company.razaoSocial),
+      xFant: this.removerAcentuacao(sale.company.nomeFantasia || sale.company.razaoSocial),
+      IE: sale.company.inscricaoEstadual?.replace(/\D/g, ''),
+      CRT: this.obterCRT(sale.company.regimeTributario || ''),
+    });
+    
+    NFe.tagEnderEmit({
+      xLgr: this.removerAcentuacao(sale.company.logradouro || ''),
+      nro: sale.company.numero || 'S/N',
+      xCpl: sale.company.complemento ? this.removerAcentuacao(sale.company.complemento) : undefined,
+      xBairro: this.removerAcentuacao(sale.company.bairro || ''),
+      cMun: sale.company.codigoMunicipioIBGE || '3550308',
+      xMun: this.removerAcentuacao(sale.company.cidade || ''),
+      UF: sale.company.estado || '',
+      CEP: sale.company.cep?.replace(/\D/g, '') || '',
+      cPais: '1058',
+      xPais: 'BRASIL',
+      fone: sale.company.telefone?.replace(/\D/g, '') || sale.company.celular?.replace(/\D/g, '') || undefined,
+    });
+    
+    console.log(`   ✅ Dados do emitente adicionados`);
+    
+    // 4.4. Destinatário
+    const destData: any = sale.customer.cnpj
+      ? {
+          CNPJ: sale.customer.cnpj.replace(/\D/g, ''),
+          xNome: this.removerAcentuacao(sale.customer.companyName || sale.customer.name || 'Cliente'),
+          indIEDest: sale.customer.stateRegistrationExempt ? '2' : '1',
+          IE: !sale.customer.stateRegistrationExempt && sale.customer.stateRegistration 
+              ? sale.customer.stateRegistration.replace(/\D/g, '') 
+              : undefined,
+        }
+      : {
+          CPF: sale.customer.cpf?.replace(/\D/g, ''),
+          xNome: this.removerAcentuacao(sale.customer.name || 'Cliente'),
+          indIEDest: '9',
         };
-      }),
-      transporte: {
-        modFrete: parseInt(dto.modalidadeFrete || '9'),
-      },
-      pagamento: [
-        {
-          indPag: sale.installments > 1 ? 1 : 0,
-          tPag: this.mapearFormaPagamento(sale.paymentMethod?.sefazCode || 'OUTROS'),
-          vPag: sale.totalAmount.toFixed(2),
-        },
-      ],
-      troco: '0.00',
-      respTec: {
-        CNPJ: (sale.company.respTecCNPJ || sale.company.cnpj)?.replace(/\D/g, ''),
-        xContato: this.removerAcentuacao(sale.company.respTecContato || sale.company.responsibleName || 'Suporte Tecnico'),
-        email: sale.company.respTecEmail || sale.company.responsibleEmail || sale.company.email || 'contato@empresa.com',
-        fone: (sale.company.respTecFone || sale.company.responsiblePhone || sale.company.telefone || sale.company.celular || '0000000000').replace(/\D/g, ''),
-      },
-    };
+    
+    NFe.tagDest(destData);
+    
+    NFe.tagEnderDest({
+      xLgr: this.removerAcentuacao(enderecoCliente.street),
+      nro: enderecoCliente.number,
+      xCpl: enderecoCliente.complement ? this.removerAcentuacao(enderecoCliente.complement) : undefined,
+      xBairro: this.removerAcentuacao(enderecoCliente.neighborhood),
+      cMun: enderecoCliente.ibgeCode || '3550308',
+      xMun: this.removerAcentuacao(enderecoCliente.city),
+      UF: enderecoCliente.state,
+      CEP: enderecoCliente.zipCode.replace(/\D/g, ''),
+      cPais: '1058',
+      xPais: 'BRASIL',
+      fone: sale.customer.phone?.replace(/\D/g, '') || sale.customer.mobile?.replace(/\D/g, '') || undefined,
+    });
+    
+    console.log(`   ✅ Dados do destinatário adicionados`);
+    
+    // 4.5. Produtos (SEM OS IMPOSTOS)
+    console.log('\n📦 [NF-e] Processando produtos...');
+    const produtos = sale.items.map((item, index) => {
+      const produto = item.product;
+      const cfop = isInterestadual
+        ? (produto.cfopInterestadual || produto.cfop || '6102')
+        : (produto.cfopEstadual || produto.cfop || '5102');
+      const unidade = produto.unit?.abbreviation || produto.unit?.name || 'UNID';
+      
+      const codigoProduto = produto.sku && /^\d+$/.test(produto.sku) 
+        ? produto.sku 
+        : (index + 1).toString();
+      
+      // Garantir que valores numéricos sejam válidos (nunca null, undefined ou NaN)
+      const quantity = this.garantirNumero(item.quantity);
+      const unitPrice = this.garantirNumero(item.unitPrice);
+      const discount = this.garantirNumero(item.discount);
+      const total = this.garantirNumero(item.total);
+      
+      console.log(`   📦 Produto ${index + 1}: ${produto.name}`);
+      console.log(`      - quantity: ${quantity}`);
+      console.log(`      - unitPrice: ${unitPrice}`);
+      console.log(`      - discount: ${discount}`);
+      console.log(`      - total: ${total}`);
+      console.log(`      - vDesc será: ${discount.toFixed(2)}`);
+      
+      return {
+        cProd: codigoProduto,
+        cEAN: produto.barcode || 'SEM GTIN',
+        xProd: this.removerAcentuacao(produto.name.substring(0, 120)),
+        NCM: produto.ncm?.replace(/\D/g, ''),
+        CFOP: cfop,
+        uCom: unidade,
+        qCom: quantity.toFixed(4),
+        vUnCom: unitPrice.toFixed(10),
+        vProd: total.toFixed(2),
+        cEANTrib: produto.barcode || 'SEM GTIN',
+        uTrib: unidade,
+        qTrib: quantity.toFixed(4),
+        vUnTrib: unitPrice.toFixed(10),
+        indTot: '1',
+      };
+    });
+    
+    console.log('\n📝 [DEBUG] Dados dos produtos para XML:');
+    console.log(JSON.stringify(produtos, null, 2));
+    
+    NFe.tagProd(produtos);
+    console.log(`   ✅ ${produtos.length} produto(s) adicionado(s)`);
+    
+    // 4.6. Impostos de cada produto
+    console.log('   🧮 Processando impostos dos produtos...');
+    for (let index = 0; index < sale.items.length; index++) {
+      // ICMS
+      NFe.tagProdICMSSN(index, { orig: '0', CSOSN: '400' });
+      
+      // PIS
+      NFe.tagProdPIS(index, { CST: '49', qBCProd: 0, vAliqProd: 0, vPIS: 0 });
+      
+      // COFINS
+      NFe.tagProdCOFINS(index, { CST: '49', qBCProd: 0, vAliqProd: 0, vCOFINS: 0 });
+      
+      // IBS/CBS
+      const itemTotal = this.garantirNumero(sale.items[index].total);
+      const pIBSUF = 0.10; // Exemplo: 0.10%
+      const pIBSMun = 0.00; // Exemplo: 0.00%
+      const pCBS = 0.90; // Exemplo: 0.90%
 
-    console.log('� [NF-e] Payload montado. Enviando para API externa...');
-    console.log('🌐 [NF-e] URL: http://localhost:4001/emitir-nfe');
+      const vIBSUF = itemTotal * (pIBSUF / 100);
+      const vIBSMun = itemTotal * (pIBSMun / 100);
+      const vIBS = vIBSUF + vIBSMun;
+      const vCBS = itemTotal * (pCBS / 100);
 
-    // 6. Enviar para API externa
-    try {
-      const response = await fetch('http://localhost:4001/emitir-nfe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      console.log(`   - [IBS/CBS] Item ${index + 1}:`);
+      console.log(`     - vBC: ${itemTotal.toFixed(2)}`);
+      console.log(`     - pIBSUF: ${pIBSUF}, vIBSUF: ${vIBSUF.toFixed(2)}`);
+      console.log(`     - pIBSMun: ${pIBSMun}, vIBSMun: ${vIBSMun.toFixed(2)}`);
+      console.log(`     - vIBS: ${vIBS.toFixed(2)}`);
+      console.log(`     - pCBS: ${pCBS}, vCBS: ${vCBS.toFixed(2)}`);
+
+      NFe.tagProdIBSCBS(index, {
+        CST: '000',
+        cClassTrib: '000001',
+        gIBSCBS: {
+          vBC: itemTotal.toFixed(2),
+          gIBSUF: {
+            pIBSUF: pIBSUF.toFixed(4),
+            vIBSUF: vIBSUF.toFixed(2),
+          },
+          gIBSMun: {
+            pIBSMun: pIBSMun.toFixed(4),
+            vIBSMun: vIBSMun.toFixed(2),
+          },
+          vIBS: vIBS.toFixed(2),
+          gCBS: {
+            pCBS: pCBS.toFixed(4),
+            vCBS: vCBS.toFixed(2),
+          },
         },
-        body: JSON.stringify(payload),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.log('❌ [NF-e] Erro na API externa:', errorData);
-        throw new Error(`Erro na API externa: ${errorData.error || errorData.message}`);
-      }
-
-      const resultado = await response.json();
-      console.log('✅ [NF-e] Resposta recebida da API externa');
-      console.log(JSON.stringify(resultado, null, 2));
-
-      // 7. Salvar no banco de dados se autorizada
-      if (resultado.success && resultado.resultado?.protNFe?.[0]?.infProt?.[0]?.cStat?.[0] === '100') {
-        console.log('✅ [NF-e] NF-e AUTORIZADA! Salvando no banco...');
-        await this.salvarNFeNoBanco(companyId, dto.saleId, {
-          chaveAcesso: resultado.resultado.protNFe[0].infProt[0].chNFe[0],
-          protocolo: resultado.resultado.protNFe[0].infProt[0].nProt[0],
-          dataAutorizacao: resultado.resultado.protNFe[0].infProt[0].dhRecbto[0],
-          status: 'AUTORIZADA',
-        });
-      }
-
-      return resultado;
-    } catch (error) {
-      console.log('💥 [NF-e] Erro ao comunicar com API externa!');
-      console.log('❌ [NF-e] Mensagem:', error.message);
-      console.log('❌ [NF-e] Stack:', error.stack);
-      throw error;
     }
+    console.log('   ✅ Impostos dos produtos adicionados');
+    
+    // 4.7. Totais
+    console.log('\n💰 [NF-e] Calculando totais da NF-e...');
+    
+    // Garantir que valores sejam numéricos válidos
+    const subtotal = this.garantirNumero(sale.subtotal);
+    const discountAmount = this.garantirNumero(sale.discountAmount);
+    const shippingCost = this.garantirNumero(sale.shippingCost);
+    const otherCharges = this.garantirNumero(sale.otherCharges);
+    const totalAmount = this.garantirNumero(sale.totalAmount);
+    
+    console.log('   💰 Valores para cálculo:');
+    console.log(`      - subtotal (vProd): ${subtotal.toFixed(2)}`);
+    console.log(`      - discountAmount (vDesc): ${discountAmount.toFixed(2)}`);
+    console.log(`      - shippingCost (vFrete): ${shippingCost.toFixed(2)}`);
+    console.log(`      - otherCharges (vOutro): ${otherCharges.toFixed(2)}`);
+    console.log(`      - totalAmount (vNF): ${totalAmount.toFixed(2)}`);
+    
+    NFe.tagTotal({});
+    console.log('   ✅ Totais calculados');
+    
+    // 4.8. Transporte
+    NFe.tagTransp({ modFrete: parseInt(dto.modalidadeFrete || '9') });
+    console.log('   ✅ Dados de transporte adicionados');
+    
+    // 4.9. Pagamento
+    console.log('\n💳 [NF-e] Processando pagamento...');
+    const valorPagamento = totalAmount > 0 ? totalAmount : 0;
+    
+    // Obter o código SEFAZ do método de pagamento
+    let codigoPagamentoSefaz = sale.paymentMethod?.sefazCode || '99'; // 99 = Outros (padrão)
+    
+    // Se o sefazCode vier como string do enum (ex: "BOLETO_BANCARIO"), converter para código numérico
+    if (codigoPagamentoSefaz && isNaN(Number(codigoPagamentoSefaz))) {
+      console.log(`   ⚠️  sefazCode veio como enum: ${codigoPagamentoSefaz}, convertendo...`);
+      codigoPagamentoSefaz = this.mapearFormaPagamento(codigoPagamentoSefaz);
+    }
+    
+    console.log(`   💳 Valor do pagamento: ${valorPagamento.toFixed(2)}`);
+    console.log(`   💳 Código SEFAZ do pagamento (tPag): ${codigoPagamentoSefaz}`);
+    console.log(`   💳 Nome do método: ${sale.paymentMethod?.name || 'Não informado'}`);
+    console.log(`   💳 Parcelas: ${sale.installments}`);
+    
+    // Construir objeto de pagamento
+    const detPagamento: any = {
+      indPag: sale.installments > 1 ? 1 : 0, // 0=à vista, 1=a prazo
+      tPag: codigoPagamentoSefaz,
+      vPag: valorPagamento.toFixed(2),
+    };
+    
+    // Se for código 99 (Outros), a descrição é OBRIGATÓRIA
+    if (codigoPagamentoSefaz === '99') {
+      detPagamento.xPag = this.removerAcentuacao(
+        sale.paymentMethod?.name || 'Outras formas de pagamento'
+      ).substring(0, 60); // Limite de 60 caracteres
+      console.log(`   💳 Descrição do pagamento (xPag): ${detPagamento.xPag}`);
+    }
+    
+    NFe.tagDetPag([detPagamento]);
+    NFe.tagTroco('0.00');
+    console.log(`   ✅ Formas de pagamento adicionadas`);
+    
+    // 4.10. Responsável Técnico
+    NFe.tagInfRespTec({
+      CNPJ: (sale.company.respTecCNPJ || sale.company.cnpj)?.replace(/\D/g, ''),
+      xContato: this.removerAcentuacao(sale.company.respTecContato || sale.company.responsibleName || 'Suporte Tecnico'),
+      email: sale.company.respTecEmail || sale.company.responsibleEmail || sale.company.email || 'contato@empresa.com',
+      fone: (sale.company.respTecFone || sale.company.responsiblePhone || sale.company.telefone || sale.company.celular || '0000000000').replace(/\D/g, ''),
+    });
+    console.log('   ✅ Responsável técnico adicionado');
+    
+    const xmlGerado = NFe.xml();
+    console.log(`   ✅ XML gerado com sucesso (${xmlGerado.length} caracteres)`);
+    
+    // 5. Salvar XML gerado
+    const xmlGeradoFile = await this.salvarArquivo(companyId, dto.saleId, 'nfe.xml', xmlGerado);
+    console.log('💾 [NF-e] XML salvo em:', xmlGeradoFile.path);
+    console.log('🔗 [NF-e] URL pública:', xmlGeradoFile.url);
+    
+    // 6. Assinar XML
+    console.log('\n✍️  [NF-e] ETAPA 2: Assinando XML digitalmente...');
+    const xmlAssinado = await this.nfeSefaz.assinarXML(companyId, xmlGerado);
+    console.log(`   ✅ XML assinado com sucesso (${xmlAssinado.length} caracteres)`);
+    
+    // 7. Salvar XML assinado
+    const xmlAssinadoFile = await this.salvarArquivo(companyId, dto.saleId, 'nfe_sign.xml', xmlAssinado);
+    console.log('💾 [NF-e] XML assinado salvo em:', xmlAssinadoFile.path);
+    console.log('🔗 [NF-e] URL pública:', xmlAssinadoFile.url);
+    
+    let resultado: any = {
+      xmlGerado: xmlGeradoFile.path,
+      xmlGeradoUrl: xmlGeradoFile.url,
+      xmlAssinado: xmlAssinadoFile.path,
+      xmlAssinadoUrl: xmlAssinadoFile.url,
+      status: 'GERADO',
+    };
+    
+    // 8. Enviar para SEFAZ (se solicitado)
+    if (dto.enviarSefaz !== false) {
+      try {
+        console.log('\n📡 [NF-e] ETAPA 3: Enviando para a SEFAZ...');
+        console.log(`   🌐 Conectando com SEFAZ ${sale.company.estado}...`);
+        console.log(`   🏷️  Ambiente: ${tpAmb === '1' ? 'PRODUÇÃO' : 'HOMOLOGAÇÃO'}`);
+        
+        const respostaSefazCompleta = await this.nfeSefaz.enviarLote(companyId, xmlAssinado);
+        
+        // Extrair XML e JSON da resposta
+        const respostaSefazXML = respostaSefazCompleta.xml;
+        const respostaSefaz = respostaSefazCompleta.json;
+        
+        console.log('✅ [NF-e] Resposta recebida da SEFAZ');
+        console.log(JSON.stringify(respostaSefaz, null, 2));
+        
+        resultado.respostaSefaz = respostaSefaz;
+        
+        // 9. Verificar o tipo de resposta da SEFAZ
+        // Pode ser retEnviNFe (lote) ou protNFe (protocolo direto)
+        
+        let cStat: string | undefined;
+        let xMotivo: string | undefined;
+        let infProt: any;
+        
+        // Verificar se é resposta de lote (retEnviNFe)
+        if (respostaSefaz?.retEnviNFe) {
+          const retEnvi = respostaSefaz.retEnviNFe;
+          cStat = retEnvi.cStat;
+          xMotivo = retEnvi.xMotivo;
+          
+          console.log('📋 [NF-e] Resposta do tipo retEnviNFe (lote)');
+          console.log(`   🔢 cStat: ${cStat}`);
+          console.log(`   💬 xMotivo: ${xMotivo}`);
+          
+          // Se o lote foi processado com sucesso (cStat 104), verificar o protNFe
+          if (cStat === '104' && retEnvi.protNFe) {
+            const protNFe = Array.isArray(retEnvi.protNFe) ? retEnvi.protNFe[0] : retEnvi.protNFe;
+            infProt = protNFe?.infProt;
+            if (infProt) {
+              cStat = infProt.cStat;
+              xMotivo = infProt.xMotivo;
+              console.log('   ✅ Protocolo encontrado na resposta do lote');
+              console.log(`   🔢 cStat do protocolo: ${cStat}`);
+              console.log(`   💬 xMotivo do protocolo: ${xMotivo}`);
+            }
+          }
+        }
+        // Verificar se é resposta direta de protocolo (protNFe)
+        else if (respostaSefaz?.protNFe) {
+          console.log('📋 [NF-e] Resposta do tipo protNFe (protocolo direto)');
+          const protNFe = Array.isArray(respostaSefaz.protNFe) ? respostaSefaz.protNFe[0] : respostaSefaz.protNFe;
+          infProt = protNFe?.infProt;
+          if (infProt) {
+            cStat = infProt.cStat;
+            xMotivo = infProt.xMotivo;
+            console.log(`   🔢 cStat: ${cStat}`);
+            console.log(`   💬 xMotivo: ${xMotivo}`);
+          }
+        }
+        
+        // Verificar se foi autorizada (cStat === '100')
+        if (cStat === '100' && infProt) {
+          console.log('✅ [NF-e] NF-e AUTORIZADA COM SUCESSO!');
+          console.log(`   📋 Chave de Acesso: ${infProt.chNFe}`);
+          console.log(`   🔢 Protocolo: ${infProt.nProt}`);
+          console.log(`   📅 Data/Hora: ${infProt.dhRecbto}`);
+          
+          resultado.status = 'AUTORIZADA';
+          resultado.chaveAcesso = infProt.chNFe;
+          resultado.protocolo = infProt.nProt;
+          resultado.dataAutorizacao = infProt.dhRecbto;
+          
+          // 10. Gerar DANFE
+          console.log('\n�️  [NF-e] ETAPA 4: Gerando DANFE (PDF)...');
+          try {
+            // Gerar DANFE direto com o XML assinado
+            const danfePdf = await this.nfeSefaz.gerarDANFE(xmlAssinado);
+            const danfeFile = await this.salvarArquivo(companyId, dto.saleId, 'danfe.pdf', danfePdf);
+            resultado.danfe = danfeFile.path;
+            resultado.danfeUrl = danfeFile.url;
+            console.log(`   ✅ DANFE gerado com sucesso`);
+            console.log('   🔗 URL pública:', danfeFile.url);
+          } catch (danfeError) {
+            console.error('   ❌ Erro ao gerar DANFE:', danfeError.message);
+            console.error('   ❌ Stack:', danfeError.stack);
+          }
+          
+          // 11. Salvar NF-e no banco de dados
+          await this.salvarNFeNoBanco(companyId, dto.saleId, resultado);
+          console.log('   ✅ NF-e salva no banco de dados');
+          
+          // 12. Atualizar contador de numeração da empresa
+          await this.atualizarContadorNFe(companyId, numeroNFe);
+        } else {
+          // NF-e rejeitada ou erro no serviço
+          console.log('❌ [NF-e] NF-e REJEITADA OU ERRO NO SERVIÇO');
+          console.log(`   🔢 Código: ${cStat || 'N/A'}`);
+          console.log(`   💬 Motivo: ${xMotivo || 'Erro desconhecido'}`);
+          
+          resultado.status = 'REJEITADA';
+          resultado.codigoStatus = cStat;
+          resultado.motivoRejeicao = xMotivo || 'Erro desconhecido';
+          
+          const xmlErroFile = await this.salvarArquivo(
+            companyId,
+            dto.saleId,
+            'nfe_err.json',
+            JSON.stringify(respostaSefaz, null, 2),
+          );
+          resultado.xmlErro = xmlErroFile.path;
+          resultado.xmlErroUrl = xmlErroFile.url;
+          console.log('   💾 Erro salvo em:', xmlErroFile.path);
+          console.log('   🔗 URL pública:', xmlErroFile.url);
+          
+          // Interpretar códigos de status comuns
+          if (cStat === '109') {
+            console.log('   ℹ️  Serviço da SEFAZ está temporariamente indisponível');
+            console.log('   ℹ️  Tente novamente mais tarde ou entre em contingência');
+          } else if (cStat === '108') {
+            console.log('   ℹ️  Serviço da SEFAZ em manutenção');
+          } else if (cStat && parseInt(cStat) >= 200 && parseInt(cStat) < 300) {
+            console.log('   ℹ️  Erro de validação no XML da NF-e');
+            console.log('   ℹ️  Verifique os dados informados e tente novamente');
+          }
+        }
+      } catch (error) {
+        console.log('💥 [NF-e] ERRO durante envio para SEFAZ!');
+        console.log('❌ [NF-e] Mensagem:', error.message);
+        console.log('❌ [NF-e] Stack:', error.stack);
+        
+        resultado.status = 'ERRO';
+        resultado.erro = error.message;
+        
+        const xmlErroFile = await this.salvarArquivo(
+          companyId,
+          dto.saleId,
+          'nfe_err.txt',
+          error.message,
+        );
+        resultado.xmlErro = xmlErroFile.path;
+        resultado.xmlErroUrl = xmlErroFile.url;
+        console.log('   💾 Erro salvo em:', xmlErroFile.path);
+        console.log('   🔗 URL pública:', xmlErroFile.url);
+        throw error;
+      }
+    }
+    
+    console.log('\n' + '='.repeat(80));
+    console.log('✅ [NF-e] PROCESSAMENTO CONCLUÍDO');
+    console.log('='.repeat(80) + '\n');
+    
+    return resultado;
   }
 
   /**
@@ -311,20 +561,73 @@ export class NFeService {
   }
 
   /**
-   * Obtém o próximo número da NF-e
+   * Converte valor para número garantindo que nunca seja NaN, null ou undefined
+   */
+  private garantirNumero(valor: any): number {
+    if (valor === null || valor === undefined) {
+      return 0;
+    }
+    
+    // Se for string, tentar converter
+    if (typeof valor === 'string') {
+      const numero = parseFloat(valor);
+      return isNaN(numero) ? 0 : numero;
+    }
+    
+    // Se for número, verificar se é válido
+    if (typeof valor === 'number') {
+      return isNaN(valor) ? 0 : valor;
+    }
+    
+    // Se for Decimal do Prisma ou outro objeto
+    const numero = Number(valor);
+    return isNaN(numero) ? 0 : numero;
+  }
+
+  /**
+   * Obtém o próximo número da NF-e e atualiza o contador na empresa
    */
   private async obterProximoNumero(companyId: string, serie: string): Promise<number> {
-    const ultimaNFe = await this.prisma.nFe.findFirst({
-      where: {
-        companyId,
-        serie,
-      },
-      orderBy: {
-        numero: 'desc',
+    // Buscar configuração da empresa
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+      select: {
+        proximoNumeroNFe: true,
+        ultimoNumeroNFe: true,
+        serieNFe: true,
       },
     });
 
-    return ultimaNFe ? ultimaNFe.numero + 1 : 1;
+    if (!company) {
+      throw new Error('Empresa não encontrada');
+    }
+
+    // Usar o próximo número configurado na empresa
+    const proximoNumero = company.proximoNumeroNFe || 1;
+
+    console.log(`\n🔢 [NF-e] Numeração da NF-e:`);
+    console.log(`   - Último número emitido: ${company.ultimoNumeroNFe || 0}`);
+    console.log(`   - Próximo número: ${proximoNumero}`);
+    console.log(`   - Série: ${serie || company.serieNFe || '1'}`);
+
+    return proximoNumero;
+  }
+
+  /**
+   * Atualiza o contador de numeração da NF-e após emissão bem-sucedida
+   */
+  private async atualizarContadorNFe(companyId: string, numeroEmitido: number): Promise<void> {
+    await this.prisma.company.update({
+      where: { id: companyId },
+      data: {
+        ultimoNumeroNFe: numeroEmitido,
+        proximoNumeroNFe: numeroEmitido + 1,
+      },
+    });
+
+    console.log(`\n🔢 [NF-e] Contador atualizado:`);
+    console.log(`   - Último número: ${numeroEmitido}`);
+    console.log(`   - Próximo número: ${numeroEmitido + 1}`);
   }
 
   /**
@@ -355,26 +658,150 @@ export class NFeService {
 
   /**
    * Mapeia o tipo de pagamento do sistema para o código da NF-e
+   * Usado como fallback quando o sefazCode vem como string do enum em vez de código numérico
    */
   private mapearFormaPagamento(tipo: string): string {
-    const mapa = {
-      DINHEIRO: '01',
-      CHEQUE: '02',
-      CARTAO_CREDITO: '03',
-      CARTAO_DEBITO: '04',
-      CREDITO_LOJA: '05',
-      VALE_ALIMENTACAO: '10',
-      VALE_REFEICAO: '11',
-      VALE_PRESENTE: '12',
-      VALE_COMBUSTIVEL: '13',
-      BOLETO: '15',
-      PIX: '17',
-      TRANSFERENCIA: '18',
-      CASHBACK: '19',
-      SEM_PAGAMENTO: '90',
-      OUTROS: '99',
+    const mapa: { [key: string]: string } = {
+      // Códigos padrão
+      'DINHEIRO': '01',
+      'CHEQUE': '02',
+      'CARTAO_CREDITO': '03',
+      'CARTAO_DEBITO': '04',
+      'CREDITO_LOJA': '05',
+      'VALE_ALIMENTACAO': '10',
+      'VALE_REFEICAO': '11',
+      'VALE_PRESENTE': '12',
+      'VALE_COMBUSTIVEL': '13',
+      'DUPLICATA_MERCANTIL': '14',
+      'BOLETO_BANCARIO': '15',
+      'BOLETO': '15',
+      'DEPOSITO_BANCARIO': '16',
+      'PIX_DINAMICO': '17',
+      'PIX': '17',
+      'TRANSFERENCIA': '18',
+      'PROGRAMA_FIDELIDADE': '19',
+      'CASHBACK': '19',
+      'PIX_ESTATICO': '20',
+      'CREDITO_EM_LOJA': '21',
+      'PAGAMENTO_ELETRONICO_NAO_INFORMADO': '22',
+      'SEM_PAGAMENTO': '90',
+      'OUTROS': '99',
     };
-    return mapa[tipo] || '99';
+    
+    // Converter para maiúsculo e tentar mapear
+    const tipoUpper = tipo?.toUpperCase() || '';
+    return mapa[tipoUpper] || '99';
+  }
+
+  /**
+   * Salva arquivo e retorna objeto com path e URL pública
+   */
+  private async salvarArquivo(
+    companyId: string, 
+    saleId: string, 
+    fileName: string, 
+    content: string | Buffer
+  ): Promise<{ path: string; url: string }> {
+    // Salvar em pasta pública
+    const publicDir = path.join(process.cwd(), 'uploads', 'public', 'nfe', companyId, saleId);
+    
+    // Criar diretório se não existir
+    if (!fs.existsSync(publicDir)) {
+      fs.mkdirSync(publicDir, { recursive: true });
+    }
+    
+    const filePath = path.join(publicDir, fileName);
+    fs.writeFileSync(filePath, content);
+    
+    // Gerar URL pública (assumindo que uploads/public está servido estaticamente)
+    const publicUrl = `/uploads/public/nfe/${companyId}/${saleId}/${fileName}`;
+    
+    return {
+      path: filePath,
+      url: publicUrl,
+    };
+  }
+
+  /**
+   * Salva NF-e no banco de dados
+   */
+  private async salvarNFeNoBanco(companyId: string, saleId: string, dados: any) {
+    const numero = parseInt(dados.numero || '1');
+    const serie = dados.serie || '1';
+    
+    console.log(`\n💾 [NF-e] Salvando NFe no banco...`);
+    console.log(`   - Empresa: ${companyId}`);
+    console.log(`   - Série: ${serie}`);
+    console.log(`   - Número: ${numero}`);
+    console.log(`   - Chave: ${dados.chaveAcesso || 'N/A'}`);
+    
+    // Verificar se já existe
+    const existente = await this.prisma.nFe.findFirst({
+      where: {
+        companyId,
+        serie,
+        numero,
+      },
+    });
+    
+    if (existente) {
+      console.log(`   ⚠️  NFe já existe no banco (ID: ${existente.id})`);
+      console.log(`   🔄 Atualizando registro existente...`);
+    } else {
+      console.log(`   ✨ Criando novo registro...`);
+    }
+    
+    // Usar upsert para evitar erro de duplicação
+    // Se já existir uma NFe com mesma empresa/serie/numero, atualiza
+    await this.prisma.nFe.upsert({
+      where: {
+        companyId_serie_numero: {
+          companyId,
+          serie,
+          numero,
+        },
+      },
+      update: {
+        chaveAcesso: dados.chaveAcesso,
+        protocoloAutorizacao: dados.protocolo,
+        status: dados.status === 'AUTORIZADA' ? 'AUTHORIZED' : 'DRAFT',
+        dataAutorizacao: dados.dataAutorizacao ? new Date(dados.dataAutorizacao) : undefined,
+        xmlAutorizado: dados.xmlAssinado,
+        danfePdfPath: dados.danfe,
+        danfePdfUrl: dados.danfeUrl,
+      },
+      create: {
+        companyId,
+        saleId,
+        chaveAcesso: dados.chaveAcesso,
+        protocoloAutorizacao: dados.protocolo,
+        numero,
+        serie,
+        status: dados.status === 'AUTORIZADA' ? 'AUTHORIZED' : 'DRAFT',
+        dataAutorizacao: dados.dataAutorizacao ? new Date(dados.dataAutorizacao) : undefined,
+        xmlAutorizado: dados.xmlAssinado,
+        danfePdfPath: dados.danfe,
+        danfePdfUrl: dados.danfeUrl,
+        // Campos obrigatórios com valores padrão
+        cUF: dados.cUF || '35',
+        cNF: dados.cNF || Math.random().toString().slice(2, 10),
+        naturezaOperacao: dados.naturezaOperacao || 'VENDA',
+        cMunFG: dados.cMunFG || '3550308',
+        destinatarioNome: dados.destinatarioNome || 'Cliente',
+        destinatarioCnpjCpf: dados.destinatarioCnpjCpf || '00000000',
+        destLogradouro: dados.destLogradouro || 'Rua',
+        destNumero: dados.destNumero || 'S/N',
+        destBairro: dados.destBairro || 'Bairro',
+        destCidade: dados.destCidade || 'Cidade',
+        destCodigoMunicipio: dados.destCodigoMunicipio || '3550308',
+        destEstado: dados.destEstado || 'SP',
+        destCep: dados.destCep || '00000000',
+        valorProdutos: dados.valorProdutos || 0,
+        valorTotal: dados.valorTotal || 0,
+      },
+    });
+    
+    console.log(`   ✅ NFe salva com sucesso!`);
   }
 
   /**
@@ -382,6 +809,13 @@ export class NFeService {
    */
   async consultarNFe(companyId: string, chaveAcesso: string) {
     return this.nfeSefaz.consultarNFe(companyId, chaveAcesso);
+  }
+
+  /**
+   * Consulta o status do serviço da SEFAZ
+   */
+  async consultarStatusServico(companyId: string) {
+    return this.nfeSefaz.consultarStatusServico(companyId);
   }
 
   /**
@@ -403,12 +837,16 @@ export class NFeService {
       throw new Error('NF-e não encontrada');
     }
 
+    if (nfe.status === 'CANCELED') {
+      throw new Error('NF-e já está cancelada');
+    }
+
     if (nfe.status !== 'AUTHORIZED') {
       throw new Error('Apenas NF-e autorizadas podem ser canceladas');
     }
 
     if (!nfe.chaveAcesso || !nfe.protocoloAutorizacao) {
-      throw new Error('NF-e sem chave de acesso ou protocolo');
+      throw new Error('NF-e não possui chave de acesso ou protocolo');
     }
 
     const resultado = await this.nfeSefaz.cancelarNFe(
@@ -432,31 +870,48 @@ export class NFeService {
   }
 
   /**
-   * Consulta o status do serviço da SEFAZ
+   * Busca uma NF-e específica
    */
-  async consultarStatusServico(companyId: string) {
-    return this.nfeSefaz.consultarStatusServico(companyId);
+  async buscarNFe(companyId: string, nfeId: string) {
+    return this.prisma.nFe.findFirst({
+      where: {
+        id: nfeId,
+        companyId,
+      },
+      include: {
+        sale: {
+          include: {
+            customer: true,
+          },
+        },
+      },
+    });
   }
 
   /**
-   * Lista todas as NF-e de uma empresa
+   * Lista NF-es
    */
-  async listarNFes(companyId: string, filtros?: any) {
-    const where: any = { companyId };
+  async listarNFes(companyId: string, filters?: any) {
+    const where: any = {
+      companyId,
+    };
 
-    if (filtros?.status) {
-      where.status = filtros.status;
+    if (filters?.status) {
+      where.status = filters.status;
     }
 
-    if (filtros?.saleId) {
-      where.saleId = filtros.saleId;
+    if (filters?.saleId) {
+      where.saleId = filters.saleId;
     }
 
-    if (filtros?.dataInicio && filtros?.dataFim) {
-      where.emitidaEm = {
-        gte: new Date(filtros.dataInicio),
-        lte: new Date(filtros.dataFim),
-      };
+    if (filters?.dataInicio || filters?.dataFim) {
+      where.dataEmissao = {};
+      if (filters.dataInicio) {
+        where.dataEmissao.gte = new Date(filters.dataInicio);
+      }
+      if (filters.dataFim) {
+        where.dataEmissao.lte = new Date(filters.dataFim);
+      }
     }
 
     return this.prisma.nFe.findMany({
@@ -474,186 +929,127 @@ export class NFeService {
     });
   }
 
-  /**
-   * Busca uma NF-e por ID
+    /**
+   * Baixa XML da NF-e
    */
-  async buscarNFe(companyId: string, nfeId: string) {
-    return this.prisma.nFe.findFirst({
+  async baixarXML(nfeId: string) {
+    const nfe = await this.prisma.nFe.findUnique({
+      where: { id: nfeId },
+    });
+
+    if (!nfe || !nfe.xmlAutorizado) {
+      throw new Error('XML não encontrado');
+    }
+
+    return fs.readFileSync(nfe.xmlAutorizado, 'utf-8');
+  }
+
+  /**
+   * Baixa DANFE da NF-e
+   */
+  async baixarDANFE(nfeId: string) {
+    const nfe = await this.prisma.nFe.findUnique({
+      where: { id: nfeId },
+    });
+
+    if (!nfe || !nfe.danfePdfPath) {
+      throw new Error('DANFE não encontrado');
+    }
+
+    return fs.readFileSync(nfe.danfePdfPath);
+  }
+
+  /**
+   * Inutiliza uma numeração de NF-e
+   */
+  async inutilizarNumeracao(
+    companyId: string,
+    dto: {
+      serie: string;
+      numeroInicial: number;
+      numeroFinal: number;
+      justificativa: string;
+    },
+  ) {
+    // TODO: Implementar inutilização de numeração quando o método estiver disponível no NFeSefazService
+    throw new Error('Método não implementado');
+  }
+
+  /**
+   * Gera DANFE de uma NF-e já emitida
+   */
+  async gerarDANFENFeExistente(companyId: string, nfeId: string) {
+    console.log('🖨️  [NF-e] Gerando DANFE de NF-e existente...');
+    console.log('   📋 NFe ID:', nfeId);
+    
+    // Buscar a NFe
+    const nfe = await this.prisma.nFe.findFirst({
       where: {
         id: nfeId,
         companyId,
       },
       include: {
-        sale: {
-          include: {
-            customer: true,
-            items: {
-              include: {
-                product: true,
-              },
-            },
-          },
+        sale: true,
+      },
+    });
+
+    if (!nfe) {
+      throw new BadRequestException('NF-e não encontrada');
+    }
+
+    if (nfe.status !== 'AUTHORIZED') {
+      throw new BadRequestException('Apenas NF-e autorizadas podem gerar DANFE');
+    }
+
+    if (!nfe.xmlAutorizado) {
+      throw new BadRequestException('XML da NF-e não encontrado');
+    }
+
+    console.log('   ✅ NF-e encontrada');
+    console.log('   📋 Chave de Acesso:', nfe.chaveAcesso);
+    console.log('   📋 Número:', nfe.numero);
+
+    try {
+      // Ler o XML autorizado
+      const xmlAssinado = fs.readFileSync(nfe.xmlAutorizado, 'utf-8');
+      console.log('   ✅ XML carregado');
+
+      // Gerar DANFE
+      console.log('   🖨️  Gerando PDF do DANFE...');
+      const danfePdf = await this.nfeSefaz.gerarDANFE(xmlAssinado);
+      console.log('   ✅ DANFE gerado com sucesso');
+
+      // Salvar DANFE
+      const saleId = nfe.saleId || nfeId;
+      const danfeFile = await this.salvarArquivo(companyId, saleId, 'danfe.pdf', danfePdf);
+      console.log('   💾 DANFE salvo em:', danfeFile.path);
+      console.log('   🔗 URL pública:', danfeFile.url);
+
+      // Atualizar NFe no banco
+      await this.prisma.nFe.update({
+        where: { id: nfeId },
+        data: {
+          danfePdfPath: danfeFile.path,
+          danfePdfUrl: danfeFile.url,
         },
-      },
-    });
-  }
+      });
+      console.log('   ✅ NFe atualizada no banco');
 
-  /**
-   * Salva um arquivo no sistema de arquivos
-   */
-  private async salvarArquivo(
-    companyId: string,
-    saleId: string,
-    nomeArquivo: string,
-    conteudo: string | Buffer,
-  ): Promise<string> {
-    const uploadsDir = path.resolve(process.cwd(), 'uploads', 'nfe', companyId, saleId);
-
-    // Criar diretórios se não existirem
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
+      return {
+        success: true,
+        message: 'DANFE gerado com sucesso',
+        danfePath: danfeFile.path,
+        danfeUrl: danfeFile.url,
+        nfeId: nfe.id,
+        chaveAcesso: nfe.chaveAcesso,
+        numero: nfe.numero,
+      };
+    } catch (error) {
+      console.error('   ❌ Erro ao gerar DANFE:', error.message);
+      throw new InternalServerErrorException({
+        message: 'Erro ao gerar DANFE',
+        error: error.message,
+      });
     }
-
-    const filePath = path.join(uploadsDir, nomeArquivo);
-    fs.writeFileSync(filePath, conteudo);
-
-    return filePath;
-  }
-
-  /**
-   * Salva os dados da NF-e no banco de dados
-   */
-  private async salvarNFeNoBanco(companyId: string, saleId: string, resultado: any) {
-    // Buscar dados da venda para preencher campos obrigatórios
-    const sale = await this.prisma.sale.findUnique({
-      where: { id: saleId },
-      include: {
-        customer: {
-          include: {
-            addresses: true,
-          },
-        },
-        company: true,
-      },
-    });
-
-    if (!sale || !sale.customer) {
-      throw new Error('Venda ou cliente não encontrados');
-    }
-
-    const endereco = sale.customer.addresses.find(addr => addr.type === 'BILLING') || sale.customer.addresses[0];
-
-    if (!endereco) {
-      throw new Error('Cliente sem endereço cadastrado');
-    }
-
-    // Extrair dados da chave de acesso
-    const chave = resultado.chaveAcesso;
-    const cUF = chave.substring(0, 2);
-    const serie = chave.substring(22, 25);
-    const numero = parseInt(chave.substring(25, 34));
-    const cNF = chave.substring(35, 43);
-    const cDV = chave.substring(43, 44);
-
-    // Determinar se é operação interna ou interestadual
-    const idDest = sale.company.estado === endereco.state ? 1 : 2;
-
-    await this.prisma.nFe.create({
-      data: {
-        companyId,
-        saleId,
-        destinatarioId: sale.customer.id,
-        
-        // Identificação
-        cUF,
-        cNF,
-        numero,
-        serie,
-        modelo: '55',
-        chaveAcesso: resultado.chaveAcesso,
-        cDV,
-        
-        // Tipo de operação
-        naturezaOperacao: 'VENDA',
-        tipoOperacao: 1,
-        finalidade: 1,
-        idDest,
-        cMunFG: sale.company.codigoMunicipioIBGE || '',
-        tpImp: 1,
-        tpEmis: 1,
-        indFinal: 1,
-        indPres: 1,
-        indIntermed: 0,
-        procEmi: 0,
-        verProc: '1.0',
-        
-        // Destinatário
-        destinatarioNome: sale.customer.name || '',
-        destinatarioCnpjCpf: sale.customer.cnpj || sale.customer.cpf || '',
-        destinatarioIe: sale.customer.stateRegistration || '',
-        indIEDest: sale.customer.stateRegistration ? 1 : 9,
-        destinatarioEmail: sale.customer.email || '',
-        destinatarioTelefone: sale.customer.phone || '',
-        
-        // Endereço destinatário
-        destLogradouro: endereco.street,
-        destNumero: endereco.number,
-        destComplemento: endereco.complement || '',
-        destBairro: endereco.neighborhood,
-        destCidade: endereco.city,
-        destCodigoMunicipio: endereco.ibgeCode || '',
-        destEstado: endereco.state,
-        destCep: endereco.zipCode,
-        destCodigoPais: '1058',
-        destPais: 'Brasil',
-        
-        // Valores
-        valorProdutos: sale.totalAmount,
-        valorFrete: 0,
-        valorSeguro: 0,
-        valorDesconto: 0,
-        valorOutrasDespesas: 0,
-        valorII: 0,
-        valorIPI: 0,
-        valorIPIDevol: 0,
-        valorICMS: 0,
-        valorICMSDeson: 0,
-        valorFCP: 0,
-        valorICMSST: 0,
-        valorFCPST: 0,
-        valorFCPSTRet: 0,
-        valorPIS: 0,
-        valorCOFINS: 0,
-        valorTotal: sale.totalAmount,
-        
-        // Frete
-        modalidadeFrete: 9,
-        
-        // Pagamento
-        indicadorPagamento: 0,
-        valorPagamento: sale.totalAmount,
-        valorTroco: 0,
-        
-        // Protocolo
-        protocoloAutorizacao: resultado.protocolo,
-        dataAutorizacao: new Date(resultado.dataAutorizacao),
-        status: 'AUTHORIZED',
-        
-        // Arquivos
-        xmlEnviado: resultado.xmlAssinado,
-        xmlAutorizado: resultado.xmlProcessamento,
-        danfePdfPath: resultado.danfe,
-        
-        // Datas
-        dataEmissao: new Date(),
-        dataSaida: new Date(),
-        
-        // Responsável Técnico
-        respTecCNPJ: sale.company.respTecCNPJ || '',
-        respTecContato: sale.company.respTecContato || '',
-        respTecEmail: sale.company.respTecEmail || '',
-        respTecFone: sale.company.respTecFone || '',
-      },
-    });
   }
 }

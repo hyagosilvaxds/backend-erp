@@ -176,7 +176,11 @@ export class NFeSefazService {
       console.log('   - É array?', Array.isArray(resposta));
       console.log('   - Keys:', Object.keys(resposta || {}));
       
-      return resposta; // Retorna resposta completa (já em formato JSON pela biblioteca)
+      // Retornar tanto o XML quanto o JSON para uso posterior
+      return { 
+        xml: respostaXML,  // XML original (necessário para gerarXmlProc)
+        json: resposta     // JSON convertido (para análise)
+      };
     } catch (error) {
       console.log('💥 [SEFAZ] ERRO ao enviar lote!');
       console.log('❌ [SEFAZ] Mensagem:', error.message);
@@ -204,8 +208,10 @@ export class NFeSefazService {
    * Gera o XML de processamento (nfeProc) a partir do XML assinado e resposta da SEFAZ
    * Este XML contém tanto a NF-e quanto o protocolo de autorização
    */
-  async gerarXmlProcessamento(xmlAssinado: string, respostaSefaz: any): Promise<string> {
-    const company = await this.prisma.company.findFirst();
+  async gerarXmlProcessamento(companyId: string, xmlAssinado: string, respostaSefazXML: string): Promise<string> {
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+    });
 
     if (!company) {
       throw new BadRequestException('Empresa não encontrada');
@@ -214,12 +220,26 @@ export class NFeSefazService {
     const tools = await this.inicializarTools(company);
 
     try {
-      const xmlProc = (tools as any).gerarXmlProc(xmlAssinado, respostaSefaz);
+      console.log('🔄 [SEFAZ] Chamando gerarXmlProc do node-sped-nfe...');
+      console.log('📋 [SEFAZ] Tipo da resposta SEFAZ XML:', typeof respostaSefazXML);
+      console.log('📋 [SEFAZ] Tamanho do XML da resposta:', respostaSefazXML?.length || 0);
+      
+      // O gerarXmlProc espera o XML da resposta, não o JSON
+      const xmlProc = (tools as any).gerarXmlProc(xmlAssinado, respostaSefazXML);
+      
+      console.log('✅ [SEFAZ] XML de processamento gerado com sucesso');
+      console.log('📋 [SEFAZ] Tamanho do XML Proc:', xmlProc?.length || 0);
+      
       return xmlProc;
     } catch (error) {
+      console.error('❌ [SEFAZ] Erro ao gerar XML de processamento:', error);
+      console.error('❌ [SEFAZ] Mensagem do erro:', error.message);
+      console.error('❌ [SEFAZ] Stack do erro:', error.stack);
+      
       throw new InternalServerErrorException({
         message: 'Erro ao gerar XML de processamento',
         error: error.message,
+        stack: error.stack,
       });
     }
   }

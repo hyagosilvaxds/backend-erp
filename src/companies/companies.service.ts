@@ -585,4 +585,55 @@ export class CompaniesService {
   }) {
     return this.auditService.getCompanyAuditHistory(companyId, options);
   }
+
+  // Método para atualizar numeração da NF-e
+  async updateNFeNumeracao(
+    id: string,
+    data: { ultimoNumeroNFe?: number; proximoNumeroNFe?: number; serieNFe?: string },
+    userId: string,
+  ) {
+    const company = await this.prisma.company.findUnique({
+      where: { id },
+    });
+
+    if (!company) {
+      throw new NotFoundException('Empresa não encontrada');
+    }
+
+    // Se fornecer apenas ultimoNumeroNFe, calcular proximoNumeroNFe automaticamente
+    const updateData: any = {};
+    
+    if (data.ultimoNumeroNFe !== undefined) {
+      updateData.ultimoNumeroNFe = data.ultimoNumeroNFe;
+      // Se não fornecer proximoNumeroNFe, calcular automaticamente
+      if (data.proximoNumeroNFe === undefined) {
+        updateData.proximoNumeroNFe = data.ultimoNumeroNFe + 1;
+      }
+    }
+    
+    if (data.proximoNumeroNFe !== undefined) {
+      updateData.proximoNumeroNFe = data.proximoNumeroNFe;
+    }
+    
+    if (data.serieNFe !== undefined) {
+      updateData.serieNFe = data.serieNFe;
+    }
+
+    const updatedCompany = await this.prisma.company.update({
+      where: { id },
+      data: updateData,
+      select: {
+        id: true,
+        razaoSocial: true,
+        serieNFe: true,
+        ultimoNumeroNFe: true,
+        proximoNumeroNFe: true,
+      },
+    });
+
+    // Registrar auditoria
+    await this.auditService.logUpdate(id, userId, company, updatedCompany);
+
+    return updatedCompany;
+  }
 }
