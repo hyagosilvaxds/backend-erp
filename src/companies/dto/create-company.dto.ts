@@ -9,6 +9,10 @@ import {
   IsDate,
   IsEmail,
   IsUrl,
+  IsInt,
+  IsNumber,
+  Min,
+  Max,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -155,6 +159,14 @@ export class CreateCompanyDto {
   serieNFe?: string;
 
   @IsOptional()
+  @IsInt({ message: 'Último número NF-e deve ser um inteiro' })
+  ultimoNumeroNFe?: number;
+
+  @IsOptional()
+  @IsInt({ message: 'Próximo número NF-e deve ser um inteiro' })
+  proximoNumeroNFe?: number;
+
+  @IsOptional()
   @IsString({ message: 'Série NFC-e deve ser uma string' })
   serieNFCe?: string;
 
@@ -165,6 +177,39 @@ export class CreateCompanyDto {
   @IsOptional()
   @IsString({ message: 'Ambiente fiscal deve ser uma string' })
   ambienteFiscal?: string;
+
+  // Alíquotas IBS/CBS (novo sistema tributário brasileiro)
+  @IsOptional()
+  @IsNumber({}, { message: 'Alíquota IBS deve ser um número' })
+  @Min(0, { message: 'Alíquota IBS deve ser maior ou igual a 0' })
+  @Max(100, { message: 'Alíquota IBS deve ser menor ou igual a 100' })
+  aliquotaIBS?: number;
+
+  @IsOptional()
+  @IsNumber({}, { message: 'Alíquota CBS deve ser um número' })
+  @Min(0, { message: 'Alíquota CBS deve ser maior ou igual a 0' })
+  @Max(100, { message: 'Alíquota CBS deve ser menor ou igual a 100' })
+  aliquotaCBS?: number;
+
+  // Responsável Técnico (obrigatório para NFe desde 01/04/2024)
+  @IsOptional()
+  @IsString({ message: 'CNPJ do responsável técnico deve ser uma string' })
+  @Length(14, 14, { message: 'CNPJ do responsável técnico deve ter 14 caracteres' })
+  @Matches(/^\d{14}$/, { message: 'CNPJ do responsável técnico deve conter apenas números' })
+  respTecCNPJ?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Nome do contato do responsável técnico deve ser uma string' })
+  respTecContato?: string;
+
+  @IsOptional()
+  @IsEmail({}, { message: 'Email do responsável técnico deve ser válido' })
+  respTecEmail?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Telefone do responsável técnico deve ser uma string' })
+  @Matches(/^\d{10,11}$/, { message: 'Telefone deve ter 10 ou 11 dígitos' })
+  respTecFone?: string;
 
   // Controle interno
   @IsOptional()

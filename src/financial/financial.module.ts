@@ -8,6 +8,7 @@ import { AccountsReceivableController } from './controllers/accounts-receivable.
 import { FinancialReportsController } from './controllers/financial-reports.controller';
 import { OFXController } from './controllers/ofx.controller';
 import { FinancialPlanoContasController } from './controllers/financial-plano-contas.controller';
+import { FinancialCentroCustoController } from './controllers/financial-centro-custo.controller';
 import { BankAccountsService } from './services/bank-accounts.service';
 import { FinancialCategoriesService } from './services/financial-categories.service';
 import { FinancialTransactionsService } from './services/financial-transactions.service';
@@ -29,6 +30,7 @@ import { OFXImportService } from './services/ofx-import.service';
     FinancialReportsController,
     OFXController,
     FinancialPlanoContasController,
+    FinancialCentroCustoController,
   ],
   providers: [
     BankAccountsService,

@@ -1,0 +1,182 @@
+### Criar Lançamento a partir de Transação OFX
+### Teste da nova funcionalidade de criar lançamento direto do extrato
+
+### 1. Importar OFX (primeiro passo)
+POST {{baseUrl}}/financial/ofx/import?companyId={{companyId}}&bankAccountId={{bankAccountId}}
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
+
+------WebKitFormBoundary
+Content-Disposition: form-data; name="file"; filename="extrato.ofx"
+Content-Type: application/x-ofx
+
+<OFX>
+...seu arquivo OFX aqui...
+</OFX>
+------WebKitFormBoundary--
+
+### 2. Criar Novo Lançamento a partir do OFX (NOVA FUNCIONALIDADE)
+POST {{baseUrl}}/financial/ofx/create-transaction
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ofxFitId": "20240115001",
+  "companyId": "{{companyId}}",
+  "bankAccountId": "{{bankAccountId}}",
+  "type": "DESPESA",
+  "transactionType": "PIX",
+  "categoryId": "uuid-categoria-opcional",
+  "description": "Taxa bancária mensal",
+  "notes": "Taxa cobrada automaticamente"
+}
+
+### 3. Criar Lançamento de Receita
+POST {{baseUrl}}/financial/ofx/create-transaction
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ofxFitId": "20240116002",
+  "companyId": "{{companyId}}",
+  "bankAccountId": "{{bankAccountId}}",
+  "type": "RECEITA",
+  "transactionType": "PIX",
+  "description": "Venda avulsa",
+  "notes": "Cliente João Silva"
+}
+
+### 4. Criar Lançamento com Centro de Custo e Conta Contábil
+POST {{baseUrl}}/financial/ofx/create-transaction
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ofxFitId": "20240117003",
+  "companyId": "{{companyId}}",
+  "bankAccountId": "{{bankAccountId}}",
+  "type": "DESPESA",
+  "transactionType": "BOLETO",
+  "categoryId": "uuid-categoria",
+  "centroCustoId": "uuid-centro-custo",
+  "contaContabilId": "uuid-conta-contabil",
+  "description": "Fornecedor XYZ Ltda"
+}
+
+### 5. Teste de Erro - Duplicação (deve falhar)
+### Tenta criar lançamento com FITID já usado
+POST {{baseUrl}}/financial/ofx/create-transaction
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ofxFitId": "20240115001",
+  "companyId": "{{companyId}}",
+  "bankAccountId": "{{bankAccountId}}",
+  "type": "DESPESA",
+  "transactionType": "PIX"
+}
+### Resposta esperada: 400 Bad Request
+### "Já existe um lançamento vinculado a esta movimentação OFX"
+
+### 6. Teste de Erro - FITID Inexistente (deve falhar)
+POST {{baseUrl}}/financial/ofx/create-transaction
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ofxFitId": "FITID_INVALIDO_999",
+  "companyId": "{{companyId}}",
+  "bankAccountId": "{{bankAccountId}}",
+  "type": "DESPESA",
+  "transactionType": "PIX"
+}
+### Resposta esperada: 404 Not Found
+### "Transação OFX não encontrada"
+
+### 7. Listar Extratos Importados (verificar reconciledCount)
+GET {{baseUrl}}/financial/ofx/imports?companyId={{companyId}}
+Authorization: Bearer {{token}}
+
+### 8. Ver Detalhes do Extrato (verificar se transação foi marcada)
+GET {{baseUrl}}/financial/ofx/imports/{{importId}}?companyId={{companyId}}
+Authorization: Bearer {{token}}
+
+### 9. Listar Transações Financeiras (ver lançamentos criados)
+GET {{baseUrl}}/financial/transactions?companyId={{companyId}}
+Authorization: Bearer {{token}}
+
+### 10. Ver Detalhes do Lançamento Criado
+GET {{baseUrl}}/financial/transactions/{{transactionId}}?companyId={{companyId}}
+Authorization: Bearer {{token}}
+
+###
+### COMPARAÇÃO: Conciliar vs Criar
+###
+
+### A. CONCILIAR (método antigo) - vincula lançamento existente
+PATCH {{baseUrl}}/financial/ofx/reconcile/{{existingTransactionId}}?companyId={{companyId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ofxFitId": "20240115001"
+}
+### Uso: Quando já existe um lançamento no sistema
+
+### B. CRIAR (método novo) - cria novo lançamento
+POST {{baseUrl}}/financial/ofx/create-transaction
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ofxFitId": "20240116002",
+  "companyId": "{{companyId}}",
+  "bankAccountId": "{{bankAccountId}}",
+  "type": "DESPESA",
+  "transactionType": "PIX",
+  "description": "Taxa bancária"
+}
+### Uso: Quando NÃO existe lançamento correspondente
+
+###
+### TESTES DE VALIDAÇÃO
+###
+
+### Campos obrigatórios faltando
+POST {{baseUrl}}/financial/ofx/create-transaction
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ofxFitId": "20240115001"
+}
+### Deve retornar erro de validação
+
+### Tipo inválido
+POST {{baseUrl}}/financial/ofx/create-transaction
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ofxFitId": "20240115001",
+  "companyId": "{{companyId}}",
+  "bankAccountId": "{{bankAccountId}}",
+  "type": "TIPO_INVALIDO",
+  "transactionType": "PIX"
+}
+### Deve retornar erro de validação
+
+### TransactionType inválido
+POST {{baseUrl}}/financial/ofx/create-transaction
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ofxFitId": "20240115001",
+  "companyId": "{{companyId}}",
+  "bankAccountId": "{{bankAccountId}}",
+  "type": "DESPESA",
+  "transactionType": "METODO_INVALIDO"
+}
+### Deve retornar erro de validação

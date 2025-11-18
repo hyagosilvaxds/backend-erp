@@ -209,4 +209,16 @@ export class CompaniesController {
       action,
     });
   }
+
+  // Atualizar numeração da NF-e
+  @Patch('admin/:id/nfe-numeracao')
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions('companies.update')
+  updateNFeNumeracao(
+    @Param('id') id: string,
+    @Body() body: { ultimoNumeroNFe?: number; proximoNumeroNFe?: number; serieNFe?: string },
+    @CurrentUser() user: any,
+  ) {
+    return this.companiesService.updateNFeNumeracao(id, body, user.userId);
+  }
 }

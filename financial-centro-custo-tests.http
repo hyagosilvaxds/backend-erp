@@ -1,0 +1,88 @@
+### ==========================================
+### 🏢 Financial - Centro de Custo Endpoints
+### ==========================================
+### 
+### Endpoints simplificados para buscar centros de custo
+### no contexto do módulo financeiro (para seleção em formulários)
+
+@baseUrl = http://localhost:3000
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+@companyId = uuid-da-empresa
+
+### ==========================================
+### 1. Listar Centros de Custo da Empresa (Ativos)
+### ==========================================
+GET {{baseUrl}}/financial/centros-custo?companyId={{companyId}}&ativo=true
+Authorization: Bearer {{token}}
+
+### ==========================================
+### 2. Listar Centros de Custo da Empresa (Todos)
+### ==========================================
+GET {{baseUrl}}/financial/centros-custo?companyId={{companyId}}
+Authorization: Bearer {{token}}
+
+### ==========================================
+### 3. Listar Centros de Custo da Empresa (Inativos)
+### ==========================================
+GET {{baseUrl}}/financial/centros-custo?companyId={{companyId}}&ativo=false
+Authorization: Bearer {{token}}
+
+### ==========================================
+### 4. Buscar Centro de Custo por ID
+### ==========================================
+@centroCustoId = uuid-do-centro-custo
+
+GET {{baseUrl}}/financial/centros-custo/{{centroCustoId}}?id={{centroCustoId}}
+Authorization: Bearer {{token}}
+
+### ==========================================
+### CASO DE USO: Popular Dropdown em Formulário OFX
+### ==========================================
+
+### 1. Buscar categorias
+GET {{baseUrl}}/financial/categories?companyId={{companyId}}&ativo=true
+Authorization: Bearer {{token}}
+
+###
+
+### 2. Buscar centros de custo
+GET {{baseUrl}}/financial/centros-custo?companyId={{companyId}}&ativo=true
+Authorization: Bearer {{token}}
+
+###
+
+### 3. Buscar plano de contas padrão
+GET {{baseUrl}}/financial/plano-contas/padrao?companyId={{companyId}}
+Authorization: Bearer {{token}}
+
+###
+
+### 4. Buscar contas contábeis (usar planoId do passo 3)
+@planoId = uuid-do-plano
+
+GET {{baseUrl}}/financial/plano-contas/{{planoId}}/contas?aceitaLancamento=true&limit=100
+Authorization: Bearer {{token}}
+
+###
+
+### 5. Criar lançamento a partir do OFX (com todos os dados)
+POST {{baseUrl}}/financial/ofx/create-transaction
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ofxFitId": "20240115001",
+  "companyId": "{{companyId}}",
+  "bankAccountId": "uuid-conta-bancaria",
+  "type": "DESPESA",
+  "transactionType": "PIX",
+  "categoryId": "uuid-categoria",
+  "centroCustoId": "uuid-centro-custo",
+  "contaContabilId": "uuid-conta-contabil",
+  "description": "Taxa bancária mensal",
+  "notes": "Observação adicional"
+}
+
+### ==========================================
+### FIM
+### ==========================================

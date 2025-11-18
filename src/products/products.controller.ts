@@ -407,6 +407,7 @@ export class ProductsController {
     @Query('productId') productId?: string,
     @Query('type') type?: string,
     @Query('locationId') locationId?: string,
+    @Query('saleId') saleId?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('page') page?: number,
@@ -418,6 +419,7 @@ export class ProductsController {
       {
         type: type !== 'all' ? type : undefined,
         locationId: locationId !== 'all' ? locationId : undefined,
+        saleId,
         startDate: startDate ? new Date(startDate) : undefined,
         endDate: endDate ? new Date(endDate) : undefined,
         page: page ? Number(page) : undefined,
@@ -443,6 +445,7 @@ export class ProductsController {
     @CurrentCompany() companyId: string,
     @Query('type') type?: string,
     @Query('locationId') locationId?: string,
+    @Query('saleId') saleId?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('page') page?: number,
@@ -451,6 +454,7 @@ export class ProductsController {
     return this.productsService.getStockMovements(id, companyId, {
       type,
       locationId,
+      saleId,
       startDate: startDate ? new Date(startDate) : undefined,
       endDate: endDate ? new Date(endDate) : undefined,
       page: page ? Number(page) : undefined,

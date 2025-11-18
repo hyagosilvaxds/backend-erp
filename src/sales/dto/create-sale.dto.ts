@@ -101,6 +101,11 @@ export class CreateSaleDto {
   @IsNumber()
   @Min(0)
   @IsOptional()
+  shippingModality?: number; // 0=Emitente, 1=Destinatário, 2=Terceiros, 3=Próprio Emitente, 4=Próprio Destinatário, 9=Sem frete
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
   otherCharges?: number;
 
   @IsString()

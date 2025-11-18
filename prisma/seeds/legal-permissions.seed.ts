@@ -48,13 +48,13 @@ async function main() {
     }
   }
 
-  // Adicionar permissões ao role Admin
+  // Adicionar permissões ao role admin
   const adminRole = await prisma.role.findUnique({
-    where: { name: 'Admin' },
+    where: { name: 'admin' },
   });
 
   if (adminRole) {
-    console.log('\n🔧 Adicionando permissões ao role Admin...');
+    console.log('\n🔧 Adicionando permissões ao role admin...');
     
     for (const perm of legalPermissions) {
       const permission = await prisma.permission.findUnique({
@@ -78,14 +78,14 @@ async function main() {
               permissionId: permission.id,
             },
           });
-          console.log(`  ✅ Permissão ${perm.name} adicionada ao Admin`);
+          console.log(`  ✅ Permissão ${perm.name} adicionada ao admin`);
         } else {
-          console.log(`  ⚠️  Permissão ${perm.name} já está no Admin`);
+          console.log(`  ⚠️  Permissão ${perm.name} já está no admin`);
         }
       }
     }
   } else {
-    console.log('\n  ⚠️  Role Admin não encontrada');
+    console.log('\n  ⚠️  Role admin não encontrada');
   }
 
   console.log('\n✅ Seeds do módulo jurídico concluídas!');

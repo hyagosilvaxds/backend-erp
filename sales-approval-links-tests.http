@@ -1,0 +1,199 @@
+### Teste: Listar Contas a Receber de uma Venda Específica
+GET http://localhost:3000/financial/accounts-receivable?companyId={{companyId}}&saleId={{saleId}}
+Authorization: Bearer {{authToken}}
+
+### Teste: Listar Todas as Contas a Receber com Vendas Vinculadas
+GET http://localhost:3000/financial/accounts-receivable?companyId={{companyId}}
+Authorization: Bearer {{authToken}}
+
+###
+
+### Teste: Listar Movimentações de Estoque de uma Venda Específica
+GET http://localhost:3000/products/stock-movements?companyId={{companyId}}&saleId={{saleId}}
+Authorization: Bearer {{authToken}}
+
+###
+
+### Teste: Listar Todas as Movimentações com Vendas Vinculadas
+GET http://localhost:3000/products/stock-movements?companyId={{companyId}}
+Authorization: Bearer {{authToken}}
+
+###
+
+### Teste: Buscar Conta a Receber Individual (com venda vinculada)
+GET http://localhost:3000/financial/accounts-receivable/{{receivableId}}?companyId={{companyId}}
+Authorization: Bearer {{authToken}}
+
+###
+
+### Teste Completo: Aprovar Venda e Verificar Vínculos
+
+# 1. Criar venda
+POST http://localhost:3000/api/sales
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "status": "QUOTE",
+  "installments": 3,
+  "paymentMethodId": "{{paymentMethodId}}",
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "quantity": 10,
+      "unitPrice": 50.00,
+      "stockLocationId": "{{locationId}}"
+    }
+  ]
+}
+
+# Salvar: {{saleId}}
+
+###
+
+# 2. Aprovar venda
+POST http://localhost:3000/api/sales/{{saleId}}/approve
+Authorization: Bearer {{authToken}}
+
+###
+
+# 3. Verificar contas a receber criadas
+GET http://localhost:3000/financial/accounts-receivable?companyId={{companyId}}&saleId={{saleId}}
+Authorization: Bearer {{authToken}}
+
+# Deve retornar 3 contas a receber com:
+# - sale.id = saleId
+# - sale.code = código da venda
+# - sale.customer = dados do cliente
+
+###
+
+# 4. Verificar movimentações de estoque criadas
+GET http://localhost:3000/products/stock-movements?companyId={{companyId}}&saleId={{saleId}}
+Authorization: Bearer {{authToken}}
+
+# Deve retornar 1 movimentação com:
+# - type = EXIT
+# - quantity = -10
+# - sale.id = saleId
+# - sale.code = código da venda
+
+###
+
+# 5. Cancelar venda
+POST http://localhost:3000/api/sales/{{saleId}}/cancel
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "cancellationReason": "Teste de cancelamento"
+}
+
+###
+
+# 6. Verificar contas canceladas
+GET http://localhost:3000/financial/accounts-receivable?companyId={{companyId}}&saleId={{saleId}}
+Authorization: Bearer {{authToken}}
+
+# Deve retornar as 3 contas com status = CANCELADO
+
+###
+
+# 7. Verificar devolução de estoque
+GET http://localhost:3000/products/stock-movements?companyId={{companyId}}&saleId={{saleId}}
+Authorization: Bearer {{authToken}}
+
+# Deve retornar 2 movimentações:
+# 1. EXIT (saída original)
+# 2. RETURN (devolução)
+
+###
+
+### Teste: Filtrar Contas a Receber por Status e Venda
+GET http://localhost:3000/financial/accounts-receivable?companyId={{companyId}}&status=PENDENTE&saleId={{saleId}}
+Authorization: Bearer {{authToken}}
+
+###
+
+### Teste: Filtrar Movimentações por Tipo e Venda
+GET http://localhost:3000/products/stock-movements?companyId={{companyId}}&type=EXIT&saleId={{saleId}}
+Authorization: Bearer {{authToken}}
+
+###
+
+### Teste: Listar Contas a Receber com Paginação
+GET http://localhost:3000/financial/accounts-receivable?companyId={{companyId}}&page=1&limit=10
+Authorization: Bearer {{authToken}}
+
+###
+
+### Teste: Listar Movimentações com Paginação
+GET http://localhost:3000/products/stock-movements?companyId={{companyId}}&page=1&limit=20
+Authorization: Bearer {{authToken}}
+
+###
+
+### Teste: Verificar Estrutura Completa da Conta a Receber
+GET http://localhost:3000/financial/accounts-receivable/{{receivableId}}?companyId={{companyId}}
+Authorization: Bearer {{authToken}}
+
+# Deve retornar:
+# {
+#   "id": "...",
+#   "saleId": "...",
+#   "status": "PENDENTE",
+#   "sale": {
+#     "id": "...",
+#     "code": "VEN-2024-0001",
+#     "status": "APPROVED",
+#     "totalAmount": 500.00,
+#     "customer": {
+#       "id": "...",
+#       "name": "Cliente Teste",
+#       "companyName": null,
+#       "personType": "FISICA"
+#     }
+#   }
+# }
+
+###
+
+### Teste: Verificar Estrutura Completa da Movimentação
+GET http://localhost:3000/products/stock-movements?companyId={{companyId}}&saleId={{saleId}}
+Authorization: Bearer {{authToken}}
+
+# Deve retornar:
+# {
+#   "data": [{
+#     "id": "...",
+#     "saleId": "...",
+#     "type": "EXIT",
+#     "product": { "id": "...", "name": "...", "sku": "..." },
+#     "location": { "id": "...", "name": "..." },
+#     "sale": {
+#       "id": "...",
+#       "code": "VEN-2024-0001",
+#       "status": "APPROVED",
+#       "totalAmount": 500.00,
+#       "customer": {
+#         "id": "...",
+#         "name": "Cliente Teste"
+#       }
+#     }
+#   }],
+#   "total": 1,
+#   "page": 1
+# }
+
+###
+
+### Teste: Buscar Venda com Todos os Vínculos
+GET http://localhost:3000/api/sales/{{saleId}}
+Authorization: Bearer {{authToken}}
+
+# Verificar que retorna:
+# - accountsReceivable: array com 3 contas
+# - stockMovements: array com 1 movimentação
+
+###

@@ -1,0 +1,260 @@
+### Teste: Criar Venda com Modalidade de Frete CIF (Emitente Paga)
+POST http://localhost:3000/api/sales
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "status": "QUOTE",
+  "shippingCost": 85.50,
+  "shippingModality": 0,
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "quantity": 5,
+      "unitPrice": 129.90
+    }
+  ]
+}
+
+###
+
+### Teste: Criar Venda com Modalidade de Frete FOB (Destinatário Paga)
+POST http://localhost:3000/api/sales
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "status": "QUOTE",
+  "shippingCost": 120.00,
+  "shippingModality": 1,
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "quantity": 3,
+      "unitPrice": 89.90
+    }
+  ]
+}
+
+###
+
+### Teste: Criar Venda Sem Frete (Retirada no Local)
+POST http://localhost:3000/api/sales
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "status": "QUOTE",
+  "shippingCost": 0,
+  "shippingModality": 9,
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "quantity": 2,
+      "unitPrice": 199.90
+    }
+  ]
+}
+
+###
+
+### Teste: Criar Venda com Transporte Próprio do Emitente
+POST http://localhost:3000/api/sales
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "status": "CONFIRMED",
+  "shippingCost": 0,
+  "shippingModality": 3,
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "quantity": 10,
+      "unitPrice": 45.00
+    }
+  ]
+}
+
+###
+
+### Teste: Criar Venda com Frete por Terceiros
+POST http://localhost:3000/api/sales
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "status": "APPROVED",
+  "shippingCost": 250.00,
+  "shippingModality": 2,
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "quantity": 20,
+      "unitPrice": 75.50
+    }
+  ]
+}
+
+###
+
+### Teste: Atualizar Modalidade de Frete da Venda
+PATCH http://localhost:3000/api/sales/{{saleId}}
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "shippingModality": 1,
+  "shippingCost": 95.00
+}
+
+###
+
+### Teste: Criar NFe da Venda (Modalidade Herdada)
+POST http://localhost:3000/api/nfe/from-sale
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "saleId": "{{saleId}}",
+  "serie": "1",
+  "naturezaOperacao": "Venda de mercadoria",
+  "tipoOperacao": 1,
+  "finalidade": 1
+}
+
+###
+
+### Teste: Criar NFe com Modalidade de Frete Customizada
+POST http://localhost:3000/api/nfe/from-sale
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "saleId": "{{saleId}}",
+  "serie": "1",
+  "naturezaOperacao": "Venda de mercadoria",
+  "modalidadeFrete": 0,
+  "tipoOperacao": 1,
+  "finalidade": 1
+}
+
+###
+
+### Teste: Listar Vendas (Verificar Modalidade)
+GET http://localhost:3000/api/sales
+Authorization: Bearer {{authToken}}
+
+###
+
+### Teste: Buscar Venda por ID (Verificar Modalidade)
+GET http://localhost:3000/api/sales/{{saleId}}
+Authorization: Bearer {{authToken}}
+
+###
+
+### Cenário Completo: Criar Venda → Confirmar → Emitir NFe
+
+# 1. Criar orçamento com frete
+POST http://localhost:3000/api/sales
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "status": "QUOTE",
+  "shippingCost": 75.00,
+  "shippingModality": 0,
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "quantity": 3,
+      "unitPrice": 150.00
+    }
+  ]
+}
+
+# Salvar o ID da venda criada: {{saleId}}
+
+###
+
+# 2. Confirmar venda
+PATCH http://localhost:3000/api/sales/{{saleId}}
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "status": "CONFIRMED"
+}
+
+###
+
+# 3. Emitir NFe (modalidade herdada da venda)
+POST http://localhost:3000/api/nfe/from-sale
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "saleId": "{{saleId}}",
+  "serie": "1",
+  "naturezaOperacao": "Venda de mercadoria"
+}
+
+###
+
+### Teste de Validação: Modalidade Inválida (deve falhar)
+POST http://localhost:3000/api/sales
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "status": "QUOTE",
+  "shippingCost": 50.00,
+  "shippingModality": 99,
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "quantity": 1,
+      "unitPrice": 100.00
+    }
+  ]
+}
+
+###
+
+### Teste: Venda Sem Especificar Modalidade (deve usar padrão 9)
+POST http://localhost:3000/api/sales
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "status": "QUOTE",
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "quantity": 1,
+      "unitPrice": 100.00
+    }
+  ]
+}
+
+###
+
+### Teste: Exportar Vendas para Excel (Verificar Coluna de Modalidade)
+GET http://localhost:3000/api/sales/export/excel?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{authToken}}
+
+###
+
+### Teste: Gerar PDF da Venda (Verificar Modalidade)
+GET http://localhost:3000/api/sales/{{saleId}}/pdf
+Authorization: Bearer {{authToken}}
+
+###

@@ -1,0 +1,270 @@
+### 🧪 Testes de Atualização de Cliente com Endereços e Contatos
+
+### Variáveis
+@baseUrl = http://localhost:4000
+@token = seu-token-jwt-aqui
+@companyId = db0019dd-4dcd-46c3-aaef-66b87a58c5c2
+@customerId = 30e6c969-d7b3-48a2-a5e3-a75bc0e235cc
+
+### =================================================================
+### 1️⃣ BUSCAR CLIENTE ANTES DA ATUALIZAÇÃO
+### =================================================================
+
+GET {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{token}}
+
+### =================================================================
+### 2️⃣ ATUALIZAR CLIENTE COM 1 ENDEREÇO (Principal)
+### =================================================================
+
+PATCH {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "personType": "JURIDICA",
+  "active": true,
+  "companyName": "Olimpus Solucoes Empresariais LTDA",
+  "tradeName": "Olimpus Solucoes Empresariais",
+  "cnpj": "57953546000184",
+  "stateRegistration": "0050328560022",
+  "stateRegistrationExempt": false,
+  "taxRegime": "SIMPLES_NACIONAL",
+  "addresses": [
+    {
+      "type": "MAIN",
+      "zipCode": "39404076",
+      "street": "Rua Marmelo",
+      "number": "140",
+      "neighborhood": "Alto Floresta",
+      "city": "Montes Claros",
+      "state": "MG",
+      "ibgeCode": "3143302"
+    }
+  ]
+}
+
+### =================================================================
+### 3️⃣ ATUALIZAR CLIENTE COM MÚLTIPLOS ENDEREÇOS
+### =================================================================
+
+PATCH {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "personType": "JURIDICA",
+  "companyName": "Olimpus Solucoes Empresariais LTDA",
+  "tradeName": "Olimpus Solucoes Empresariais",
+  "cnpj": "57953546000184",
+  "addresses": [
+    {
+      "type": "MAIN",
+      "zipCode": "39404076",
+      "street": "Rua Marmelo",
+      "number": "140",
+      "neighborhood": "Alto Floresta",
+      "city": "Montes Claros",
+      "state": "MG",
+      "ibgeCode": "3143302"
+    },
+    {
+      "type": "BILLING",
+      "zipCode": "39400001",
+      "street": "Av. Coronel Prates",
+      "number": "500",
+      "complement": "Sala 201",
+      "neighborhood": "Centro",
+      "city": "Montes Claros",
+      "state": "MG",
+      "ibgeCode": "3143302"
+    },
+    {
+      "type": "DELIVERY",
+      "zipCode": "39402123",
+      "street": "Rua das Flores",
+      "number": "789",
+      "neighborhood": "Jardim América",
+      "city": "Montes Claros",
+      "state": "MG",
+      "ibgeCode": "3143302"
+    }
+  ]
+}
+
+### =================================================================
+### 4️⃣ ATUALIZAR CLIENTE COM ENDEREÇOS E CONTATOS
+### =================================================================
+
+PATCH {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "personType": "JURIDICA",
+  "companyName": "Olimpus Solucoes Empresariais LTDA",
+  "tradeName": "Olimpus Solucoes Empresariais",
+  "cnpj": "57953546000184",
+  "taxRegime": "SIMPLES_NACIONAL",
+  "email": "contato@olimpus.com.br",
+  "phone": "38991234567",
+  "addresses": [
+    {
+      "type": "MAIN",
+      "zipCode": "39404076",
+      "street": "Rua Marmelo",
+      "number": "140",
+      "neighborhood": "Alto Floresta",
+      "city": "Montes Claros",
+      "state": "MG",
+      "ibgeCode": "3143302"
+    }
+  ],
+  "contacts": [
+    {
+      "name": "João Silva",
+      "role": "Gerente Comercial",
+      "email": "joao.silva@olimpus.com.br",
+      "phone": "38991234567",
+      "isPrimary": true
+    },
+    {
+      "name": "Maria Santos",
+      "role": "Financeiro",
+      "email": "maria.santos@olimpus.com.br",
+      "phone": "38997654321",
+      "isPrimary": false
+    }
+  ]
+}
+
+### =================================================================
+### 5️⃣ REMOVER TODOS OS ENDEREÇOS (Array vazio)
+### =================================================================
+
+PATCH {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "personType": "JURIDICA",
+  "companyName": "Olimpus Solucoes Empresariais LTDA",
+  "cnpj": "57953546000184",
+  "addresses": []
+}
+
+### =================================================================
+### 6️⃣ ATUALIZAR SEM TOCAR NOS ENDEREÇOS (não enviar campo)
+### =================================================================
+
+PATCH {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "personType": "JURIDICA",
+  "companyName": "Olimpus Solucoes Empresariais LTDA - ATUALIZADO",
+  "taxRegime": "LUCRO_PRESUMIDO"
+}
+
+### =================================================================
+### 7️⃣ BUSCAR CLIENTE APÓS ATUALIZAÇÃO
+### =================================================================
+
+GET {{baseUrl}}/customers/{{customerId}}
+Authorization: Bearer {{token}}
+
+### =================================================================
+### 8️⃣ TESTE: Pessoa Física com Endereço
+### =================================================================
+
+# Primeiro, criar um cliente PF
+POST {{baseUrl}}/customers
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "personType": "FISICA",
+  "name": "Carlos Eduardo Santos",
+  "cpf": "12345678900",
+  "email": "carlos@email.com",
+  "phone": "38991111111",
+  "addresses": [
+    {
+      "type": "MAIN",
+      "zipCode": "39400000",
+      "street": "Rua Principal",
+      "number": "123",
+      "neighborhood": "Centro",
+      "city": "Montes Claros",
+      "state": "MG",
+      "ibgeCode": "3143302"
+    }
+  ]
+}
+
+### Depois atualizar o endereço (use o ID retornado acima)
+PATCH {{baseUrl}}/customers/{id-do-cliente-pf}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "personType": "FISICA",
+  "name": "Carlos Eduardo Santos",
+  "cpf": "12345678900",
+  "addresses": [
+    {
+      "type": "MAIN",
+      "zipCode": "39404076",
+      "street": "Rua Marmelo ATUALIZADA",
+      "number": "999",
+      "neighborhood": "Alto Floresta",
+      "city": "Montes Claros",
+      "state": "MG",
+      "ibgeCode": "3143302"
+    }
+  ]
+}
+
+### =================================================================
+### 📊 VALIDAÇÕES ESPERADAS
+### =================================================================
+
+# ✅ Teste 2: Deve criar 1 endereço
+# ✅ Teste 3: Deve substituir por 3 endereços (deleta o anterior)
+# ✅ Teste 4: Deve criar 1 endereço + 2 contatos
+# ✅ Teste 5: Deve remover todos os endereços
+# ✅ Teste 6: Deve manter endereços existentes (não enviou campo)
+# ✅ Teste 7: Deve retornar cliente com addresses e contacts
+# ✅ Teste 8: Deve funcionar para pessoa física também
+
+### =================================================================
+### 🔍 VERIFICAÇÕES
+### =================================================================
+
+# Verificar estrutura da resposta:
+# {
+#   "id": "uuid",
+#   "companyId": "uuid",
+#   "personType": "JURIDICA",
+#   "companyName": "...",
+#   "addresses": [
+#     {
+#       "id": "uuid",
+#       "customerId": "uuid",
+#       "type": "MAIN",
+#       "street": "...",
+#       "number": "...",
+#       ...
+#     }
+#   ],
+#   "contacts": [
+#     {
+#       "id": "uuid",
+#       "customerId": "uuid",
+#       "name": "...",
+#       "email": "...",
+#       ...
+#     }
+#   ]
+# }

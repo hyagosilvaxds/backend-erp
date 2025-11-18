@@ -53,6 +53,37 @@ export class PermissionsGuard implements CanActivate {
       );
     }
 
+    // Verificar se o usuário é admin em QUALQUER empresa
+    const isAdmin = await this.checkIfUserIsAdmin(user.userId);
+    
+    if (isAdmin) {
+      // Admin tem acesso total, buscar permissões de admin
+      const adminRole = await this.prisma.role.findUnique({
+        where: { name: 'admin' },
+        include: {
+          rolePermissions: {
+            include: {
+              permission: true,
+            },
+          },
+        },
+      });
+
+      if (adminRole) {
+        const adminPermissions = adminRole.rolePermissions.map(
+          (rp) => `${rp.permission.resource}.${rp.permission.action}`,
+        );
+
+        request.company = {
+          id: companyId,
+          role: 'admin',
+          permissions: adminPermissions,
+        };
+
+        return true;
+      }
+    }
+
     // Buscar as permissões do usuário na empresa específica
     const userCompany = await this.prisma.userCompany.findUnique({
       where: {
@@ -102,6 +133,23 @@ export class PermissionsGuard implements CanActivate {
     };
 
     return true;
+  }
+
+  /**
+   * Verifica se o usuário tem role "admin" em qualquer empresa
+   */
+  private async checkIfUserIsAdmin(userId: string): Promise<boolean> {
+    const adminUserCompany = await this.prisma.userCompany.findFirst({
+      where: {
+        userId: userId,
+        active: true,
+        role: {
+          name: 'admin',
+        },
+      },
+    });
+
+    return !!adminUserCompany;
   }
 
   /**

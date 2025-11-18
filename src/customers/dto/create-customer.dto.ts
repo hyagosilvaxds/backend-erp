@@ -75,10 +75,6 @@ export class CreateCustomerDto {
 
   @IsOptional()
   @IsString()
-  municipalRegistration?: string;
-
-  @IsOptional()
-  @IsString()
   cnae?: string;
 
   @IsOptional()

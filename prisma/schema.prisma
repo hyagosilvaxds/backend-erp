@@ -89,10 +89,12 @@ model Company {
   // Certificado digital para emissão de notas fiscais
   certificadoDigitalPath  String? // Caminho do arquivo do certificado A1
   certificadoDigitalSenha String? // Senha do certificado (criptografada)
+  certificadoDigitalValidoAte DateTime? // Validade do certificado A1
 
   // Numeração de notas fiscais
   serieNFe         String? // Série da NF-e
   ultimoNumeroNFe  Int?    @default(0) // Último número de NF-e emitido
+  proximoNumeroNFe Int?    @default(1) // Próximo número de NF-e
   serieNFCe        String? // Série da NFC-e
   ultimoNumeroNFCe Int?    @default(0) // Último número de NFC-e emitido
   serieNFSe        String? // Série da NFS-e
@@ -100,6 +102,20 @@ model Company {
 
   // Ambiente fiscal
   ambienteFiscal String @default("Homologacao") // Homologacao ou Producao
+  nfeAmbiente    String @default("2") // 1=Produção, 2=Homologação (para API node-sped-nfe)
+
+  // Alíquotas IBS/CBS (novo sistema tributário brasileiro)
+  aliquotaIBS Float? @default(0.1) // Alíquota do IBS (Imposto sobre Bens e Serviços) em %
+  aliquotaCBS Float? @default(0.9) // Alíquota do CBS (Contribuição sobre Bens e Serviços) em %
+
+  // Responsável Técnico (para NFe)
+  respTecCNPJ    String? // CNPJ do responsável técnico
+  respTecContato String? // Nome do contato
+  respTecEmail   String? // Email do responsável técnico
+  respTecFone    String? // Telefone do responsável técnico
+  responsibleName  String? // Nome do responsável (alias)
+  responsibleEmail String? // Email do responsável (alias)
+  responsiblePhone String? // Telefone do responsável (alias)
 
   // Logo e identidade visual
   logoUrl      String? // URL ou caminho do arquivo de logo
@@ -178,6 +194,7 @@ model Company {
   // Módulo de Vendas
   paymentMethods PaymentMethod[]
   sales          Sale[]
+  nfes           NFe[]
 
   @@map("companies")
 }
@@ -624,14 +641,19 @@ model Product {
   notes String? @db.Text
 
   // Informações fiscais (NCM, CEST, CFOP, etc serão adicionados)
-  ncm    String? // Nomenclatura Comum do Mercosul
+  ncm    String? // Nomenclatura Comum do Mercosul (8 dígitos)
   cest   String? // Código Especificador da Substituição Tributária
   origin String? // Origem da mercadoria (0-8)
+  origem String? // Alias para origin (compatibilidade)
 
   // ICMS
   icmsCst   String? // Código de Situação Tributária do ICMS
   icmsRate  Decimal? @db.Decimal(5, 2) // Alíquota do ICMS
   icmsModBc String? // Modalidade de determinação da BC do ICMS
+  cstIcms   String? // Alias para icmsCst (compatibilidade)
+  aliqIcms  Decimal? @db.Decimal(5, 2) // Alias para icmsRate (compatibilidade)
+  modBcIcms String? // Alias para icmsModBc (compatibilidade)
+  csosn     String? // CSOSN para Simples Nacional
 
   // IPI
   ipiCst  String? // CST do IPI
@@ -640,12 +662,19 @@ model Product {
   // PIS
   pisCst  String? // CST do PIS
   pisRate Decimal? @db.Decimal(5, 2) // Alíquota do PIS
+  cstPis  String? // Alias para pisCst (compatibilidade)
+  aliqPis Decimal? @db.Decimal(5, 2) // Alias para pisRate (compatibilidade)
+  bcPis   Decimal? @db.Decimal(10, 2) // Base de cálculo PIS
 
   // COFINS
   cofinsCst  String? // CST do COFINS
   cofinsRate Decimal? @db.Decimal(5, 2) // Alíquota do COFINS
+  cstCofins  String? // Alias para cofinsCst (compatibilidade)
+  aliqCofins Decimal? @db.Decimal(5, 2) // Alias para cofinsRate (compatibilidade)
+  bcCofins   Decimal? @db.Decimal(10, 2) // Base de cálculo COFINS
 
   // CFOP - Código Fiscal de Operações e Prestações
+  cfop                     String? // CFOP padrão (para simplificar)
   cfopEstadual             String? // CFOP para vendas dentro do estado (ex: 5102)
   cfopInterestadual        String? // CFOP para vendas fora do estado (ex: 6102)
   cfopEntradaEstadual      String? // CFOP para compras dentro do estado (ex: 1102)
@@ -678,6 +707,7 @@ model Product {
   stocksByLocation ProductStockByLocation[]
   transferItems    StockTransferItem[]
   saleItems        SaleItem[]
+  nfeItems         NFeItem[] // Itens de NFe
 
   @@unique([companyId, barcode])
   @@unique([companyId, sku])
@@ -793,6 +823,7 @@ model ProductStockMovement {
   reason    String? // Motivo da movimentação
   notes     String? // Observações
   reference String? // Referência (ex: número da NF)
+  saleId    String? // ID da venda vinculada
 
   // Relacionamento com local de estoque
   locationId String?
@@ -806,6 +837,9 @@ model ProductStockMovement {
   documentId String?
   document   Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
 
+  // Venda vinculada
+  sale Sale? @relation(fields: [saleId], references: [id], onDelete: SetNull)
+
   userId    String? // Usuário que fez a movimentação
   createdAt DateTime @default(now())
 
@@ -813,6 +847,7 @@ model ProductStockMovement {
   @@index([productId])
   @@index([locationId])
   @@index([transferId])
+  @@index([saleId])
   @@index([type])
   @@index([createdAt])
   @@map("product_stock_movements")
@@ -964,7 +999,6 @@ model Customer {
   cnpj                    String? // CNPJ (somente números)
   stateRegistration       String? // Inscrição Estadual
   stateRegistrationExempt Boolean @default(false) // Isento de IE
-  municipalRegistration   String? // Inscrição Municipal
   cnae                    String? // CNAE principal
   taxRegime               String? // SIMPLES_NACIONAL, LUCRO_PRESUMIDO, LUCRO_REAL, MEI
 
@@ -996,6 +1030,7 @@ model Customer {
   addresses CustomerAddress[]
   contacts  CustomerContact[]
   sales     Sale[]
+  nfes      NFe[] // NFes como destinatário
 
   @@unique([companyId, cpf])
   @@unique([companyId, cnpj])
@@ -1028,6 +1063,7 @@ model CustomerAddress {
   neighborhood String // Bairro
   city         String // Cidade
   state        String // UF (2 letras)
+  ibgeCode     String? // Código IBGE do município (7 dígitos)
   country      String  @default("Brasil")
 
   // Referência
@@ -1870,6 +1906,7 @@ model AccountReceivable {
   categoryId      String?
   centroCustoId   String?
   contaContabilId String?
+  saleId          String? // ID da venda vinculada
 
   // Cliente/Devedor
   customerName     String // Nome do cliente ou devedor
@@ -1923,6 +1960,7 @@ model AccountReceivable {
   category      FinancialCategory?    @relation(fields: [categoryId], references: [id])
   centroCusto   CentroCusto?          @relation(fields: [centroCustoId], references: [id])
   contaContabil ContaContabil?        @relation("AccountReceivableContaContabil", fields: [contaContabilId], references: [id])
+  sale          Sale?                 @relation(fields: [saleId], references: [id], onDelete: SetNull)
   parent        AccountReceivable?    @relation("ReceivableInstallments", fields: [parentId], references: [id])
   installments  AccountReceivable[]   @relation("ReceivableInstallments")
   transaction   FinancialTransaction?
@@ -1930,6 +1968,7 @@ model AccountReceivable {
   @@index([companyId])
   @@index([categoryId])
   @@index([customerId])
+  @@index([saleId])
   @@index([status])
   @@index([dueDate])
   @@index([receiptDate])
@@ -2315,10 +2354,12 @@ model Distribution {
 model PaymentMethod {
   id        String            @id @default(uuid())
   companyId String
-  name      String // Ex: "Cartão de Crédito", "PIX", "Boleto"
-  code      String // Ex: "CREDIT_CARD", "PIX", "BOLETO"
-  type      PaymentMethodType // CASH, CARD, TRANSFER, etc
+  name      String // Ex: "Cartão de Crédito", "PIX Dinâmico", "Boleto Bancário"
+  code      String // Código interno: "CREDIT_CARD", "PIX_DYNAMIC", "BOLETO"
   active    Boolean           @default(true)
+
+  // Código SEFAZ para NFe (campo obrigatório)
+  sefazCode String // Código da tabela SEFAZ (01-22, 90, 99)
 
   // Configurações de parcelamento
   allowInstallments Boolean @default(false)
@@ -2369,15 +2410,29 @@ model PaymentInstallmentTemplate {
   @@map("payment_installment_templates")
 }
 
-enum PaymentMethodType {
-  CASH // Dinheiro
-  CREDIT_CARD // Cartão de Crédito
-  DEBIT_CARD // Cartão de Débito
-  PIX // PIX
-  BANK_SLIP // Boleto
-  BANK_TRANSFER // Transferência
-  CHECK // Cheque
-  OTHER // Outro
+// Códigos de Pagamento SEFAZ (Tabela 4.3.3.4.6.1)
+// Referência: https://www.nfe.fazenda.gov.br/portal/exibirArquivo.aspx?conteudo=eRn/kZdQ+Ks=
+enum PaymentCodeSefaz {
+  DINHEIRO // 01 - Dinheiro
+  CHEQUE // 02 - Cheque
+  CARTAO_CREDITO // 03 - Cartão de Crédito
+  CARTAO_DEBITO // 04 - Cartão de Débito
+  CREDITO_LOJA // 05 - Crédito Loja
+  VALE_ALIMENTACAO // 10 - Vale Alimentação
+  VALE_REFEICAO // 11 - Vale Refeição
+  VALE_PRESENTE // 12 - Vale Presente
+  VALE_COMBUSTIVEL // 13 - Vale Combustível
+  DUPLICATA_MERCANTIL // 14 - Duplicata Mercantil
+  BOLETO_BANCARIO // 15 - Boleto Bancário
+  DEPOSITO_BANCARIO // 16 - Depósito Bancário
+  PIX_DINAMICO // 17 - Pagamento Instantâneo (PIX) - Dinâmico
+  TRANSFERENCIA // 18 - Transferência bancária, Carteira Digital
+  PROGRAMA_FIDELIDADE // 19 - Programa de fidelidade, Cashback, Crédito Virtual
+  PIX_ESTATICO // 20 - PIX Estático
+  CREDITO_EM_LOJA // 21 - Crédito em Loja (Private Label)
+  PAGAMENTO_ELETRONICO_NAO_INFORMADO // 22 - Pagamento Eletrônico não Informado
+  SEM_PAGAMENTO // 90 - Sem pagamento
+  OUTROS // 99 - Outros
 }
 
 // Orçamento/Venda
@@ -2395,6 +2450,7 @@ model Sale {
   discountAmount   Float   @default(0)
   discountPercent  Float   @default(0)
   shippingCost     Float   @default(0)
+  shippingModality Int     @default(9) // 0=Emitente, 1=Destinatário, 2=Terceiros, 3=Próprio Emitente, 4=Próprio Destinatário, 9=Sem frete
   otherCharges     Float   @default(0)
   otherChargesDesc String? // Descrição dos encargos
   totalAmount      Float // Total final
@@ -2419,6 +2475,9 @@ model Sale {
   notes         String?
   internalNotes String? // Notas internas (não visível para cliente)
 
+  // NFe vinculada (atalho para acesso rápido)
+  nfeXmlUrl String? // URL pública do XML da NFe para download
+
   // Datas importantes
   quoteDate          DateTime  @default(now())
   validUntil         DateTime? // Validade do orçamento
@@ -2431,11 +2490,14 @@ model Sale {
   updatedAt DateTime @updatedAt
 
   // Relacionamentos
-  company            Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  customer           Customer          @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  paymentMethod      PaymentMethod?    @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  company            Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer           Customer               @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  paymentMethod      PaymentMethod?         @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
   items              SaleItem[]
-  installmentDetails SaleInstallment[] // Detalhes das parcelas (datas e valores)
+  installmentDetails SaleInstallment[]      // Detalhes das parcelas (datas e valores)
+  nfes               NFe[]                  // Notas fiscais vinculadas
+  accountsReceivable AccountReceivable[]    // Contas a receber vinculadas
+  stockMovements     ProductStockMovement[] // Movimentações de estoque vinculadas
 
   @@unique([companyId, code])
   @@index([companyId])
@@ -2454,6 +2516,7 @@ enum SaleStatus {
   READY_TO_SHIP // Pronto para envio
   SHIPPED // Enviado
   DELIVERED // Entregue
+  INVOICED // Faturado (NFe emitida)
   COMPLETED // Concluída
   CANCELED // Cancelada
   REJECTED // Rejeitada
@@ -2527,4 +2590,393 @@ model SaleInstallment {
   @@index([status])
   @@index([dueDate])
   @@map("sale_installments")
+}
+
+// ============================================
+// MÓDULO DE NFE (NOTA FISCAL ELETRÔNICA)
+// ============================================
+
+// Nota Fiscal Eletrônica
+model NFe {
+  id        String @id @default(uuid())
+  companyId String
+  saleId    String? // Vinculada a uma venda (opcional)
+
+  // Identificação da NFe (tagIde)
+  cUF           String  // Código da UF do emitente (Tabela IBGE)
+  cNF           String  // Código numérico que compõe a chave de acesso
+  numero        Int     // Número da nota fiscal (nNF)
+  serie         String  // Série da nota fiscal
+  modelo        String  @default("55") // 55=NF-e, 65=NFC-e
+  chaveAcesso   String? @unique // Chave de acesso de 44 dígitos
+  cDV           String? // Dígito verificador da chave de acesso
+  
+  // Status da NFe
+  status NFeStatus @default(DRAFT)
+
+  // Tipo de operação (tagIde)
+  naturezaOperacao String // Ex: "VENDA", "DEVOLUCAO" (natOp)
+  tipoOperacao     Int    @default(1) // 0=Entrada, 1=Saída (tpNF)
+  finalidade       Int    @default(1) // 1=Normal, 2=Complementar, 3=Ajuste, 4=Devolução (finNFe)
+  idDest           Int    @default(2) // 1=Interna, 2=Interestadual, 3=Exterior
+  cMunFG           String // Código do município de ocorrência do fato gerador
+  tpImp            Int    @default(1) // 1=Retrato, 2=Paisagem (formato DANFE)
+  tpEmis           Int    @default(1) // 1=Normal, outras para contingência
+  indFinal         Int    @default(0) // 0=Não, 1=Consumidor final
+  indPres          Int    @default(1) // 1=Operação presencial, 2=Internet, etc
+  indIntermed      Int    @default(0) // 0=Sem intermediador, 1=Com intermediador
+  procEmi          Int    @default(0) // 0=Aplicação do contribuinte
+  verProc          String @default("1.0") // Versão do aplicativo emissor
+
+  // Destinatário (tagDest)
+  destinatarioId     String? // Se for um cliente cadastrado
+  destinatarioNome   String  // xNome
+  destinatarioCnpjCpf String // CNPJ ou CPF
+  destinatarioIe     String? // Inscrição Estadual
+  indIEDest          Int    @default(9) // 1=Contribuinte, 2=Isento, 9=Não contribuinte
+  destinatarioEmail  String?
+  destinatarioTelefone String?
+
+  // Endereço do destinatário (tagEnderDest)
+  destLogradouro      String // xLgr
+  destNumero          String // nro
+  destComplemento     String? // xCpl
+  destBairro          String // xBairro
+  destCidade          String // xMun
+  destCodigoMunicipio String // cMun (Código IBGE)
+  destEstado          String // UF
+  destCep             String // CEP
+  destCodigoPais      String @default("1058") // cPais (1058=Brasil)
+  destPais            String @default("Brasil") // xPais
+
+  // Valores da NFe (tagTotal)
+  valorProdutos       Float // Valor total dos produtos (vProd)
+  valorFrete          Float @default(0) // vFrete
+  valorSeguro         Float @default(0) // vSeg
+  valorDesconto       Float @default(0) // vDesc
+  valorOutrasDespesas Float @default(0) // vOutro
+  valorII             Float @default(0) // Imposto de Importação
+  valorIPI            Float @default(0) // vIPI
+  valorIPIDevol       Float @default(0) // vIPIDevol
+  valorICMS           Float @default(0) // vICMS
+  valorICMSDeson      Float @default(0) // vICMSDeson
+  valorFCP            Float @default(0) // vFCP (Fundo de Combate à Pobreza)
+  valorICMSST         Float @default(0) // vST
+  valorFCPST          Float @default(0) // vFCPST
+  valorFCPSTRet       Float @default(0) // vFCPSTRet
+  valorPIS            Float @default(0) // vPIS
+  valorCOFINS         Float @default(0) // vCOFINS
+  valorTotal          Float // Valor total da nota (vNF)
+
+  // Tributos aproximados (Lei da Transparência)
+  valorTributosFederais   Float @default(0)
+  valorTributosEstaduais  Float @default(0)
+  valorTributosMunicipais Float @default(0)
+  valorTributosTotal      Float @default(0)
+
+  // Frete (tagTransp)
+  modalidadeFrete       Int     @default(9) // 0=Emitente, 1=Destinatário, 2=Terceiros, 9=Sem frete
+  transportadoraNome    String?
+  transportadoraCnpjCpf String?
+  transportadoraIE      String?
+  transportadoraEndereco String?
+  transportadoraCidade  String?
+  transportadoraUF      String?
+  veiculoPlaca          String?
+  veiculoUF             String?
+
+  // Volumes transportados (tagVol)
+  volumeQuantidade  Float?
+  volumeEspecie     String? // Ex: "Caixa", "Volume"
+  volumeMarca       String?
+  volumeNumeracao   String?
+  volumePesoLiquido Float?
+  volumePesoBruto   Float?
+
+  // Pagamento (tagDetPag)
+  indicadorPagamento Int?    // 0=À vista, 1=A prazo
+  meioPagamento      String? // 01=Dinheiro, 02=Cheque, 03=Cartão Crédito, etc
+  valorPagamento     Float?  // vPag
+  valorTroco         Float   @default(0) // vTroco
+
+  // Informações adicionais
+  informacoesComplementares String? // Texto livre (infCpl)
+  informacoesFisco          String? // Informações de interesse do fisco (infAdFisco)
+
+  // Dados da emissão
+  dataEmissao DateTime?
+  dataSaida DateTime?
+
+  // Protocolo SEFAZ
+  protocoloAutorizacao String? // Número do protocolo de autorização
+  dataAutorizacao DateTime? // Data/hora da autorização
+  xmlEnviado String? // XML enviado para SEFAZ
+  xmlRetorno String? // XML de retorno da SEFAZ
+  xmlAutorizado String? // Caminho local do XML autorizado (completo)
+  xmlAutorizadoUrl String? // URL pública do XML autorizado para download
+
+  // DANFE
+  danfePdfPath String? // Caminho do arquivo PDF da DANFE
+  danfePdfUrl  String? // URL pública do PDF da DANFE
+
+  // Cancelamento
+  canceladaEm DateTime?
+  motivoCancelamento String?
+  protocoloCancelamento String?
+
+  // Contingência
+  emContingencia            Boolean @default(false)
+  tipoContingencia          String? // FS-IA, SCAN, DPEC, etc.
+  justificativaContingencia String?
+
+  // Responsável Técnico (tagInfRespTec)
+  respTecCNPJ    String? // CNPJ do responsável técnico
+  respTecContato String? // Nome do contato
+  respTecEmail   String? // Email do responsável técnico
+  respTecFone    String? // Telefone do responsável técnico
+
+  // Observações internas
+  observacoes String?
+
+  // Controle
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  sale     Sale?     @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  customer Customer? @relation(fields: [destinatarioId], references: [id], onDelete: SetNull)
+  items    NFeItem[]
+  events   NFeEvent[]
+
+  @@unique([companyId, serie, numero])
+  @@index([companyId])
+  @@index([saleId])
+  @@index([status])
+  @@index([chaveAcesso])
+  @@index([dataEmissao])
+  @@map("nfes")
+}
+
+enum NFeStatus {
+  DRAFT       // Rascunho (não emitida)
+  IN_PROCESS  // Em processamento
+  AUTHORIZED  // Autorizada
+  REJECTED    // Rejeitada
+  CANCELED    // Cancelada
+  DENIED      // Denegada
+  CONTINGENCY // Em contingência
+}
+
+// Enums para NFe
+enum NFeModalidadeFrete {
+  EMITENTE      // 0 - Por conta do emitente
+  DESTINATARIO  // 1 - Por conta do destinatário
+  TERCEIROS     // 2 - Por conta de terceiros
+  PROPRIO_EMITENTE     // 3 - Transporte próprio por conta do emitente
+  PROPRIO_DESTINATARIO // 4 - Transporte próprio por conta do destinatário
+  SEM_FRETE     // 9 - Sem ocorrência de transporte
+}
+
+enum NFeIndicadorPresenca {
+  NAO_SE_APLICA           // 0 - Não se aplica
+  PRESENCIAL              // 1 - Operação presencial
+  INTERNET                // 2 - Operação não presencial, pela Internet
+  TELEATENDIMENTO         // 3 - Operação não presencial, Teleatendimento
+  NFCE_ENTREGA_DOMICILIO  // 4 - NFC-e em operação com entrega a domicílio
+  PRESENCIAL_FORA_ESTABELECIMENTO // 5 - Operação presencial, fora do estabelecimento
+  NAO_PRESENCIAL_OUTROS   // 9 - Operação não presencial, outros
+}
+
+enum NFeIndicadorIntermediador {
+  SEM_INTERMEDIADOR // 0 - Operação sem intermediador
+  COM_INTERMEDIADOR // 1 - Operação em site ou plataforma de terceiros
+}
+
+enum NFeIndicadorIEDestinatario {
+  CONTRIBUINTE     // 1 - Contribuinte ICMS
+  ISENTO           // 2 - Contribuinte isento de Inscrição
+  NAO_CONTRIBUINTE // 9 - Não Contribuinte
+}
+
+enum NFeFormaPagamento {
+  DINHEIRO            // 01
+  CHEQUE              // 02
+  CARTAO_CREDITO      // 03
+  CARTAO_DEBITO       // 04
+  CREDITO_LOJA        // 05
+  VALE_ALIMENTACAO    // 10
+  VALE_REFEICAO       // 11
+  VALE_PRESENTE       // 12
+  VALE_COMBUSTIVEL    // 13
+  DUPLICATA_MERCANTIL // 14
+  BOLETO_BANCARIO     // 15
+  DEPOSITO_BANCARIO   // 16
+  PIX                 // 17
+  TRANSFERENCIA_BANCARIA // 18
+  CASHBACK            // 19
+  SEM_PAGAMENTO       // 90
+  OUTROS              // 99
+}
+
+// Itens da NFe (tagProd)
+model NFeItem {
+  id    String @id @default(uuid())
+  nfeId String
+
+  // Identificação do produto (tagProd)
+  numero        Int     // Número sequencial do item (nItem)
+  productId     String? // Referência ao produto cadastrado
+  codigoProduto String  // cProd
+  codigoEAN     String  @default("SEM GTIN") // cEAN
+  codigoEANTrib String  @default("SEM GTIN") // cEANTrib
+  descricao     String  // xProd
+  ncm           String  // NCM
+  cest          String? // CEST
+  cfop          String  // CFOP
+  
+  // Unidade comercial
+  unidadeComercial String // uCom
+  quantidadeComercial Float // qCom
+  valorUnitarioComercial Float // vUnCom
+  
+  // Unidade tributável
+  unidadeTributavel String // uTrib
+  quantidadeTributavel Float // qTrib
+  valorUnitarioTributavel Float // vUnTrib
+  
+  // Valores
+  valorProduto    Float // vProd
+  valorDesconto   Float @default(0) // vDesc
+  valorFrete      Float @default(0) // vFrete
+  valorSeguro     Float @default(0) // vSeg
+  valorOutros     Float @default(0) // vOutro
+  indicadorTotal  Int   @default(1) // indTot (1=Entra no total da NF-e)
+
+  // Tributos - ICMS
+  icmsOrigem       Int?    // orig (0 a 8)
+  icmsCst          String? // CST do ICMS
+  icmsCSOSN        String? // CSOSN para Simples Nacional
+  icmsModalidadeBC Int?    // modBC
+  icmsBase         Float?  // vBC
+  icmsAliquota     Float?  // pICMS
+  icmsValor        Float?  // vICMS
+  
+  // ICMS FCP (Fundo de Combate à Pobreza)
+  icmsFCPBase     Float? // vBCFCP
+  icmsFCPAliquota Float? // pFCP
+  icmsFCPValor    Float? // vFCP
+
+  // ICMS ST (Substituição Tributária)
+  icmsStModalidadeBC Float? // modBCST
+  icmsStBase         Float? // vBCST
+  icmsStAliquota     Float? // pICMSST
+  icmsStValor        Float? // vICMSST
+  icmsStMVA          Float? // pMVAST (Margem de Valor Agregado)
+  icmsStReducaoBC    Float? // pRedBCST
+
+  // ICMS Partilha (para operações interestaduais com consumidor final)
+  icmsUFDestBase       Float? // vBCUFDest
+  icmsUFDestAliquota   Float? // pICMSUFDest
+  icmsUFDestValor      Float? // vICMSUFDest
+  icmsUFRemetAliquota  Float? // pICMSInter
+  icmsUFRemetValor     Float? // vICMSUFRemet
+
+  // IPI
+  ipiCst      String? // CST do IPI
+  ipiBase     Float?  // vBC
+  ipiAliquota Float?  // pIPI
+  ipiValor    Float?  // vIPI
+
+  // II (Imposto de Importação)
+  iiBase       Float? // vBC
+  iiDespAdu    Float? // vDespAdu
+  iiValor      Float? // vII
+  iiIOF        Float? // vIOF
+
+  // PIS
+  pisCst         String? // CST do PIS
+  pisBase        Float?  // vBC
+  pisAliquota    Float?  // pPIS
+  pisValor       Float?  // vPIS
+  pisQuantidade  Float?  // qBCProd
+  pisAliqValor   Float?  // vAliqProd
+
+  // COFINS
+  cofinsCst        String? // CST do COFINS
+  cofinsBase       Float?  // vBC
+  cofinsAliquota   Float?  // pCOFINS
+  cofinsValor      Float?  // vCOFINS
+  cofinsQuantidade Float?  // qBCProd
+  cofinsAliqValor  Float?  // vAliqProd
+
+  // IBS/CBS (Reforma Tributária - opcional dependendo da vigência)
+  ibsCbsCst         String? // CST
+  ibsCbsClassTrib   String? // cClassTrib
+  ibsBase           Float?  // vBC
+  ibsUFAliquota     Float?  // pIBSUF
+  ibsUFValor        Float?  // vIBSUF
+  ibsMunAliquota    Float?  // pIBSMun
+  ibsMunValor       Float?  // vIBSMun
+  ibsValor          Float?  // vIBS
+  cbsAliquota       Float?  // pCBS
+  cbsValor          Float?  // vCBS
+
+  // Informações adicionais do item
+  informacoesAdicionais String?
+
+  // Controle
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relacionamentos
+  nfe     NFe      @relation(fields: [nfeId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([nfeId])
+  @@map("nfe_items")
+}
+
+// Eventos da NFe (cancelamento, carta de correção, etc.)
+model NFeEvent {
+  id    String @id @default(uuid())
+  nfeId String
+
+  // Tipo do evento
+  tipo NFeEventType
+  sequencia Int @default(1) // Número sequencial do evento
+
+  // Dados do evento
+  descricao String
+  justificativa String? // Justificativa (necessária para alguns eventos)
+  
+  // Protocolo
+  protocolo String? // Número do protocolo do evento
+  dataEvento DateTime @default(now())
+
+  // XML do evento
+  xmlEnviado String? // XML enviado
+  xmlRetorno String? // XML de retorno
+
+  // Status
+  status String @default("PROCESSADO") // PROCESSADO, ERRO, PENDENTE
+
+  // Controle
+  createdAt DateTime @default(now())
+
+  // Relacionamento
+  nfe NFe @relation(fields: [nfeId], references: [id], onDelete: Cascade)
+
+  @@index([nfeId])
+  @@index([tipo])
+  @@map("nfe_events")
+}
+
+enum NFeEventType {
+  CANCELAMENTO // Cancelamento da NFe
+  CARTA_CORRECAO // Carta de Correção Eletrônica (CC-e)
+  CONFIRMACAO_OPERACAO // Confirmação da Operação
+  CIENCIA_OPERACAO // Ciência da Operação
+  DESCONHECIMENTO_OPERACAO // Desconhecimento da Operação
+  OPERACAO_NAO_REALIZADA // Operação não Realizada
 }

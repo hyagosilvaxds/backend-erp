@@ -1,0 +1,451 @@
+### =====================================================
+### TESTES DE APROVAÇÃO DE VENDAS
+### =====================================================
+
+### Variáveis
+@baseUrl = http://localhost:3000/api
+@authToken = seu-token-jwt-aqui
+@saleId = uuid-da-venda-aqui
+@customerId = uuid-do-cliente-aqui
+@productId = uuid-do-produto-aqui
+@paymentMethodId = uuid-do-metodo-pagamento-aqui
+@locationId = uuid-do-local-estoque-aqui
+
+### =====================================================
+### 1. CRIAR VENDA PARA APROVAÇÃO
+### =====================================================
+
+### Criar venda com método de pagamento e local de estoque
+POST {{baseUrl}}/sales
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "status": "QUOTE",
+  "paymentMethodId": "{{paymentMethodId}}",
+  "installments": 3,
+  "shippingCost": 50.00,
+  "shippingModality": 0,
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "stockLocationId": "{{locationId}}",
+      "quantity": 5,
+      "unitPrice": 100.00,
+      "discount": 0
+    }
+  ],
+  "notes": "Venda para teste de aprovação"
+}
+
+### Resposta esperada:
+# {
+#   "id": "sale-uuid",
+#   "code": "ORC-2024-0001",
+#   "status": "QUOTE",
+#   "totalAmount": 550.00,
+#   ...
+# }
+
+### =====================================================
+### 2. APROVAR VENDA
+### =====================================================
+
+### Aprovar venda - Cria contas a receber e movimenta estoque
+POST {{baseUrl}}/sales/{{saleId}}/approve
+Authorization: Bearer {{authToken}}
+
+### Resposta esperada:
+# {
+#   "id": "sale-uuid",
+#   "code": "ORC-2024-0001",
+#   "status": "APPROVED",
+#   "confirmedAt": "2024-11-16T...",
+#   "accountsReceivable": [
+#     {
+#       "id": "receivable-1-uuid",
+#       "documentNumber": "ORC-2024-0001-1",
+#       "originalAmount": 183.33,
+#       "status": "PENDENTE",
+#       "installmentNumber": 1,
+#       "totalInstallments": 3
+#     },
+#     {
+#       "id": "receivable-2-uuid",
+#       "documentNumber": "ORC-2024-0001-2",
+#       "originalAmount": 183.33,
+#       "status": "PENDENTE",
+#       "installmentNumber": 2,
+#       "totalInstallments": 3
+#     },
+#     {
+#       "id": "receivable-3-uuid",
+#       "documentNumber": "ORC-2024-0001-3",
+#       "originalAmount": 183.34,
+#       "status": "PENDENTE",
+#       "installmentNumber": 3,
+#       "totalInstallments": 3
+#     }
+#   ],
+#   "stockMovements": [
+#     {
+#       "id": "movement-uuid",
+#       "type": "EXIT",
+#       "quantity": -5,
+#       "reason": "Venda aprovada",
+#       "reference": "ORC-2024-0001"
+#     }
+#   ]
+# }
+
+### =====================================================
+### 3. VERIFICAR VENDA APROVADA
+### =====================================================
+
+### Buscar venda por ID
+GET {{baseUrl}}/sales/{{saleId}}
+Authorization: Bearer {{authToken}}
+
+###
+
+### Listar todas as vendas aprovadas
+GET {{baseUrl}}/sales?status=APPROVED
+Authorization: Bearer {{authToken}}
+
+###
+
+### =====================================================
+### 4. VERIFICAR CONTAS A RECEBER CRIADAS
+### =====================================================
+
+### Listar contas a receber da venda (endpoint do módulo financeiro)
+GET {{baseUrl}}/financial/accounts-receivable?saleId={{saleId}}
+Authorization: Bearer {{authToken}}
+
+###
+
+### Buscar conta a receber específica
+GET {{baseUrl}}/financial/accounts-receivable/{{receivableId}}
+Authorization: Bearer {{authToken}}
+
+###
+
+### =====================================================
+### 5. VERIFICAR MOVIMENTAÇÕES DE ESTOQUE
+### =====================================================
+
+### Listar movimentações de estoque (endpoint de produtos/estoque)
+GET {{baseUrl}}/products/stock-movements?saleId={{saleId}}
+Authorization: Bearer {{authToken}}
+
+###
+
+### Verificar estoque do produto
+GET {{baseUrl}}/products/{{productId}}
+Authorization: Bearer {{authToken}}
+
+###
+
+### =====================================================
+### 6. CANCELAR VENDA APROVADA
+### =====================================================
+
+### Cancelar venda - Reverte contas a receber e estoque
+POST {{baseUrl}}/sales/{{saleId}}/cancel
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "cancellationReason": "Cliente desistiu da compra"
+}
+
+### Resposta esperada:
+# {
+#   "id": "sale-uuid",
+#   "status": "CANCELED",
+#   "canceledAt": "2024-11-16T...",
+#   "cancellationReason": "Cliente desistiu da compra"
+# }
+
+### Após cancelamento:
+# - Contas a receber: status "CANCELADO"
+# - Estoque: devolvido (movimentação tipo "RETURN")
+
+###
+
+### =====================================================
+### 7. VERIFICAR REVERSÃO
+### =====================================================
+
+### Verificar que as contas a receber foram canceladas
+GET {{baseUrl}}/financial/accounts-receivable?saleId={{saleId}}
+Authorization: Bearer {{authToken}}
+
+### Resposta esperada:
+# [
+#   {
+#     "status": "CANCELADO",
+#     "notes": "Venda cancelada: Cliente desistiu da compra"
+#   }
+# ]
+
+###
+
+### Verificar que o estoque foi devolvido
+GET {{baseUrl}}/products/stock-movements?productId={{productId}}
+Authorization: Bearer {{authToken}}
+
+### Resposta esperada (últimas movimentações):
+# [
+#   {
+#     "type": "RETURN",
+#     "quantity": 5,
+#     "reason": "Cancelamento de venda"
+#   },
+#   {
+#     "type": "EXIT",
+#     "quantity": -5,
+#     "reason": "Venda aprovada"
+#   }
+# ]
+
+###
+
+### =====================================================
+### 8. CASOS DE ERRO
+### =====================================================
+
+### Erro: Aprovar venda já aprovada
+POST {{baseUrl}}/sales/{{saleId}}/approve
+Authorization: Bearer {{authToken}}
+
+### Resposta esperada (400):
+# {
+#   "statusCode": 400,
+#   "message": "Venda já está aprovada"
+# }
+
+###
+
+### Erro: Aprovar venda sem método de pagamento
+POST {{baseUrl}}/sales
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "status": "QUOTE",
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "quantity": 1,
+      "unitPrice": 100.00
+    }
+  ]
+}
+
+# Salvar ID da venda criada: @saleIdWithoutPayment
+
+###
+
+POST {{baseUrl}}/sales/{{saleIdWithoutPayment}}/approve
+Authorization: Bearer {{authToken}}
+
+### Resposta esperada (400):
+# {
+#   "statusCode": 400,
+#   "message": "Venda deve ter um método de pagamento definido"
+# }
+
+###
+
+### Erro: Aprovar venda com estoque insuficiente
+POST {{baseUrl}}/sales
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "status": "QUOTE",
+  "paymentMethodId": "{{paymentMethodId}}",
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "stockLocationId": "{{locationId}}",
+      "quantity": 99999,
+      "unitPrice": 100.00
+    }
+  ]
+}
+
+# Salvar ID: @saleIdInsufficientStock
+
+###
+
+POST {{baseUrl}}/sales/{{saleIdInsufficientStock}}/approve
+Authorization: Bearer {{authToken}}
+
+### Resposta esperada (400):
+# {
+#   "statusCode": 400,
+#   "message": "Estoque insuficiente para [Nome do Produto] no local selecionado. Disponível: X, Solicitado: 99999"
+# }
+
+###
+
+### Erro: Aprovar venda cancelada
+POST {{baseUrl}}/sales/{{canceledSaleId}}/approve
+Authorization: Bearer {{authToken}}
+
+### Resposta esperada (400):
+# {
+#   "statusCode": 400,
+#   "message": "Venda cancelada não pode ser aprovada"
+# }
+
+###
+
+### =====================================================
+### 9. FLUXO COMPLETO: CRIAR → APROVAR → CANCELAR
+### =====================================================
+
+### Passo 1: Criar venda
+POST {{baseUrl}}/sales
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "status": "QUOTE",
+  "paymentMethodId": "{{paymentMethodId}}",
+  "installments": 2,
+  "shippingCost": 30.00,
+  "shippingModality": 1,
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "stockLocationId": "{{locationId}}",
+      "quantity": 3,
+      "unitPrice": 150.00,
+      "discount": 10.00
+    }
+  ]
+}
+
+# Salvar: @newSaleId
+
+###
+
+### Passo 2: Verificar estoque ANTES da aprovação
+GET {{baseUrl}}/products/{{productId}}
+Authorization: Bearer {{authToken}}
+
+# Anotar estoque atual
+
+###
+
+### Passo 3: Aprovar venda
+POST {{baseUrl}}/sales/{{newSaleId}}/approve
+Authorization: Bearer {{authToken}}
+
+###
+
+### Passo 4: Verificar estoque DEPOIS da aprovação (deve ter diminuído)
+GET {{baseUrl}}/products/{{productId}}
+Authorization: Bearer {{authToken}}
+
+###
+
+### Passo 5: Verificar contas a receber criadas
+GET {{baseUrl}}/financial/accounts-receivable?saleId={{newSaleId}}
+Authorization: Bearer {{authToken}}
+
+###
+
+### Passo 6: Cancelar venda
+POST {{baseUrl}}/sales/{{newSaleId}}/cancel
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "cancellationReason": "Teste de cancelamento - estorno completo"
+}
+
+###
+
+### Passo 7: Verificar estoque DEPOIS do cancelamento (deve ter voltado ao original)
+GET {{baseUrl}}/products/{{productId}}
+Authorization: Bearer {{authToken}}
+
+###
+
+### Passo 8: Verificar contas a receber canceladas
+GET {{baseUrl}}/financial/accounts-receivable?saleId={{newSaleId}}
+Authorization: Bearer {{authToken}}
+
+# Status deve estar "CANCELADO"
+
+###
+
+### =====================================================
+### 10. VENDA COM ANÁLISE DE CRÉDITO
+### =====================================================
+
+### Criar venda que requer análise de crédito
+POST {{baseUrl}}/sales
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{customerId}}",
+  "status": "PENDING_APPROVAL",
+  "paymentMethodId": "{{paymentMethodId}}",
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "stockLocationId": "{{locationId}}",
+      "quantity": 2,
+      "unitPrice": 200.00
+    }
+  ]
+}
+
+# Se o método de pagamento requer análise de crédito
+# Salvar: @saleWithCreditAnalysisId
+
+###
+
+### Tentar aprovar sem análise de crédito
+POST {{baseUrl}}/sales/{{saleWithCreditAnalysisId}}/approve
+Authorization: Bearer {{authToken}}
+
+### Resposta esperada (400):
+# {
+#   "statusCode": 400,
+#   "message": "Análise de crédito deve ser aprovada primeiro"
+# }
+
+###
+
+### Aprovar análise de crédito primeiro
+POST {{baseUrl}}/sales/{{saleWithCreditAnalysisId}}/credit-analysis/approve
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "creditScore": 750,
+  "notes": "Cliente com bom histórico"
+}
+
+###
+
+### Agora aprovar a venda
+POST {{baseUrl}}/sales/{{saleWithCreditAnalysisId}}/approve
+Authorization: Bearer {{authToken}}
+
+###
+
+### =====================================================
+### FIM DOS TESTES
+### =====================================================

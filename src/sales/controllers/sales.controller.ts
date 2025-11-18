@@ -93,6 +93,11 @@ export class SalesController {
     return this.salesService.confirm(companyId, id);
   }
 
+  @Post(':id/approve')
+  approve(@CompanyId() companyId: string, @Param('id') id: string) {
+    return this.salesService.approveSale(companyId, id);
+  }
+
   @Post(':id/cancel')
   cancel(
     @CompanyId() companyId: string,

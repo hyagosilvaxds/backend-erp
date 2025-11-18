@@ -47,7 +47,7 @@ Content-Type: application/json
 {
   "name": "string",
   "code": "string",
-  "type": "CASH | CREDIT_CARD | DEBIT_CARD | PIX | BANK_SLIP | BANK_TRANSFER | CHECK | OTHER"
+  "sefazCode": "DINHEIRO | CHEQUE | CARTAO_CREDITO | CARTAO_DEBITO | CREDITO_LOJA | VALE_ALIMENTACAO | VALE_REFEICAO | VALE_PRESENTE | VALE_COMBUSTIVEL | DUPLICATA_MERCANTIL | BOLETO_BANCARIO | DEPOSITO_BANCARIO | PIX_DINAMICO | TRANSFERENCIA | PROGRAMA_FIDELIDADE | PIX_ESTATICO | CREDITO_EM_LOJA | PAGAMENTO_ELETRONICO_NAO_INFORMADO | SEM_PAGAMENTO | OUTROS"
 }
 ```
 
@@ -78,9 +78,9 @@ Content-Type: application/json
 **Exemplo 1: PIX simples**
 ```json
 {
-  "name": "PIX",
-  "code": "PIX",
-  "type": "PIX",
+  "name": "PIX Dinâmico",
+  "code": "PIX_DYNAMIC",
+  "sefazCode": "PIX_DINAMICO",
   "daysToReceive": 0,
   "transactionFee": 0.5
 }
@@ -91,7 +91,7 @@ Content-Type: application/json
 {
   "name": "Cartão de Crédito",
   "code": "CREDIT_CARD",
-  "type": "CREDIT_CARD",
+  "sefazCode": "CARTAO_CREDITO",
   "allowInstallments": true,
   "maxInstallments": 12,
   "installmentFee": 2.5,
@@ -106,7 +106,7 @@ Content-Type: application/json
 {
   "name": "Boleto 7/21",
   "code": "BOLETO_7_21",
-  "type": "BANK_SLIP",
+  "sefazCode": "BOLETO_BANCARIO",
   "allowInstallments": true,
   "maxInstallments": 2,
   "installmentTemplates": [
@@ -160,9 +160,9 @@ Content-Type: application/json
 {
   "id": "uuid",
   "companyId": "uuid",
-  "name": "PIX",
-  "code": "PIX",
-  "type": "PIX",
+  "name": "PIX Dinâmico",
+  "code": "PIX_DYNAMIC",
+  "sefazCode": "PIX_DINAMICO",
   "active": true,
   "allowInstallments": false,
   "maxInstallments": 1,
@@ -285,9 +285,9 @@ GET /sales/payment-methods?active=true&type=PIX
   {
     "id": "uuid",
     "companyId": "uuid",
-    "name": "PIX",
-    "code": "PIX",
-    "type": "PIX",
+    "name": "PIX Dinâmico",
+    "code": "PIX_DYNAMIC",
+    "sefazCode": "PIX_DINAMICO",
     "active": true,
     "allowInstallments": false,
     "maxInstallments": 1,
@@ -491,7 +491,7 @@ Todos os campos são opcionais. Envie apenas os campos que deseja atualizar.
   "companyId": "uuid",
   "name": "Cartão de Crédito",
   "code": "CREDIT_CARD",
-  "type": "CREDIT_CARD",
+  "sefazCode": "CARTAO_CREDITO",
   "active": true,
   "allowInstallments": true,
   "maxInstallments": 10,
@@ -561,9 +561,9 @@ DELETE /sales/payment-methods/123e4567-e89b-12d3-a456-426614174000
 {
   "id": "123e4567-e89b-12d3-a456-426614174000",
   "companyId": "uuid",
-  "name": "PIX",
-  "code": "PIX",
-  "type": "PIX",
+  "name": "PIX Dinâmico",
+  "code": "PIX_DYNAMIC",
+  "sefazCode": "PIX_DINAMICO",
   "active": true,
   "createdAt": "2024-11-10T19:26:28.000Z",
   "updatedAt": "2024-11-10T19:26:28.000Z"
@@ -626,9 +626,9 @@ PATCH /sales/payment-methods/123e4567-e89b-12d3-a456-426614174000/toggle-active
 {
   "id": "123e4567-e89b-12d3-a456-426614174000",
   "companyId": "uuid",
-  "name": "PIX",
-  "code": "PIX",
-  "type": "PIX",
+  "name": "PIX Dinâmico",
+  "code": "PIX_DYNAMIC",
+  "sefazCode": "PIX_DINAMICO",
   "active": false,
   "createdAt": "2024-11-10T19:26:28.000Z",
   "updatedAt": "2024-11-10T20:30:00.000Z"

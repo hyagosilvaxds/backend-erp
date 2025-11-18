@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OFXParserService } from './ofx-parser.service';
 import { TransactionMatchingService } from './transaction-matching.service';
@@ -287,5 +287,122 @@ export class OFXImportService {
     });
 
     return { message: 'Extrato OFX deletado com sucesso' };
+  }
+
+  /**
+   * Cria um novo lançamento financeiro a partir de uma transação OFX
+   * Esta é uma alternativa à conciliação - ao invés de vincular a um lançamento existente,
+   * o usuário cria um novo lançamento com os dados da movimentação bancária
+   */
+  async createTransactionFromOFX(data: {
+    ofxFitId: string;
+    companyId: string;
+    bankAccountId: string;
+    categoryId?: string;
+    centroCustoId?: string;
+    contaContabilId?: string;
+    type: 'RECEITA' | 'DESPESA';
+    transactionType: string;
+    description?: string;
+    notes?: string;
+  }) {
+    const {
+      ofxFitId,
+      companyId,
+      bankAccountId,
+      categoryId,
+      centroCustoId,
+      contaContabilId,
+      type,
+      transactionType,
+      description,
+      notes,
+    } = data;
+
+    // Verificar se já existe um lançamento vinculado a este FITID
+    const existingTransaction = await this.prisma.financialTransaction.findFirst({
+      where: {
+        companyId,
+        referenceNumber: ofxFitId,
+      },
+    });
+
+    if (existingTransaction) {
+      throw new BadRequestException(
+        'Já existe um lançamento vinculado a esta movimentação OFX'
+      );
+    }
+
+    // Buscar a transação OFX no banco para pegar os dados
+    // Como o Prisma não suporta array_contains para JSON, vamos buscar todos os imports
+    // e filtrar em memória
+    const ofxImports = await this.prisma.oFXImport.findMany({
+      where: {
+        companyId,
+        bankAccountId,
+      },
+    });
+
+    let ofxImport: any = null;
+    let ofxTransaction: any = null;
+
+    // Procurar a transação no array de transações
+    for (const imp of ofxImports) {
+      const transactions = imp.transactions as any[];
+      const found = transactions.find((t: any) => t.fitId === ofxFitId);
+      if (found) {
+        ofxImport = imp;
+        ofxTransaction = found;
+        break;
+      }
+    }
+
+    if (!ofxImport || !ofxTransaction) {
+      throw new NotFoundException('Transação OFX não encontrada');
+    }
+
+    // Determinar o valor líquido (netAmount) baseado no tipo
+    const amount = Math.abs(ofxTransaction.amount);
+    const netAmount = type === 'DESPESA' ? -amount : amount;
+
+    // Criar o lançamento financeiro
+    const financialTransaction = await this.prisma.financialTransaction.create({
+      data: {
+        companyId,
+        bankAccountId,
+        categoryId: categoryId || null,
+        centroCustoId: centroCustoId || null,
+        contaContabilId: contaContabilId || null,
+        type,
+        transactionType,
+        amount,
+        netAmount,
+        description: description || ofxTransaction.name || 'Movimentação bancária',
+        transactionDate: new Date(ofxTransaction.datePosted),
+        competenceDate: new Date(ofxTransaction.datePosted),
+        referenceNumber: ofxFitId, // Vincular ao FITID do OFX
+        notes: notes || ofxTransaction.memo || null,
+        reconciled: true, // Já está conciliado com o extrato
+        reconciledAt: new Date(),
+      },
+      include: {
+        bankAccount: true,
+        category: true,
+        centroCusto: true,
+        contaContabil: true,
+      },
+    });
+
+    // Atualizar contador de conciliações no extrato OFX
+    await this.prisma.oFXImport.update({
+      where: { id: ofxImport.id },
+      data: {
+        reconciledCount: {
+          increment: 1,
+        },
+      },
+    });
+
+    return financialTransaction;
   }
 }
