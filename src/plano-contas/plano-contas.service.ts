@@ -276,6 +276,11 @@ export class PlanoContasService {
   // ==================== CONTA CONTÁBIL ====================
 
   async createContaContabil(createDto: CreateContaContabilDto) {
+    // Validação adicional
+    if (!createDto.planoContasId) {
+      throw new BadRequestException('planoContasId é obrigatório');
+    }
+
     // Verifica se o plano de contas existe
     const planoContas = await this.prisma.planoContas.findUnique({
       where: { id: createDto.planoContasId },

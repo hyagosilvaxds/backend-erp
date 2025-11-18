@@ -123,7 +123,111 @@ Authorization: Bearer {token}
 }
 ```
 
-## 📊 Fluxo Completo de Uso
+## � Endpoints Auxiliares para Seleção
+
+Para facilitar a criação de lançamentos, utilize estes endpoints para buscar as opções disponíveis:
+
+### Buscar Categorias Financeiras
+
+```http
+GET /financial/categories?companyId={companyId}&ativo=true
+Authorization: Bearer {token}
+```
+
+**Resposta:**
+```json
+[
+  {
+    "id": "uuid-categoria",
+    "name": "Taxas Bancárias",
+    "type": "DESPESA",
+    "description": "Taxas cobradas pelo banco",
+    "color": "#FF5733",
+    "active": true
+  }
+]
+```
+
+### Buscar Centros de Custo
+
+```http
+GET /financial/centros-custo?companyId={companyId}&ativo=true
+Authorization: Bearer {token}
+```
+
+**Resposta:**
+```json
+[
+  {
+    "id": "uuid-centro-custo",
+    "codigo": "CC001",
+    "nome": "Administrativo",
+    "descricao": "Centro de custo administrativo",
+    "nivel": 1,
+    "ativo": true,
+    "centroCustoPaiId": null,
+    "responsavel": "João Silva",
+    "email": "joao@empresa.com"
+  }
+]
+```
+
+### Buscar Contas Contábeis
+
+Para buscar contas contábeis, primeiro obtenha o plano de contas padrão da empresa:
+
+**1. Obter Plano de Contas Padrão:**
+```http
+GET /financial/plano-contas/padrao?companyId={companyId}
+Authorization: Bearer {token}
+```
+
+**Resposta:**
+```json
+{
+  "id": "uuid-plano",
+  "nome": "Plano de Contas Padrão",
+  "tipo": "Gerencial",
+  "ativo": true
+}
+```
+
+**2. Listar Contas Contábeis do Plano:**
+```http
+GET /financial/plano-contas/{planoId}/contas?aceitaLancamento=true&page=1&limit=100
+Authorization: Bearer {token}
+```
+
+**Query Parameters:**
+- `aceitaLancamento=true` - Retorna apenas contas que aceitam lançamento (recomendado)
+- `tipo` - Filtrar por tipo: `ATIVO`, `PASSIVO`, `RECEITA`, `DESPESA`, `PATRIMONIO_LIQUIDO`
+- `nivel` - Filtrar por nível (1, 2, 3, 4, 5)
+- `page` - Número da página (padrão: 1)
+- `limit` - Itens por página (padrão: 100)
+
+**Resposta:**
+```json
+{
+  "data": [
+    {
+      "id": "uuid-conta",
+      "codigo": "1.1.01.001",
+      "nome": "Caixa Geral",
+      "tipo": "ATIVO",
+      "natureza": "Devedora",
+      "nivel": 4,
+      "aceitaLancamento": true,
+      "ativo": true
+    }
+  ],
+  "total": 42,
+  "page": 1,
+  "limit": 100,
+  "totalPages": 1
+}
+```
+
+## �📊 Fluxo Completo de Uso
 
 ### 1. Importar o Extrato OFX
 
@@ -203,7 +307,7 @@ await fetch(
 ## 🎨 Exemplo de Interface React
 
 ```tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface OFXTransaction {
   fitId: string;
@@ -211,6 +315,24 @@ interface OFXTransaction {
   amount: number;
   datePosted: string;
   memo?: string;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  type: string;
+}
+
+interface CentroCusto {
+  id: string;
+  codigo: string;
+  nome: string;
+}
+
+interface ContaContabil {
+  id: string;
+  codigo: string;
+  nome: string;
 }
 
 interface OFXTransactionItemProps {
@@ -227,13 +349,68 @@ export function OFXTransactionItem({
   onSuccess,
 }: OFXTransactionItemProps) {
   const [action, setAction] = useState<'none' | 'reconcile' | 'create'>('none');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [centrosCusto, setCentrosCusto] = useState<CentroCusto[]>([]);
+  const [contasContabeis, setContasContabeis] = useState<ContaContabil[]>([]);
   const [formData, setFormData] = useState({
     type: transaction.amount > 0 ? 'RECEITA' : 'DESPESA',
     transactionType: 'PIX',
     categoryId: '',
+    centroCustoId: '',
+    contaContabilId: '',
     description: transaction.name,
     notes: transaction.memo || '',
   });
+
+  // Buscar categorias, centros de custo e contas contábeis
+  useEffect(() => {
+    if (action === 'create') {
+      fetchDropdownOptions();
+    }
+  }, [action, companyId]);
+
+  const fetchDropdownOptions = async () => {
+    const token = localStorage.getItem('token');
+    const headers = {
+      'Authorization': `Bearer ${token}`,
+    };
+
+    try {
+      // Buscar categorias
+      const categoriesRes = await fetch(
+        `/api/financial/categories?companyId=${companyId}&ativo=true`,
+        { headers }
+      );
+      const categoriesData = await categoriesRes.json();
+      setCategories(categoriesData);
+
+      // Buscar centros de custo
+      const centrosCustoRes = await fetch(
+        `/api/financial/centros-custo?companyId=${companyId}&ativo=true`,
+        { headers }
+      );
+      const centrosCustoData = await centrosCustoRes.json();
+      setCentrosCusto(centrosCustoData);
+
+      // Buscar contas contábeis
+      // Primeiro, obter plano de contas padrão
+      const planoRes = await fetch(
+        `/api/financial/plano-contas/padrao?companyId=${companyId}`,
+        { headers }
+      );
+      const planoData = await planoRes.json();
+
+      // Depois, buscar contas do plano
+      const contasRes = await fetch(
+        `/api/financial/plano-contas/${planoData.id}/contas?aceitaLancamento=true&limit=100`,
+        { headers }
+      );
+      const contasData = await contasRes.json();
+      setContasContabeis(contasData.data);
+    } catch (error) {
+      console.error('Erro ao buscar opções:', error);
+    }
+  };
 
   const handleCreateTransaction = async () => {
     try {
@@ -314,6 +491,51 @@ export function OFXTransactionItem({
               <option value="DINHEIRO">Dinheiro</option>
               <option value="CHEQUE">Cheque</option>
               <option value="OUTROS">Outros</option>
+            </select>
+          </label>
+
+          <label>
+            Categoria:
+            <select
+              value={formData.categoryId}
+              onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+            >
+              <option value="">Selecione uma categoria</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Centro de Custo (opcional):
+            <select
+              value={formData.centroCustoId}
+              onChange={(e) => setFormData({ ...formData, centroCustoId: e.target.value })}
+            >
+              <option value="">Selecione um centro de custo</option>
+              {centrosCusto.map((cc) => (
+                <option key={cc.id} value={cc.id}>
+                  {cc.codigo} - {cc.nome}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Conta Contábil (opcional):
+            <select
+              value={formData.contaContabilId}
+              onChange={(e) => setFormData({ ...formData, contaContabilId: e.target.value })}
+            >
+              <option value="">Selecione uma conta contábil</option>
+              {contasContabeis.map((conta) => (
+                <option key={conta.id} value={conta.id}>
+                  {conta.codigo} - {conta.nome}
+                </option>
+              ))}
             </select>
           </label>
 

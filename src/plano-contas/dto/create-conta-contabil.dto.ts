@@ -14,8 +14,9 @@ export enum NaturezaConta {
 }
 
 export class CreateContaContabilDto {
+  @IsOptional()
   @IsString()
-  planoContasId: string;
+  planoContasId?: string;
 
   @IsString()
   codigo: string;
